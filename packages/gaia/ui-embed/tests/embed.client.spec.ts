@@ -370,6 +370,20 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'title', title: 'My Custom Title' })
   })
 
+  it('does not recurse when openSession synchronously notifies the Session list', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    mock.setSessionList({ phase: 'ready', byId: { 's-test-123': { id: SessionId('s-test-123'), title: 'T', displayTitle: 'T' } } })
+    // The real openSession replaces the main panel, which notifies list
+    // subscribers before it returns; the plugin's subscriber calls back in.
+    mock.uiWorkspace.openSession.mockImplementation(() => {
+      mock.setSessionList({ phase: 'ready', byId: { 's-test-123': { id: SessionId('s-test-123'), title: 'T', displayTitle: 'T' } } })
+    })
+    expect(() => apply(mock.ctx)).not.toThrow()
+    expect(mock.uiWorkspace.openSession).toHaveBeenCalledTimes(1)
+    expect(parentMessages).not.toContainEqual({ source: 'gaia-dsh', v: 1, type: 'error', code: 'session_not_found' })
+  })
+
   it('emits session_not_found error when list is ready and session is missing', () => {
     setLocationSearch('?gaia=embed&session=missing-session')
     const mock = createMockContext()

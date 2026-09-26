@@ -96,16 +96,21 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   let lastTitle: string | undefined
   let reportedNotFound = false
 
+  // openSession() synchronously notifies the Session list, whose subscriber
+  // calls back into this function; the flag must be set before the call or the
+  // two recurse until the stack overflows. A failed open is retried on the next
+  // list change; "not found" is reported only once the list has loaded (below).
+  let opening = false
   const attemptOpenSession = (): void => {
-    if (openedSession) return
+    if (openedSession || opening) return
+    opening = true
     try {
       ctx.uiWorkspace.openSession(sessionId)
       openedSession = true
     } catch {
-      if (!reportedNotFound) {
-        reportedNotFound = true
-        postToParent({ source: 'gaia-dsh', v: 1, type: 'error', code: 'session_not_found' })
-      }
+      // The Session may not be in the list yet; the list subscriber retries.
+    } finally {
+      opening = false
     }
   }
 
