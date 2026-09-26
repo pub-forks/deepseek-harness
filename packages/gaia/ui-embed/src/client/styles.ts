@@ -7,8 +7,12 @@ export const GAIA_EMBED_STYLE_ID = 'gaia-embed-styles'
 
 /** CSS applied when html has the data-gaia-embed attribute. */
 export const GAIA_EMBED_CSS = `
+/* The side columns below are display:none, which removes them from grid
+   auto-placement: the conversation column becomes the only in-flow item, so
+   the frame must be a single track. A three-track "0 1fr 0" template put the
+   conversation in the first, 0px track and the embed rendered blank. */
 html[data-gaia-embed] [data-app-frame] {
-  grid-template-columns: 0px 1fr 0px !important;
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 html[data-gaia-embed] [data-sidebar-col],
 html[data-gaia-embed] [data-rightbar-col],

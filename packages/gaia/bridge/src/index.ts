@@ -143,7 +143,10 @@ export function apply(ctx: Context): void {
           const parts = path.split('/')
           const id = decodeURIComponent(parts[4] ?? '')
           const request = await body(req)
-          if (!id || !(await ctx.sessionController.list({}, new AbortController().signal)).items.some(item => item.sessionId === id)) {
+          // Membership comes from the workspace registry: a Session created
+          // through this bridge stays out of sessionController.list() until it
+          // has content, so the list alone 404s renames of fresh tabs.
+          if (!id || !ctx.workspaceRegistry.list().some(workspace => workspace.sessionIds.includes(SessionId(id)))) {
             throw new RequestError(404, 'session_not_found')
           }
           const sessionId = SessionId(id)

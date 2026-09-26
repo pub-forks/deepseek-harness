@@ -23,6 +23,7 @@ function fixture(value: string | undefined = secret) {
         return workspace
       },
       get: (id: string) => [...workspaces.values()].find(workspace => workspace.id === id),
+      list: () => [...workspaces.values()],
       archiveSession: vi.fn(async () => {}),
     },
     sessionController: {

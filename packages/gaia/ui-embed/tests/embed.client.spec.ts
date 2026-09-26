@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import {
   apply,
   inject,
@@ -384,6 +385,25 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).not.toContainEqual({ source: 'gaia-dsh', v: 1, type: 'error', code: 'session_not_found' })
   })
 
+  it('re-applies the Gaia theme when the persisted preference is adopted later', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark' },
+      origin: window.location.origin,
+      source: window.parent,
+    }))
+    expect(mock.theme.setTheme).toHaveBeenLastCalledWith('gaia-embed-dark')
+    mock.theme.setTheme.mockClear()
+    // Settings scope loads and the service adopts the user's saved preference.
+    mock.ctx.emit('theme/change', { preference: 'system' } as ThemeSnapshot)
+    expect(mock.theme.setTheme).toHaveBeenCalledWith('gaia-embed-dark')
+    mock.theme.setTheme.mockClear()
+    mock.ctx.emit('theme/change', { preference: 'gaia-embed-dark' } as unknown as ThemeSnapshot)
+    expect(mock.theme.setTheme).not.toHaveBeenCalled()
+  })
+
   it('emits session_not_found error when list is ready and session is missing', () => {
     setLocationSearch('?gaia=embed&session=missing-session')
     const mock = createMockContext()
@@ -535,5 +555,13 @@ describe('ui-embed client plugin', () => {
 
     expect(document.documentElement.hasAttribute('data-gaia-embed')).toBe(false)
     expect(document.getElementById(GAIA_EMBED_STYLE_ID)).toBeNull()
+  })
+})
+
+describe('embed styles', () => {
+  it('collapses the frame to one track so the conversation column is not placed in a 0px track', async () => {
+    const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
+    expect(GAIA_EMBED_CSS).toContain('grid-template-columns: minmax(0, 1fr) !important;')
+    expect(GAIA_EMBED_CSS).not.toMatch(/grid-template-columns:\s*0px/)
   })
 })

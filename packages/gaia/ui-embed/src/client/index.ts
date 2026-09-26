@@ -91,6 +91,15 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const disposeDarkTheme = ctx.theme.register({ id: 'gaia-embed-dark', colorScheme: 'dark', tokens: {} })
   const disposeLightTheme = ctx.theme.register({ id: 'gaia-embed-light', colorScheme: 'light', tokens: {} })
 
+  // The theme service adopts the user's persisted preference whenever its
+  // settings scope loads or changes, which can land after Gaia's override and
+  // silently revert the embed to the saved (or system) theme. Keep re-applying
+  // the mode Gaia asked for; setTheme is a no-op when the id already matches.
+  let desiredTheme: string | undefined
+  ctx.on('theme/change', (snapshot) => {
+    if (desiredTheme !== undefined && snapshot.preference !== desiredTheme) ctx.theme.setTheme(desiredTheme)
+  })
+
   // Track title, existence, and session opening.
   let openedSession = false
   let lastTitle: string | undefined
@@ -185,8 +194,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
     switch (event.data.type) {
       case 'theme': {
-        const mode = event.data.mode
-        ctx.theme.setTheme(mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light')
+        desiredTheme = event.data.mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light'
+        ctx.theme.setTheme(desiredTheme)
         break
       }
       case 'focus': {
