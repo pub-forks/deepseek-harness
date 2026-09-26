@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-Gaia 使用指向 `gaia.patch.yml` 的 `--patch` 启动内置 `web` 配置。覆盖层将主机绑定到本机回环地址，打印带令牌的 URL 而不打开浏览器，关闭 HMR 和产品遥测，启用使用已存 OAuth 凭据的 `openai-codex` 路由，并挂载 Gaia 控制桥、授权 Remote 和浏览器登录页面。基础组合包已经将 Session JSONL 存在 `$DSH_HOME/sessions` 下。
+Gaia 使用指向 `gaia.patch.yml` 的 `--patch` 启动内置 `web` 配置。覆盖层将主机绑定到本机回环地址，打印带令牌的 URL 而不打开浏览器，关闭 HMR 和产品遥测，并挂载 Gaia 控制桥、授权 Remote 和浏览器登录页面。基础组合包已经将 Session JSONL 存在 `$DSH_HOME/sessions` 下。覆盖层不修改 `llm-pi-ai` 行，因为覆盖层的优先级高于“设置 → 模型”所编辑的配置补丁；控制桥改为在配置未声明任何 pi-ai 提供方时，将使用已存 OAuth 凭据的 `openai-codex` 路由写入配置一次。
 
 ## 目录
 

@@ -253,7 +253,6 @@ importers:
       '@deepseek-ai/dsh-fs-local':
         specifier: workspace:*
         version: link:../../packages/fs/fs-local
-      # GAIA: installed CLI resolves fork packages.
       '@deepseek-ai/dsh-gaia-api-authorization':
         specifier: workspace:*
         version: link:../../packages/gaia/api-authorization
@@ -2489,12 +2488,6 @@ importers:
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: workspace:*
         version: link:../../client/ui-settings
-      '@deepseek-ai/dsh-gaia-ui-authorization':
-        specifier: workspace:*
-        version: link:../../gaia/ui-authorization
-      '@deepseek-ai/dsh-gaia-ui-embed':
-        specifier: workspace:*
-        version: link:../../gaia/ui-embed
       '@deepseek-ai/dsh-client-ui-settings-account':
         specifier: workspace:*
         version: link:../../client/ui-settings-account
@@ -2594,6 +2587,12 @@ importers:
       '@deepseek-ai/dsh-file-reference-local':
         specifier: workspace:*
         version: link:../../context/file-reference-local
+      '@deepseek-ai/dsh-gaia-ui-authorization':
+        specifier: workspace:*
+        version: link:../../gaia/ui-authorization
+      '@deepseek-ai/dsh-gaia-ui-embed':
+        specifier: workspace:*
+        version: link:../../gaia/ui-embed
       '@deepseek-ai/dsh-host-directory-picker-auto':
         specifier: workspace:*
         version: link:../../host/directory-picker-auto
@@ -8524,7 +8523,6 @@ importers:
         specifier: workspace:*
         version: link:../../core/tools
 
-  # GAIA: workspace importers for the fork packages.
   packages/gaia/api-authorization:
     dependencies:
       '@deepseek-ai/dsh-brand':
@@ -8571,6 +8569,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: workspace:*
         version: link:../../core/agent
+      '@deepseek-ai/dsh-config-editor':
+        specifier: workspace:*
+        version: link:../../boot/config-editor
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:*
         version: link:../../host/webserver
@@ -8592,9 +8593,6 @@ importers:
       '@deepseek-ai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
-      '@deepseek-ai/dsh-credentials':
-        specifier: workspace:*
-        version: link:../../credentials/credentials
       '@deepseek-ai/dsh-client-locale':
         specifier: workspace:*
         version: link:../../client/locale
@@ -8610,6 +8608,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:*
         version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-credentials':
+        specifier: workspace:*
+        version: link:../../credentials/credentials
       '@testing-library/react':
         specifier: ^16.1.0
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -8664,7 +8665,6 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.3.1
-
 
   packages/goal/command-goal:
     devDependencies:

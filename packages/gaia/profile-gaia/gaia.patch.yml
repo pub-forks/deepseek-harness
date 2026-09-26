@@ -12,10 +12,9 @@
     printUrl: true
     surfaceContext: true
     trustedHosts: !!js ctx.webStartup.trustedHosts
-- id: llm-pi-ai
-  config:
-    providers:
-      openai-codex: {}
+# GAIA: no llm-pi-ai row here. An overlay outranks the profile layer that
+# Settings → Models writes, which made every provider read-only. The bridge
+# seeds the openai-codex route into the user's profile once instead.
 - id: hmr
   disabled: true
 - id: client-hmr

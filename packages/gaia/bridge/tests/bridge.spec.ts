@@ -15,6 +15,8 @@ function fixture(value: string | undefined = secret) {
   const ctx = {
     logger: () => ({ warn: vi.fn() }),
     effect: (register: () => () => void) => { register() },
+    // The default-route seed runs through ctx.inject; it has its own tests.
+    inject: () => {},
     webServer: { register: (route: { handler: Handler }) => { handler = route.handler; return () => {} } },
     workspaceRegistry: {
       create: async (path: string) => {

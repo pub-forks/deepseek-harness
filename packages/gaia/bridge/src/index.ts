@@ -12,6 +12,8 @@ import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-session-title'
+import type {} from '@deepseek-ai/dsh-config-editor'
+import { scheduleSeed } from './seed.ts'
 
 const PREFIX = '/gaia/control'
 const MAX_BODY = 16 * 1024
@@ -83,6 +85,7 @@ function exactFields(record: Record<string, unknown>, keys: readonly string[]): 
 
 /** Register the control prefix for the life of this plugin. */
 export function apply(ctx: Context): void {
+  scheduleSeed(ctx)
   const secret = process.env.GAIA_CONTROL_SECRET
   if (secret === undefined || secret.length < 32) ctx.logger('gaia-bridge').warn('GAIA_CONTROL_SECRET is missing or too short; control API unavailable')
   ctx.effect(() => ctx.webServer.register({
