@@ -96,7 +96,8 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
             </button>
           </div>
           <div className={css.options}>
-            {active !== undefined && renderSlot('settings.section', { close: onClose }, { only: active })}
+            {/* GAIA: Section links use the shell's navigation action. */}
+            {active !== undefined && renderSlot('settings.section', { close: onClose, openSection: onSelect }, { only: active })}
           </div>
         </div>
       </div>

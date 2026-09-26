@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Gaia launches the shipped `web` profile with `--patch` pointing to `gaia.patch.yml`. The overlay binds the host to loopback, prints the tokenized URL without opening a browser, disables HMR and product telemetry, enables the stored-OAuth `openai-codex` route, and mounts the Gaia control bridge. The base bundle already stores session JSONL beneath `$DSH_HOME/sessions`.
+Gaia launches the shipped `web` profile with `--patch` pointing to `gaia.patch.yml`. The overlay binds the host to loopback, prints the tokenized URL without opening a browser, disables HMR and product telemetry, enables the stored-OAuth `openai-codex` route, and mounts the Gaia control bridge, authorization Remote, and browser Sign-in section. The base bundle already stores session JSONL beneath `$DSH_HOME/sessions`.
 
 ## Table of Contents
 
@@ -55,5 +55,5 @@ This package neither assembles nor sends model requests.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- This overlay provides the host control API only; browser sign-in and session embed plugins are separate packages.
+- This overlay provides browser sign-in through separate Gaia packages. The session embed plugin is added in a later phase.
 

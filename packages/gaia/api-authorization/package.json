@@ -1,0 +1,21 @@
+{
+  "name": "@deepseek-ai/dsh-gaia-api-authorization",
+  "description": "Authenticated Remote for Gaia sign-in flows",
+  "version": "0.1.7-rc.2",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./types": { "types": "./lib/types/types.d.ts", "default": "./lib/types/types.js" },
+    "./remote": { "types": "./lib/typert.remote-client.d.ts", "default": "./lib/typert.remote-client.js" },
+    "./typert": { "types": "./lib/typert.host.d.ts", "default": "./lib/typert.host.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/index.js", "lib/types/**/*.js", "lib/types/**/*.d.ts", "lib/typert.host.js", "lib/typert.host.d.ts", "lib/typert.remote-client.js", "lib/typert.remote-client.d.ts"],
+  "peerDependencies": { "@deepseek-ai/cordis": "workspace:~", "@deepseek-ai/dsh-authorization": "workspace:*", "@deepseek-ai/dsh-credentials": "workspace:*", "@deepseek-ai/dsh-typert-protocol": "workspace:*" },
+  "dependencies": { "@deepseek-ai/dsh-brand": "workspace:*", "zod": "^4.4.3" },
+  "devDependencies": { "@deepseek-ai/cordis": "workspace:~", "@deepseek-ai/dsh-authorization": "workspace:*", "@deepseek-ai/dsh-credentials": "workspace:*", "@deepseek-ai/dsh-typert-protocol": "workspace:*" }
+}

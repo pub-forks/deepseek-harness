@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/api-authorization/README.md
+/:
+  en: c5aa1dda4ff5c5fc
+  zh: 477a28c9f5a011e3
+/deepseek-ai-dsh-gaia-api-authorization:
+  en: 2a6dc11a898c5872
+  zh: fa920a221e6fc0ef
+/deepseek-ai-dsh-gaia-api-authorization/summary:
+  en: 34858e36fa171eef
+  zh: aeb28e0b330aa50a
+/deepseek-ai-dsh-gaia-api-authorization/table-of-contents:
+  en: 134c9b5c374e0e8e
+  zh: e1882ebb8288f6bc
+/deepseek-ai-dsh-gaia-api-authorization/use-this-package:
+  en: 8bae2045411fba1f
+  zh: 3550899a6e3e8397
+/deepseek-ai-dsh-gaia-api-authorization/dev-note:
+  en: 2ffb1564e6db4c18
+  zh: 93b875837b998e49
+/deepseek-ai-dsh-gaia-api-authorization/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-gaia-api-authorization/model-experience/gaia-sign-in:
+  en: 337c1435f4dc704e
+  zh: 8aa0dfc73a68001a
+/deepseek-ai-dsh-gaia-api-authorization/model-experience/gaia-sign-in/what-the-model-sees:
+  en: 14de940b7e1a6aa1
+  zh: 2e91bf0db600ffa9
+/deepseek-ai-dsh-gaia-api-authorization/model-experience/gaia-sign-in/token-effect:
+  en: 57aeae7253e5418f
+  zh: 5b17dc9b67839b2c
+/deepseek-ai-dsh-gaia-api-authorization/model-experience/gaia-sign-in/kv-cache-effect:
+  en: d9760a8b65e5b8ad
+  zh: d416ab3e7ccdb87b
+/deepseek-ai-dsh-gaia-api-authorization/known-limitations-and-deferred-work:
+  en: 5e755d8cbd84b078
+  zh: 4d7649c62a5bab7b

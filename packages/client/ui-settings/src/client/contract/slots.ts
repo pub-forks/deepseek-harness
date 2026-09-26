@@ -119,13 +119,14 @@ export interface SettingsHeaderOwnerProps {
 /**
  * Owner share of a settings section entry. The shell owns modal visibility
  * and navigation; a section's data arrives through its own inject faces and
- * stores. `close` is the one shell affordance a section receives, for flows
- * that leave settings altogether (starting a session from a section) — the
- * onboarding coordinator's `openSection`/`complete` precedent, inverted.
+ * stores. `close` leaves Settings; `openSection` changes the active section.
+ * GAIA: the sign-in success hint uses shell-owned navigation to open Models.
  */
 export interface SettingsSectionOwnerProps {
   /** Close the settings panel (the shell owns the open state). */
   close: () => void
+  /** GAIA: Navigate to another Settings section without leaving the shell. */
+  openSection?: (id: string) => void
 }
 
 /** Owner share of the currently active settings-backed onboarding step. */

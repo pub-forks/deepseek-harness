@@ -459,6 +459,7 @@
     { "path": "./packages/host/frontend-static" },
     // GAIA: include the bridge and overlay entries in the host aggregate.
     { "path": "./packages/gaia/bridge" },
+    { "path": "./packages/gaia/api-authorization" },
     { "path": "./packages/gaia/profile-gaia" },
     { "path": "./packages/host/open-in-app" },
     { "path": "./packages/host/plugin-inventory" },

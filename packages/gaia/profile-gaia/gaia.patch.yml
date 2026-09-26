@@ -25,3 +25,9 @@
 - insert:
     - id: gaia-bridge
       name: '@deepseek-ai/dsh-gaia-bridge'
+    # GAIA: Remote runs behind the regular browser-cookie API Gateway.
+    - id: gaia-api-authorization
+      name: '@deepseek-ai/dsh-gaia-api-authorization'
+    # GAIA: browser bundle contributes the generic Sign-in Settings section.
+    - id: gaia-ui-authorization
+      name: '@deepseek-ai/dsh-gaia-ui-authorization'
