@@ -197,6 +197,7 @@ describe('ui-embed client plugin', () => {
     ctx.provide('sessions', sessions)
 
     const registeredThemes: Array<{ id: string; colorScheme: string }> = []
+    const disposePaletteSpy = vi.fn()
     const disposeDarkSpy = vi.fn()
     const disposeLightSpy = vi.fn()
     let currentTheme = 'system'
@@ -210,11 +211,23 @@ describe('ui-embed client plugin', () => {
         currentTheme = id
       }),
       getTheme: () => ({ preference: currentTheme }),
+      overrideTokens: vi.fn((_source: string, _tokens: Record<string, { light: string; dark: string }>) => disposePaletteSpy),
     }
     ctx.provide('theme', theme)
 
+    const slotRegistrations: { name: string; id: string; priority?: number }[] = []
+    const slots = {
+      inject: vi.fn((_name: string, factory: () => () => void) => factory()),
+      register: vi.fn((options: { name: string; id: string; priority?: number }) => {
+        slotRegistrations.push(options)
+        return () => {}
+      }),
+    }
+    ctx.provide('slots', slots)
+
     return {
       ctx,
+      slotRegistrations,
       sessionCtx,
       layout,
       uiWorkspace,
@@ -241,6 +254,7 @@ describe('ui-embed client plugin', () => {
       },
       theme,
       disposeDarkSpy,
+      disposePaletteSpy,
       disposeLightSpy,
       toggleSidebarSpy,
       openRightbarSpy,
@@ -584,5 +598,54 @@ describe('embed styles', () => {
     const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
     expect(GAIA_EMBED_CSS).toContain('grid-template-columns: minmax(0, 1fr) !important;')
     expect(GAIA_EMBED_CSS).not.toMatch(/grid-template-columns:\s*0px/)
+  })
+})
+
+describe('Gaia palette', () => {
+  it('accepts plain CSS colors and refuses anything that could escape a declaration', async () => {
+    const { isSafeCssColor } = await import('../src/client/bridge.ts')
+    for (const ok of ['#0a0a0a', 'hsl(0 0% 3.9%)', 'rgb(21, 21, 23)', 'oklch(70.5% 0.213 47.604)', 'hsl(20 80% 45% / 0.5)']) {
+      expect(isSafeCssColor(ok)).toBe(true)
+    }
+    for (const bad of ['red; background: url(x)', 'url(https://x)', 'var(--x)', 'hsl(0 0% 0%) }', '"#fff"', '', 'x'.repeat(200)]) {
+      expect(isSafeCssColor(bad)).toBe(false)
+    }
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)' } })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'url(x)' } })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { unknownKey: '#fff' } })).toBe(false)
+  })
+
+  it('maps Gaia colors onto DSH alias tokens for both schemes', async () => {
+    const { paletteTokens } = await import('../src/client/palette.ts')
+    const tokens = paletteTokens({ background: 'hsl(0 0% 3.9%)', foreground: 'hsl(0 0% 90%)', border: 'hsl(20 80% 45%)', accent: 'oklch(70.5% 0.213 47.604)' })
+    expect(tokens['--dsw-alias-bg-base']).toEqual({ light: 'hsl(0 0% 3.9%)', dark: 'hsl(0 0% 3.9%)' })
+    expect(tokens['--dsw-alias-label-primary']?.dark).toBe('hsl(0 0% 90%)')
+    expect(tokens['--dsw-alias-border-l2']?.dark).toBe('hsl(20 80% 45%)')
+    expect(tokens['--dsw-alias-link']?.dark).toBe('oklch(70.5% 0.213 47.604)')
+    expect(tokens['--dsw-alias-bg-layer-2']?.dark).toContain('color-mix(')
+    expect(paletteTokens({})).toEqual({})
+  })
+})
+
+describe('embed integration of the palette and header entries', () => {
+  it('applies a received palette as one override layer and shadows Open in Files', async () => {
+    Object.defineProperty(window, 'location', { value: new URL('http://localhost:3000/?gaia=embed&session=s-test-123'), writable: true, configurable: true })
+    const ctx = new Context()
+    const overrideTokens = vi.fn(() => () => {})
+    const registrations: { name: string; id: string; priority?: number }[] = []
+    ctx.provide('layout', { selectPanel: vi.fn(), closeRightbar: vi.fn(), toggleSidebar: vi.fn(), openRightbar: vi.fn() })
+    ctx.provide('uiWorkspace', { openSession: vi.fn() })
+    ctx.provide('connection', { state: { getSnapshot: () => 'connected', subscribe: () => () => {} } })
+    ctx.provide('uiSession', { sessionStatus: { getSnapshot: () => new Map(), subscribe: () => () => {} } })
+    ctx.provide('sessions', { list: { getSnapshot: () => ({ phase: 'ready', byId: {} }), subscribe: () => () => {} }, scope: () => undefined })
+    ctx.provide('theme', { register: vi.fn(() => () => {}), setTheme: vi.fn(), overrideTokens })
+    ctx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string; priority?: number }) => { registrations.push(o); return () => {} } })
+    apply(ctx)
+    expect(registrations).toContainEqual(expect.objectContaining({ name: 'conversation.session.header.utilities', id: 'open-in-app', priority: -1 }))
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)', foreground: 'hsl(0 0% 90%)' } },
+      origin: window.location.origin, source: window.parent,
+    }))
+    expect(overrideTokens).toHaveBeenCalledWith('gaia-embed-palette', expect.objectContaining({ '--dsw-alias-bg-base': { light: 'hsl(0 0% 3.9%)', dark: 'hsl(0 0% 3.9%)' } }))
   })
 })

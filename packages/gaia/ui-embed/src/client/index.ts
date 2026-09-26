@@ -8,11 +8,14 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
 import type { SessionInput, TokenSpan } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { injectEmbedStyles } from './styles.ts'
+import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -22,12 +25,16 @@ declare module '@deepseek-ai/cordis' {
 
 export * from './bridge.ts'
 export * from './styles.ts'
+export * from './palette.ts'
+
+/** Renders nothing; used to shadow slot entries that make no sense in a drawer tab. */
+function HiddenEntry(): null { return null }
 
 /** Keyboard shortcuts neutralized in embed mode to prevent opening hidden navigation chrome. */
 const EMBED_BLOCKED_KEYS = new Set(['KeyB', 'KeyN', 'KeyO', 'KeyK'])
 
 /** Services required for embed mode. */
-export const inject = ['layout', 'uiWorkspace', 'sessions', 'connection', 'uiSession', 'theme'] as const
+export const inject = ['layout', 'uiWorkspace', 'sessions', 'connection', 'uiSession', 'theme', 'slots'] as const
 
 /**
  * Mount the Gaia embed plugin into the client context.
@@ -85,6 +92,14 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
   window.addEventListener('keydown', onKeyDown, { capture: true })
 
+  // "Open in Files" launches a file manager on the machine running the
+  // harness, which a drawer tab in a browser cannot use. Shadow its header
+  // entry (same slot and id, lower priority renders) with nothing; the full
+  // shell outside the embed keeps it.
+  ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+    name: 'conversation.session.header.utilities', id: 'open-in-app', order: -10, priority: -1,
+  }, HiddenEntry))
+
   // Register Gaia themes once at activation (only in embed mode).
   // Non-built-in ids ('gaia-embed-dark' / 'gaia-embed-light') ensure setTheme does not
   // persist the user's preference (ui-theme setTheme only persists built-in ids: 'light' | 'dark' | 'system').
@@ -96,6 +111,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   // silently revert the embed to the saved (or system) theme. Keep re-applying
   // the mode Gaia asked for; setTheme is a no-op when the id already matches.
   let desiredTheme: string | undefined
+  let disposePalette: (() => void) | undefined
   ctx.on('theme/change', (snapshot) => {
     if (desiredTheme !== undefined && snapshot.preference !== desiredTheme) ctx.theme.setTheme(desiredTheme)
   })
@@ -214,6 +230,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       case 'theme': {
         desiredTheme = event.data.mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light'
         ctx.theme.setTheme(desiredTheme)
+        // Gaia's own colors ride along; one override layer, replaced on each
+        // message, so the tab follows theme and accent changes live.
+        if (event.data.palette !== undefined) {
+          disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
+        }
         break
       }
       case 'focus': {
@@ -260,6 +281,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       ctx.layout.openRightbar = originalOpenRightbar
       window.removeEventListener('keydown', onKeyDown, { capture: true })
       window.removeEventListener('message', onMessage)
+      disposePalette?.()
       disposeDarkTheme()
       disposeLightTheme()
       unsubConnection?.()

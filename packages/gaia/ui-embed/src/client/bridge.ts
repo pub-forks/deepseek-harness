@@ -19,9 +19,29 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'title'; title: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'error'; code: string }
 
+/** Keys of the Gaia palette a theme message may carry. */
+export const GAIA_PALETTE_KEYS = ['background', 'surface', 'border', 'foreground', 'mutedForeground', 'accent'] as const
+
+/** Gaia's resolved theme colors, as CSS color strings. */
+export type GaiaPalette = Partial<Record<typeof GAIA_PALETTE_KEYS[number], string>>
+
+/**
+ * Whether a value is a plain CSS color: a hex color or an rgb/hsl/oklch/lab/
+ * color() function of numbers, units and separators. The values become inline
+ * CSS variables, so anything able to close a declaration or load a resource
+ * (`;`, braces, quotes, `url(`) is refused.
+ * @param value - untrusted candidate.
+ * @returns true when the value is safe to apply as a color.
+ */
+export function isSafeCssColor(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 96) return false
+  return /^#[0-9a-f]{3,8}$/i.test(value)
+    || /^(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([a-z0-9.,%\s/+-]*\)$/i.test(value)
+}
+
 /** Incoming messages accepted from the Gaia parent frame. */
 export type GaiaIncomingMessage =
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'theme'; mode: 'light' | 'dark' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'theme'; mode: 'light' | 'dark'; palette?: GaiaPalette }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'focus' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'insertText'; text: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'clear' }
@@ -50,8 +70,13 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
   }
 
   switch (msg.type) {
-    case 'theme':
-      return msg.mode === 'light' || msg.mode === 'dark'
+    case 'theme': {
+      if (msg.mode !== 'light' && msg.mode !== 'dark') return false
+      if (msg.palette === undefined) return true
+      if (typeof msg.palette !== 'object' || msg.palette === null || Array.isArray(msg.palette)) return false
+      return Object.entries(msg.palette).every(([key, value]) =>
+        (GAIA_PALETTE_KEYS as readonly string[]).includes(key) && isSafeCssColor(value))
+    }
     case 'focus':
       return true
     case 'insertText': {
