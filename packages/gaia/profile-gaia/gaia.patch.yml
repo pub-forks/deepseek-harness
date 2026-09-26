@@ -31,3 +31,6 @@
     # GAIA: browser bundle contributes the generic Sign-in Settings section.
     - id: gaia-ui-authorization
       name: '@deepseek-ai/dsh-gaia-ui-authorization'
+    # GAIA: browser bundle contributes the single-session drawer embed mode.
+    - id: gaia-ui-embed
+      name: '@deepseek-ai/dsh-gaia-ui-embed'

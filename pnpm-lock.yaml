@@ -266,6 +266,9 @@ importers:
       '@deepseek-ai/dsh-gaia-ui-authorization':
         specifier: workspace:*
         version: link:../../packages/gaia/ui-authorization
+      '@deepseek-ai/dsh-gaia-ui-embed':
+        specifier: workspace:*
+        version: link:../../packages/gaia/ui-embed
       '@deepseek-ai/dsh-goal':
         specifier: workspace:*
         version: link:../../packages/goal/goal
@@ -2489,6 +2492,9 @@ importers:
       '@deepseek-ai/dsh-gaia-ui-authorization':
         specifier: workspace:*
         version: link:../../gaia/ui-authorization
+      '@deepseek-ai/dsh-gaia-ui-embed':
+        specifier: workspace:*
+        version: link:../../gaia/ui-embed
       '@deepseek-ai/dsh-client-ui-settings-account':
         specifier: workspace:*
         version: link:../../client/ui-settings-account
@@ -8604,6 +8610,51 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:*
         version: link:../../client/ui-slots
+      '@testing-library/react':
+        specifier: ^16.1.0
+        version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.31
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+
+  packages/gaia/ui-embed:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: workspace:*
+        version: link:../../api/session-controller
+      '@deepseek-ai/dsh-brand':
+        specifier: workspace:*
+        version: link:../../util/brand
+      '@deepseek-ai/dsh-client-connection':
+        specifier: workspace:*
+        version: link:../../client/connection
+      '@deepseek-ai/dsh-client-test-runtime':
+        specifier: workspace:*
+        version: link:../../test-support/client-runtime
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: workspace:*
+        version: link:../../client/ui-conversation
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: workspace:*
+        version: link:../../client/ui-layout
+      '@deepseek-ai/dsh-client-ui-session':
+        specifier: workspace:*
+        version: link:../../client/ui-session
+      '@deepseek-ai/dsh-client-ui-theme':
+        specifier: workspace:*
+        version: link:../../client/ui-theme
+      '@deepseek-ai/dsh-client-ui-workspace':
+        specifier: workspace:*
+        version: link:../../client/ui-workspace
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
       '@testing-library/react':
         specifier: ^16.1.0
         version: 16.3.2(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

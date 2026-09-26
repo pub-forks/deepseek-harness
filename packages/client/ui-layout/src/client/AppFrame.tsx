@@ -271,13 +271,16 @@ export function AppFrame({
       data-rightbar-instant={layoutInfo.rightbarInstant || undefined}
       data-dragging={dragging || undefined}
       data-animating={animating > 0 || undefined}
+      // GAIA: stable attribute for scoped embed styling
+      data-app-frame=""
     >
       <DocumentTitle
         productTitle={productTitle}
         useSessions={useSessions}
         usePanelInfo={usePanelInfo}
       />
-      <div className={css.sidebarCol}>
+      {/* GAIA: stable attribute for scoped embed styling */}
+      <div className={css.sidebarCol} data-sidebar-col="">
         {sidebar}
       </div>
       <>

@@ -7,7 +7,7 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 摘要
+## 概述
 
 这个私有客户端插件在设置中注册本地化的登录页面。它通过 Gaia Remote 展示所有已注册授权流程的通知、设备码、问题、取消和确认退出。秘密答案只保存在输入状态，并仅经 `answer` 发送。
 
@@ -41,7 +41,7 @@ kind: "package-reference"
 
 #### 模型能看到什么
 
-没有直接贡献；登录会改变 LLM 提供方在后续请求中使用的凭据。
+没有直接贡献；登录会改变 LLM 提供方在后续请求中使用的 `ctx.authorization` 凭据。
 
 #### Token 影响
 
@@ -51,7 +51,8 @@ kind: "package-reference"
 
 此包不组装模型请求。
 
-<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-凭据服务没有账户或过期时间元数据，因此行只显示记录是否存在。
+<a id="known-limitations-and-deferred-work"></a>
+
+- 凭据服务没有账户或过期时间元数据，因此行只显示记录是否存在。

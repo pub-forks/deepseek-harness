@@ -41,7 +41,7 @@ No runtime invariant companion applies: this plugin's registration and disposal 
 
 #### What the model sees
 
-No direct contribution; sign-in changes credentials that an LLM provider may use on later requests.
+No direct contribution; sign-in changes `ctx.authorization` credentials that an LLM provider may use on later requests.
 
 #### Token effect
 
@@ -51,7 +51,8 @@ This package adds no request tokens.
 
 This package does not assemble model requests.
 
-<a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
-The credential seam exposes no account or expiry metadata, so the row shows presence without those details.
+<a id="known-limitations-and-deferred-work"></a>
+
+- The credential seam exposes no account or expiry metadata, so the row shows presence without those details.

@@ -7,7 +7,7 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
-## 摘要
+## 概述
 
 这个私有 Host 插件通过已有 Cookie 保护的 API Gateway 暴露 `ctx.authorization` 流程。`listFlows` 只返回名称、方法、进行中状态和凭据记录是否存在；不会读取凭据载荷或记录答案。
 
@@ -41,7 +41,7 @@ kind: "package-reference"
 
 #### 模型能看到什么
 
-没有直接贡献；登录会改变 LLM 提供方在后续请求中使用的凭据。
+没有直接贡献；登录会改变 LLM 提供方在后续请求中使用的 `ctx.authorization` 凭据。
 
 #### Token 影响
 
@@ -51,7 +51,8 @@ kind: "package-reference"
 
 此包不组装模型请求。
 
-<a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-通用凭据记录服务没有账户或过期时间元数据，因此 `listFlows` 不返回这两个可选字段；此处不能检查不透明的授权载荷。
+<a id="known-limitations-and-deferred-work"></a>
+
+- 通用凭据记录服务没有账户或过期时间元数据，因此 `listFlows` 不返回这两个可选字段；此处不能检查不透明的授权载荷。
