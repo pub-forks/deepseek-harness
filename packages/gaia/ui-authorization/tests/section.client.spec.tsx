@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AuthorizationSection, preferredMethod, type AuthorizationSectionInjected } from '../src/client/AuthorizationSection.tsx'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -79,4 +79,28 @@ it('opens Models settings after authorization', async () => {
   fireEvent.click(screen.getByRole('button', { name: en.signIn }))
   fireEvent.click(await screen.findByRole('link', { name: en.models }))
   expect(openSection).toHaveBeenCalledWith('models')
+})
+
+it('renders the attempt inside the card being signed into and lists OAuth flows first', async () => {
+  const keyOnly: FlowView = { key: credentialKey('llm-pi-ai', 'aaa-key-only'), label: 'Key Only', methods: [{ id: 'api-key', label: 'API key' }], inFlight: false, signedIn: false }
+  const oauth: FlowView = { key: credentialKey('llm-pi-ai', 'openai-codex'), label: 'OpenAI Codex', methods: [{ id: 'oauth', label: 'ChatGPT' }], inFlight: false, signedIn: false }
+  const operations: AuthorizationSectionInjected = {
+    listFlows: vi.fn(async () => [keyOnly, oauth]),
+    start: vi.fn(async function* () {
+      yield { attemptId: brandString<AttemptId>('one'), type: 'notice' as const, message: 'Enter this code', url: 'https://auth.example.test/device', code: 'WXYZ-1234' }
+      await new Promise(() => {})
+    }),
+    answer: vi.fn(async () => true),
+    cancel: vi.fn(async () => {}),
+    signOut: vi.fn(async () => {}),
+  }
+  render(<AuthorizationSection {...({} as GlobalStandardProps)} {...operations}
+    t={key => key in en ? en[key as keyof typeof en] : key} close={() => {}} openSection={() => {}} />)
+  await screen.findByText('OpenAI Codex')
+  const cards = screen.getAllByRole('listitem')
+  expect(cards[0]?.textContent).toContain('OpenAI Codex')
+  fireEvent.click(within(cards[0] as HTMLElement).getByRole('button', { name: en.signIn }))
+  const code = await screen.findByText('WXYZ-1234')
+  expect(cards[0]?.contains(code)).toBe(true)
+  expect(cards[1]?.contains(code)).toBe(false)
 })

@@ -36,7 +36,7 @@ export function AuthorizationSection({ t, listFlows, start, answer, cancel, sign
   const [copied, setCopied] = useState(false)
   const stream = useRef<AbortController | undefined>(undefined)
   const load = async () => {
-    try { setFlows(await listFlows()); setFailed(false) } catch { setFailed(true) } finally { setLoading(false) }
+    try { setFlows(await listFlows()); setFailed(false) } catch (error: unknown) { console.warn('gaia-authorization: listing sign-in flows failed', error); setFailed(true) } finally { setLoading(false) }
   }
   useEffect(() => { void load(); return () => { stream.current?.abort() } }, [])
   const begin = async (flow: FlowView, chosen: string) => {
@@ -71,36 +71,45 @@ export function AuthorizationSection({ t, listFlows, start, answer, cancel, sign
       setActionError(true)
     }
   }
+  // The attempt panel renders inside the card of the flow being signed into:
+  // with dozens of providers listed, a panel after the list is off-screen and
+  // the Sign in click looks like it did nothing.
+  // A cancelled or finished attempt must not leave its last question or an
+  // expired device code behind.
+  const showPrompt = terminal === undefined && !localCancelled
+  const panel = selected === undefined ? null : <div className={css.panel} role="status">
+    {showPrompt && items.filter((item): item is Extract<AttemptItem, { type: 'notice' }> => item.type === 'notice').map((item, index) => <div key={index} className={css.notice}>
+      <p>{item.message}</p>
+      {item.url && safeUrl(item.url) && <div className={css.actions}><a href={item.url} target="_blank" rel="noopener noreferrer">{t('open')}</a><Button variant="outline" onClick={() => { copy(item.url as string) }}>{t(copied ? 'copied' : 'copy')}</Button></div>}
+      {item.code && <div className={css.actions}><code className={css.code}>{item.code}</code><Button variant="outline" onClick={() => { copy(item.code as string) }}>{t(copied ? 'copied' : 'copy')}</Button></div>}
+    </div>)}
+    {showPrompt && prompt && <form onSubmit={(event) => { event.preventDefault(); void submit() }} className={css.prompt}>
+      <label>{prompt.message}
+        {prompt.kind === 'select' ? <select value={promptValue || (selected.key === 'llm-pi-ai/openai-codex' ? prompt.options?.find(option => /device/i.test(`${option.id} ${option.label}`))?.id : undefined) || prompt.options?.[0]?.id || ''} onChange={(event) => { setPromptValue(event.target.value) }}>{prompt.options?.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input type={prompt.kind === 'secret' ? 'password' : 'text'} value={promptValue} placeholder={prompt.placeholder} onChange={(event) => { setPromptValue(event.target.value) }} />}
+      </label><Button variant="primary" onClick={() => { void submit() }}>{t('submit')}</Button>
+    </form>}
+    {terminal?.type === 'done' && <p>{t(terminal.outcome === 'authorized' ? 'authorized' : 'cancelled')}</p>}
+    {localCancelled && <p>{t('cancelled')}</p>}
+    {terminal?.type === 'error' && <p role="alert">{t(terminal.message === 'busy' ? 'busy' : 'error')}</p>}
+    {terminal?.type === 'done' && terminal.outcome === 'authorized' && <p>{t('modelsHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>}
+    {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch(() => { setActionError(true) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
+  </div>
+  // OAuth sign-ins (ChatGPT, Claude Pro/Max, Copilot…) are what this section
+  // exists for; list them first, keeping the catalog order within each group.
+  const ordered = [...flows].sort((a, b) => Number(b.methods.some(m => m.id === 'oauth')) - Number(a.methods.some(m => m.id === 'oauth')))
   return <section className={css.section} aria-label={t('nav')}>
     <h2>{t('title')}</h2><p className={css.intro}>{t('intro')}</p>
     {loading ? <p>{t('loading')}</p> : failed ? <p role="alert">{t('failed')}</p> : flows.length === 0 ? <p>{t('empty')}</p> :
-      <ul className={css.list}>{flows.map(flow => <li key={flow.key} className={css.card}>
+      <ul className={css.list}>{ordered.map(flow => <li key={flow.key} className={css.card}>
         <div className={css.row}><strong>{flow.label}</strong><span className={css.status}>{t(flow.signedIn ? 'signedIn' : 'signedOut')}{flow.expiresAt === undefined ? '' : ` · ${t('expires')} ${new Date(flow.expiresAt).toLocaleString()}`}</span></div>
         <div className={css.actions}>
           {flow.methods.length > 1 && <label>{t('method')} <select value={selected?.key === flow.key ? method : preferredMethod(flow)} onChange={(event) => { setSelected(flow); setMethod(event.target.value) }}>{flow.methods.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
           <Button variant="primary" disabled={flow.inFlight || busy} onClick={() => { void begin(flow, selected?.key === flow.key && method ? method : preferredMethod(flow)) }}>{t('signIn')}</Button>
           {flow.signedIn && <Button variant="outline" disabled={busy} onClick={() => { setConfirmKey(flow.key) }}>{t('signOut')}</Button>}
         </div>
+        {selected?.key === flow.key && (busy || items.length > 0 || localCancelled) && panel}
       </li>)}</ul>}
     {actionError && <p role="alert">{t('error')}</p>}
-    {selected !== undefined && <div className={css.panel} role="status">
-      <h3>{selected.label}</h3>
-      {items.filter((item): item is Extract<AttemptItem, { type: 'notice' }> => item.type === 'notice').map((item, index) => <div key={index} className={css.notice}>
-        <p>{item.message}</p>
-        {item.url && safeUrl(item.url) && <div className={css.actions}><a href={item.url} target="_blank" rel="noopener noreferrer">{t('open')}</a><Button variant="outline" onClick={() => { copy(item.url as string) }}>{t(copied ? 'copied' : 'copy')}</Button></div>}
-        {item.code && <div className={css.actions}><code className={css.code}>{item.code}</code><Button variant="outline" onClick={() => { copy(item.code as string) }}>{t(copied ? 'copied' : 'copy')}</Button></div>}
-      </div>)}
-      {prompt && <form onSubmit={(event) => { event.preventDefault(); void submit() }} className={css.prompt}>
-        <label>{prompt.message}
-          {prompt.kind === 'select' ? <select value={promptValue || (selected.key === 'llm-pi-ai/openai-codex' ? prompt.options?.find(option => /device/i.test(`${option.id} ${option.label}`))?.id : undefined) || prompt.options?.[0]?.id || ''} onChange={(event) => { setPromptValue(event.target.value) }}>{prompt.options?.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input type={prompt.kind === 'secret' ? 'password' : 'text'} value={promptValue} placeholder={prompt.placeholder} onChange={(event) => { setPromptValue(event.target.value) }} />}
-        </label><Button variant="primary" onClick={() => { void submit() }}>{t('submit')}</Button>
-      </form>}
-      {terminal?.type === 'done' && <p>{t(terminal.outcome === 'authorized' ? 'authorized' : 'cancelled')}</p>}
-      {localCancelled && <p>{t('cancelled')}</p>}
-      {terminal?.type === 'error' && <p role="alert">{t(terminal.message === 'busy' ? 'busy' : 'error')}</p>}
-      {terminal?.type === 'done' && terminal.outcome === 'authorized' && <p>{t('modelsHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>}
-      {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch(() => { setActionError(true) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
-    </div>}
     <Modal open={confirmKey !== undefined} onClose={() => { setConfirmKey(undefined) }} title={t('confirmTitle')} description={t('confirmDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setConfirmKey(undefined) }}>{t('cancel')}</Button><Button variant="primary" onClick={() => { const key = confirmKey; setConfirmKey(undefined); if (key) void signOut(key).then(load).catch(() => { setActionError(true) }) }}>{t('signOut')}</Button></>} />
   </section>
 }
