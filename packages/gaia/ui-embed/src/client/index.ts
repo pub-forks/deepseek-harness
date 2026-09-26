@@ -178,6 +178,24 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   emitTitleAndExistence()
   const unsubList = ctx.sessions.list.subscribe(emitTitleAndExistence)
 
+  // DSH restores the last selected Session once its lists load, asynchronously.
+  // That selection is persisted per origin, so every harness iframe shares it:
+  // when the restore lands after this tab's open (a just-created Session may
+  // not be openable yet), the tab shows whichever Session another tab opened
+  // last. The displayed conversation carries its Session id, so re-assert this
+  // tab's Session whenever a different one is shown and ours is known.
+  const enforceSession = (): void => {
+    const shown = document.querySelector('[data-conversation-session]')?.getAttribute('data-conversation-session')
+    if (shown === undefined || shown === null || shown === sessionId) return
+    if (ctx.sessions.list.getSnapshot().byId[sessionId] === undefined) return
+    openedSession = false
+    attemptOpenSession()
+  }
+  const sessionObserver = new MutationObserver(enforceSession)
+  sessionObserver.observe(document.body, {
+    subtree: true, childList: true, attributes: true, attributeFilter: ['data-conversation-session'],
+  })
+
   /** Resolve SessionInput through the Session scope context. */
   const getSessionInput = (): { actx: Context; input: SessionInput } | undefined => {
     const actx = ctx.sessions.scope(sessionId)
@@ -247,6 +265,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       unsubConnection?.()
       unsubSessionStatus()
       unsubList()
+      sessionObserver.disconnect()
     }
   }, 'gaia-ui-embed: lifecycle')
 }

@@ -404,6 +404,27 @@ describe('ui-embed client plugin', () => {
     expect(mock.theme.setTheme).not.toHaveBeenCalled()
   })
 
+  it('re-opens its own Session when the restored selection shows another one', async () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    mock.setSessionList({ phase: 'ready', byId: { 's-test-123': { id: SessionId('s-test-123'), title: 'T', displayTitle: 'T' } } })
+    const dispose = apply(mock.ctx)
+    mock.uiWorkspace.openSession.mockClear()
+    // DSH's startup restore shows the Session another tab opened last.
+    const shown = document.createElement('div')
+    shown.setAttribute('data-conversation-session', 'session-other')
+    document.body.appendChild(shown)
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    expect(mock.uiWorkspace.openSession).toHaveBeenCalledWith('s-test-123')
+    // Once our Session is displayed, nothing more happens.
+    mock.uiWorkspace.openSession.mockClear()
+    shown.setAttribute('data-conversation-session', 's-test-123')
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    expect(mock.uiWorkspace.openSession).not.toHaveBeenCalled()
+    shown.remove()
+    if (typeof dispose === 'function') await dispose()
+  })
+
   it('emits session_not_found error when list is ready and session is missing', () => {
     setLocationSearch('?gaia=embed&session=missing-session')
     const mock = createMockContext()
