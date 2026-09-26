@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/bridge/README.md
+/:
+  en: 08c8309f2090dd33
+  zh: f923a233297343e6
+/gaia-bridge:
+  en: 6c5b6affb5354ea3
+  zh: 463c5e7fb84a8750
+/gaia-bridge/summary:
+  en: 7c2c68cf4817af93
+  zh: 387ce025f503d0d5
+/gaia-bridge/table-of-contents:
+  en: 134c9b5c374e0e8e
+  zh: e1882ebb8288f6bc
+/gaia-bridge/use-this-package:
+  en: 3211dd12d865efea
+  zh: a6fa583c0a7cc17a
+/gaia-bridge/dev-note:
+  en: 8f921b17a9b53149
+  zh: 49df486e80271507
+/gaia-bridge/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/gaia-bridge/model-experience/host-control:
+  en: 62c201d5252c63f0
+  zh: d42b0178a7a529fd
+/gaia-bridge/model-experience/host-control/what-the-model-sees:
+  en: 10e8b43160ce639d
+  zh: da5185dab84539b0
+/gaia-bridge/model-experience/host-control/token-effect:
+  en: 57aeae7253e5418f
+  zh: fb9a08b7edc07ea1
+/gaia-bridge/model-experience/host-control/kv-cache-effect:
+  en: 66e132a0d53e524e
+  zh: 803e0d4a8746725c
+/gaia-bridge/known-limitations-and-deferred-work:
+  en: 074e5360c98e6b14
+  zh: 4ff161a07993774b

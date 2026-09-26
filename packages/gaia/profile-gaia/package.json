@@ -1,0 +1,15 @@
+{
+  "name": "@deepseek-ai/dsh-gaia-profile",
+  "description": "Gaia overlay for the shipped DSH web profile",
+  "version": "0.1.7-rc.2",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./gaia.patch.yml": "./gaia.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": ["gaia.patch.yml", "lib/index.js", "lib/types/**/*.d.ts"]
+}

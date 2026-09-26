@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/profile-gaia/README.md
+/:
+  en: 88785b78ac9f17e6
+  zh: 2b3f1ad3a5ccde00
+/gaia-web-profile-overlay:
+  en: bc9253b8c1280021
+  zh: bac3380c6e523411
+/gaia-web-profile-overlay/summary:
+  en: 56ecbdc4250876dc
+  zh: f07f994544a9f5da
+/gaia-web-profile-overlay/table-of-contents:
+  en: 134c9b5c374e0e8e
+  zh: e1882ebb8288f6bc
+/gaia-web-profile-overlay/use-this-package:
+  en: 0fd2dbf006538d82
+  zh: c88b96443f556010
+/gaia-web-profile-overlay/dev-note:
+  en: 3f60f235a82180b6
+  zh: a89b31c4eebe344e
+/gaia-web-profile-overlay/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/gaia-web-profile-overlay/model-experience/profile-overlay:
+  en: 73ad0b0b4e39607d
+  zh: ccfb2c7ebb186f05
+/gaia-web-profile-overlay/model-experience/profile-overlay/what-the-model-sees:
+  en: 8d3993fcc758cf4c
+  zh: 1de4366a010c26f6
+/gaia-web-profile-overlay/model-experience/profile-overlay/token-effect:
+  en: 57aeae7253e5418f
+  zh: fb9a08b7edc07ea1
+/gaia-web-profile-overlay/model-experience/profile-overlay/kv-cache-effect:
+  en: 66e132a0d53e524e
+  zh: 803e0d4a8746725c
+/gaia-web-profile-overlay/known-limitations-and-deferred-work:
+  en: 545cfcba834a733b
+  zh: 97277e5d3fd75e3d

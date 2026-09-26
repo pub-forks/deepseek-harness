@@ -457,6 +457,9 @@
     { "path": "./packages/host/directory-picker-browse" },
     { "path": "./packages/host/directory-picker-native" },
     { "path": "./packages/host/frontend-static" },
+    // GAIA: include the bridge and overlay entries in the host aggregate.
+    { "path": "./packages/gaia/bridge" },
+    { "path": "./packages/gaia/profile-gaia" },
     { "path": "./packages/host/open-in-app" },
     { "path": "./packages/host/plugin-inventory" },
     { "path": "./packages/boot/plugin-manager" },

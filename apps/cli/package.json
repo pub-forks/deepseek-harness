@@ -40,6 +40,8 @@
     "@deepseek-ai/dsh-cordis-client-runner": "workspace:*",
     "@deepseek-ai/dsh-experimental-agent-team-profile": "workspace:*",
     "@deepseek-ai/dsh-fs-local": "workspace:*",
+    "@deepseek-ai/dsh-gaia-bridge": "workspace:*",
+    "@deepseek-ai/dsh-gaia-profile": "workspace:*",
     "@deepseek-ai/dsh-goal": "workspace:*",
     "@deepseek-ai/dsh-goal-round-driver": "workspace:*",
     "@deepseek-ai/dsh-headless": "workspace:*",

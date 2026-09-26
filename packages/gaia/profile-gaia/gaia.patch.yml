@@ -1,0 +1,27 @@
+# GAIA: overlay for the shipped web profile; row config replacement is complete.
+- id: webserver
+  config:
+    host: 127.0.0.1
+    port: !!js ctx.webStartup.port ?? 0
+    compression: gzip
+    compressionLevel: 1
+    compressionThresholdBytes: 1024
+- id: web-runtime
+  config:
+    openBrowser: false
+    printUrl: true
+    surfaceContext: true
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+- id: llm-pi-ai
+  config:
+    providers:
+      openai-codex: {}
+- id: hmr
+  disabled: true
+- id: client-hmr
+  disabled: true
+- id: session-telemetry-otel
+  disabled: true
+- insert:
+    - id: gaia-bridge
+      name: '@deepseek-ai/dsh-gaia-bridge'
