@@ -164,9 +164,18 @@
   margin-top: 3px;
 }
 
-.search {
+.searchRow {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 2px 2px 6px;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   padding: 6px 9px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-md);
@@ -184,6 +193,39 @@
 
 .search:focus-visible {
   border-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+}
+
+.collapseAll {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.collapseAll:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.collapseAll:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.collapseAllIcon {
+  width: 12px;
+  height: 12px;
+  color: var(--dsw-alias-menu-icon);
 }
 
 .groupTitle {

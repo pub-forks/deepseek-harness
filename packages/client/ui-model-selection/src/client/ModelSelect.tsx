@@ -29,7 +29,7 @@ import clsx from 'clsx'
 import type { ModelReasoningEffort, ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
 import {
   IconCheckOutlineRegular, IconChevronDownOutlineRegular, IconChevronRightOutlineRegular,
-  IconDataOutlineRegular, IconWarningOutlineRegular, StateDot, Toast,
+  IconChevronsUpDownOutlineRegular, IconDataOutlineRegular, IconWarningOutlineRegular, StateDot, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ModelSelectInjected } from './slots.ts'
@@ -145,6 +145,13 @@ export function ModelSelect(
       writeCollapsedGroups(next)
       return next
     })
+  }
+  // Collapse every provider, or expand them all once every one is collapsed.
+  const allCollapsed = groups.length > 0 && groups.every(group => collapsed.has(group.id))
+  const toggleAllGroups = (): void => {
+    const next: ReadonlySet<string> = allCollapsed ? new Set() : new Set(groups.map(group => group.id))
+    writeCollapsedGroups(next)
+    setCollapsed(next)
   }
   const selectedIndex = state.current === null
     ? -1
@@ -509,24 +516,38 @@ export function ModelSelect(
                   <button type="button" className={css.retry} onClick={reload}>{t('retry')}</button>
                 </div>
               ))}
-              <input
-                ref={searchRef}
-                type="search"
-                className={css.search}
-                placeholder={t('search.placeholder')}
-                aria-label={t('search.placeholder')}
-                value={query}
-                spellCheck={false}
-                autoComplete="off"
-                onChange={(event) => { setQuery(event.target.value) }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter') return
-                  event.preventDefault()
-                  const first = visibleGroups[0]
-                  const model = first?.models[0]
-                  if (first !== undefined && model !== undefined && !busy) choose({ provider: first.group.id, model: model.id })
-                }}
-              />
+              <div className={css.searchRow}>
+                <input
+                  ref={searchRef}
+                  type="search"
+                  className={css.search}
+                  placeholder={t('search.placeholder')}
+                  aria-label={t('search.placeholder')}
+                  value={query}
+                  spellCheck={false}
+                  autoComplete="off"
+                  onChange={(event) => { setQuery(event.target.value) }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    const first = visibleGroups[0]
+                    const model = first?.models[0]
+                    if (first !== undefined && model !== undefined && !busy) choose({ provider: first.group.id, model: model.id })
+                  }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className={css.collapseAll}
+                  disabled={needle !== '' || groups.length === 0}
+                  aria-pressed={allCollapsed}
+                  title={allCollapsed ? t('groups.expandAll') : t('groups.collapseAll')}
+                  onClick={toggleAllGroups}
+                >
+                  <IconChevronsUpDownOutlineRegular className={css.collapseAllIcon} />
+                  <span>{allCollapsed ? t('groups.expandAll') : t('groups.collapseAll')}</span>
+                </button>
+              </div>
               <div className={clsx(css.groups, 'scrollable')}>
                 {visibleGroups.map(({ group, title, models }) => {
                   const headingId = `${id}-${group.id}`

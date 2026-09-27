@@ -34,6 +34,8 @@ export const zh = {
   'empty.efforts': '当前模型未提供推理等级。',
   'search.placeholder': '搜索模型',
   'search.empty': '没有匹配“{query}”的模型。',
+  'groups.collapseAll': '全部折叠',
+  'groups.expandAll': '全部展开',
 } satisfies Record<string, string>
 
 /** The model namespace key union. */
@@ -65,4 +67,6 @@ export const en = {
   'empty.efforts': 'This model provides no reasoning effort levels.',
   'search.placeholder': 'Search models',
   'search.empty': 'No models match “{query}”.',
+  'groups.collapseAll': 'Collapse all',
+  'groups.expandAll': 'Expand all',
 } satisfies Record<ModelKey, string>

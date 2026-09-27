@@ -639,6 +639,17 @@ describe('ModelSelect search and provider groups', () => {
     expect(screen.getByRole('group', { name: 'Kilo' })).toBeTruthy()
   })
 
+  it('collapses every provider with one button, then expands them all again', () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: zh['groups.collapseAll'], pressed: false }))
+    expect(rowNames()).toEqual([])
+    expect(JSON.parse(window.localStorage.getItem('dsh.modelSelect.collapsedGroups') ?? '[]')).toEqual(['kilo', 'zai'])
+    fireEvent.click(screen.getByRole('button', { name: zh['groups.expandAll'], pressed: true }))
+    expect(rowNames()).toEqual(['Auto Free', 'Poolside: Laguna S 2.1', 'glm-4.7-flash'])
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'auto' } })
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['groups.collapseAll'] }).disabled).toBe(true)
+  })
+
   it('re-places the card above the trigger when collapsing a provider shrinks it', () => {
     const offsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')!
     const rect = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')!
@@ -647,7 +658,8 @@ describe('ModelSelect search and provider groups', () => {
     let onResize: (() => void) | undefined
     Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => height })
     Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
-      configurable: true, value: () => ({ top: 700, bottom: 728, left: 400, right: 500, width: 100, height: 28, x: 400, y: 700, toJSON: () => ({}) }),
+      configurable: true,
+      value: () => ({ top: 700, bottom: 728, left: 400, right: 500, width: 100, height: 28, x: 400, y: 700, toJSON: () => ({}) }),
     })
     globalThis.ResizeObserver = class {
       constructor(callback: ResizeObserverCallback) { onResize = () => { callback([], this) } }
