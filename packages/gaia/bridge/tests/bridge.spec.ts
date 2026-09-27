@@ -11,7 +11,7 @@ const secret = 'a'.repeat(64)
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => Promise<void>
 
-function fixture(value: string | undefined = secret, documentPath = '/tmp/cordis.patch.yml') {
+function fixture(value: string | undefined = secret, documentPath: string | null = '/tmp/cordis.patch.yml') {
   vi.stubEnv('GAIA_CONTROL_SECRET', value ?? '')
   let handler: Handler | undefined
   const workspaces = new Map<string, { id: string; path: string; sessionIds: string[] }>()
@@ -56,7 +56,9 @@ function fixture(value: string | undefined = secret, documentPath = '/tmp/cordis
     },
     agents: { list: () => [{ status: 'running' }] },
     typertGateway: gateway,
-    configEditor: { documentPath },
+    // Optional service: reachable only through ctx.get, as in a real Cordis
+    // context where undeclared `ctx.configEditor` access throws.
+    get: (name: string) => (name === 'configEditor' && documentPath !== null ? { documentPath } : undefined),
   }
   apply(ctx as never as Context)
   async function call(
@@ -284,5 +286,13 @@ describe('Gaia control bridge', () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
+  })
+
+  it('answers 503 for file routes while the config editor is not mounted', async () => {
+    const f = fixture(secret, null)
+    const document = await f.call('GET', '/gaia/control/config-document')
+    expect(document.status).toBe(503)
+    expect(document.body).toEqual({ error: { code: 'config_editor_unavailable' } })
+    expect((await f.call('GET', '/gaia/control/profile-files')).status).toBe(503)
   })
 })

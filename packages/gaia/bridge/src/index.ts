@@ -227,6 +227,14 @@ export function apply(ctx: Context): void {
   scheduleSeed(ctx)
   const secret = process.env.GAIA_CONTROL_SECRET
   const streams = new Map<string, BufferedStream>()
+  // GAIA: configEditor is optional here (seed.ts injects it the same way), and
+  // Cordis refuses undeclared `ctx.configEditor` property access, so read it
+  // through `ctx.get` and answer 503 while it is not mounted.
+  const documentPath = (): string => {
+    const editor = ctx.get('configEditor')
+    if (editor === undefined) throw new StructuredRequestError(503, { error: { code: 'config_editor_unavailable' } })
+    return editor.documentPath
+  }
   if (secret === undefined || secret.length < 32) {
     ctx.logger('gaia-bridge').warn('GAIA_CONTROL_SECRET is missing or too short; control API unavailable')
   }
@@ -289,7 +297,7 @@ export function apply(ctx: Context): void {
               }
             }
           } else if (method === 'GET' && path === `${PREFIX}/config-document`) {
-            const docPath = ctx.configEditor.documentPath
+            const docPath = documentPath()
             const text = await readProfileText(docPath)
             answer(res, 200, { path: docPath, text, sha256: sha256(text) })
           } else if (method === 'PUT' && path === `${PREFIX}/config-document`) {
@@ -301,7 +309,7 @@ export function apply(ctx: Context): void {
             if (Buffer.byteLength(request.text) > MAX_PROFILE_FILE_BYTES) {
               throw new StructuredRequestError(413, { error: { code: 'file_too_large' } })
             }
-            const current = await readProfileText(ctx.configEditor.documentPath)
+            const current = await readProfileText(documentPath())
             const currentHash = sha256(current)
             if (currentHash !== request.expectedSha256) {
               throw new StructuredRequestError(409, { error: { code: 'conflict' }, sha256: currentHash })
@@ -312,13 +320,13 @@ export function apply(ctx: Context): void {
                 error: { code: 'invalid_yaml', message: error instanceof Error ? error.message : 'Invalid YAML' },
               })
             }
-            const saved = await writeProfileTextIfSha(ctx.configEditor.documentPath, request.expectedSha256, request.text)
+            const saved = await writeProfileTextIfSha(documentPath(), request.expectedSha256, request.text)
             if (!saved.written) throw new StructuredRequestError(409, { error: { code: 'conflict' }, sha256: saved.sha256 })
             answer(res, 200, { sha256: saved.sha256 })
           } else if (method === 'GET' && path === `${PREFIX}/profile-files`) {
             const files = []
             for (const name of PROFILE_FILE_NAMES) {
-              const filePath = profileFilePath(ctx.configEditor.documentPath, name)
+              const filePath = profileFilePath(documentPath(), name)
               try {
                 const fileStat = await lstat(filePath)
                 if (fileStat.isSymbolicLink() || !fileStat.isFile()) continue
@@ -335,7 +343,7 @@ export function apply(ctx: Context): void {
             try { name = decodeURIComponent(rawName) }
             catch { throw new RequestError(404, 'not_found') }
             if (!(PROFILE_FILE_NAMES as readonly string[]).includes(name)) throw new RequestError(404, 'not_found')
-            const filePath = profileFilePath(ctx.configEditor.documentPath, name)
+            const filePath = profileFilePath(documentPath(), name)
             if (method === 'GET') {
               const text = await readProfileText(filePath)
               answer(res, 200, { name, text, sha256: sha256(text) })
