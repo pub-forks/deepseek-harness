@@ -669,6 +669,7 @@ describe('embed send button', () => {
     const rule = GAIA_EMBED_CSS.split('html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {')[1]?.split('}')[0] ?? ''
     expect(rule).toContain('background: var(--dsw-alias-bg-base) !important;')
     expect(rule).toContain('color: var(--dsw-alias-button-info-fill) !important;')
+    expect(GAIA_EMBED_CSS).toContain('html[data-gaia-embed] [data-composer-primary] {\n  color: var(--dsw-alias-bg-base) !important;')
     const { paletteTokens } = await import('../src/client/palette.ts')
     expect(paletteTokens({ accent: '#e8590c' })['--dsw-alias-button-info-hover']?.dark).toBe('color-mix(in oklch, #e8590c, black 12%)')
   })

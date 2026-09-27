@@ -76,10 +76,13 @@ html[data-gaia-embed] [data-composer-card]:focus-within::before {
 @media (prefers-reduced-motion: reduce) {
   html[data-gaia-embed] [data-composer-card]:focus-within::before { animation: none; }
 }
-/* Send/stop button: accent fill with a white glyph; on hover the colors
-   reverse (page-background fill, accent glyph) instead of DSH's blue hover:
-   black on dark themes, white on light ones. The accent ring keeps the
-   reversed button visible against the page. */
+/* Send/stop button: accent fill with a glyph in the page background color
+   (black on dark themes, white on light ones); on hover the colors reverse
+   (page-background fill, accent glyph) instead of DSH's blue hover. The
+   accent ring keeps the reversed button visible against the page. */
+html[data-gaia-embed] [data-composer-primary] {
+  color: var(--dsw-alias-bg-base) !important;
+}
 html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
   background: var(--dsw-alias-bg-base) !important;
   color: var(--dsw-alias-button-info-fill) !important;
