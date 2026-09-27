@@ -45,6 +45,36 @@ interface EffortChoice {
   label: string
 }
 
+/** localStorage key holding the provider ids collapsed in the model list. */
+const COLLAPSED_GROUPS_KEY = 'dsh.modelSelect.collapsedGroups'
+
+/**
+ * Read the collapsed provider ids; storage that is unavailable or holds
+ * anything but a string array reads as none collapsed.
+ * @returns the collapsed provider ids.
+ */
+function readCollapsedGroups(): ReadonlySet<string> {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(COLLAPSED_GROUPS_KEY) ?? '[]')
+    return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [])
+  } catch {
+    // Storage blocked (private mode, sandboxed frame) or malformed JSON.
+    return new Set()
+  }
+}
+
+/**
+ * Persist the collapsed provider ids; a storage failure keeps the in-memory state only.
+ * @param groups - collapsed provider ids.
+ */
+function writeCollapsedGroups(groups: ReadonlySet<string>): void {
+  try {
+    window.localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify([...groups]))
+  } catch {
+    // Storage blocked or full; the toggle still applies for this page.
+  }
+}
+
 /** Unplaced portal card: hidden but laid out at a fixed origin so offsetWidth/offsetHeight are real (Menu primitive's measure pass). */
 const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
 
@@ -77,6 +107,12 @@ export function ModelSelect(
   const [menuPos, setMenuPos] = useState<CSSProperties | null>(null)
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const id = useId()
+  // GAIA: model-list search and collapsible provider groups (see
+  // packages/gaia/UPSTREAM-PATCHES.md). Collapsed provider ids persist per
+  // browser origin; an active search expands every group it matches.
+  const searchRef = useRef<HTMLInputElement | null>(null)
+  const [query, setQuery] = useState('')
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(readCollapsedGroups)
 
   const groups = useMemo(() => state.groups.toSorted((left, right) =>
     (left.id === 'deepseek-account' ? 0 : left.id === 'deepseek-official' ? 1 : 2)
@@ -93,6 +129,23 @@ export function ModelSelect(
           : { reasoningEffort: model.reasoning.defaultEffort },
       } satisfies ModelSelection,
     }))), [groups])
+  const needle = query.trim().toLowerCase()
+  const visibleGroups = useMemo(() => groups.map((group) => {
+    const title = group.id === 'deepseek-account' ? t('provider.account') : group.name
+    const groupMatches = needle !== '' && (title.toLowerCase().includes(needle) || group.id.toLowerCase().includes(needle))
+    const models = needle === '' || groupMatches
+      ? group.models
+      : group.models.filter(model => model.name.toLowerCase().includes(needle) || model.id.toLowerCase().includes(needle))
+    return { group, title, models }
+  }).filter(entry => entry.models.length > 0), [groups, needle, t])
+  const toggleGroup = (groupId: string): void => {
+    setCollapsed((current) => {
+      const next = new Set(current)
+      if (!next.delete(groupId)) next.add(groupId)
+      writeCollapsedGroups(next)
+      return next
+    })
+  }
   const selectedIndex = state.current === null
     ? -1
     : choices.findIndex(c => c.selection.provider === state.current?.provider && c.selection.model === state.current.model)
@@ -200,6 +253,7 @@ export function ModelSelect(
     triggerRef.current?.focus()
     if (state.current === null) paneFocus.current = 'drill'
     setPane(state.current === null ? 'model' : 'root')
+    setQuery('')
     setOpen(true)
     reload()
   }
@@ -212,6 +266,7 @@ export function ModelSelect(
 
   const drill = (next: Pane): void => {
     paneFocus.current = 'drill'
+    setQuery('')
     setPane(next)
   }
 
@@ -235,6 +290,20 @@ export function ModelSelect(
   }
 
   const onRootKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const inSearch = event.target === searchRef.current
+    if (event.key === 'Escape' && open && inSearch && query !== '') {
+      event.preventDefault()
+      setQuery('')
+      return
+    }
+    // Printable keys typed on a model row continue in the search field.
+    if (open && pane === 'model' && !inSearch && event.key.length === 1
+      && !event.ctrlKey && !event.metaKey && !event.altKey && event.key !== ' ') {
+      event.preventDefault()
+      setQuery(current => current + event.key)
+      searchRef.current?.focus()
+      return
+    }
     if (event.key === 'Escape' && open) {
       event.preventDefault()
       // Escape backs out of a drilled pane first, then closes.
@@ -397,6 +466,7 @@ export function ModelSelect(
           className={css.menu}
           style={menuPos ?? MEASURE_STYLE}
           role="menu"
+          data-model-menu=""
           aria-label={t('menu.aria')}
           aria-busy={state.status === 'loading' || busy}
         >
@@ -434,13 +504,42 @@ export function ModelSelect(
                   <button type="button" className={css.retry} onClick={reload}>{t('retry')}</button>
                 </div>
               ))}
+              <input
+                ref={searchRef}
+                type="search"
+                className={css.search}
+                placeholder={t('search.placeholder')}
+                aria-label={t('search.placeholder')}
+                value={query}
+                spellCheck={false}
+                autoComplete="off"
+                onChange={(event) => { setQuery(event.target.value) }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  const first = visibleGroups[0]
+                  const model = first?.models[0]
+                  if (first !== undefined && model !== undefined && !busy) choose({ provider: first.group.id, model: model.id })
+                }}
+              />
               <div className={clsx(css.groups, 'scrollable')}>
-                {groups.map((group) => {
+                {visibleGroups.map(({ group, title, models }) => {
                   const headingId = `${id}-${group.id}`
+                  const groupCollapsed = needle === '' && collapsed.has(group.id)
                   return (
                     <section role="group" aria-labelledby={headingId} className={css.group} key={group.id}>
-                      <div className={css.groupTitle} id={headingId}>{group.id === 'deepseek-account' ? t('provider.account') : group.name}</div>
-                      {group.models.map((model) => {
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        className={css.groupTitle}
+                        aria-expanded={!groupCollapsed}
+                        onClick={() => { toggleGroup(group.id) }}
+                      >
+                        <IconChevronRightOutlineRegular className={clsx(css.groupChevron, !groupCollapsed && css.groupChevronOpen)} />
+                        <span className={css.groupName} id={headingId}>{title}</span>
+                        <span className={css.groupCount} aria-hidden="true">{models.length}</span>
+                      </button>
+                      {!groupCollapsed && models.map((model) => {
                         const selected = state.current?.provider === group.id && state.current.model === model.id
                         return (
                           <button
@@ -469,6 +568,9 @@ export function ModelSelect(
                   )
                 })}
               </div>
+              {state.status === 'ready' && needle !== '' && choices.length > 0 && visibleGroups.length === 0 && (
+                <div className={css.empty}>{t('search.empty', { query: query.trim() })}</div>
+              )}
               {state.status === 'ready' && choices.length === 0 && (
                 <div className={css.empty}>{t('empty.models')}</div>
               )}

@@ -598,3 +598,58 @@ it('restores the account model name after login without changing the saved route
   expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent).toBe('DeepSeek FlashHigh')
   expect(directory.getSnapshot().current).toEqual(selected)
 })
+
+describe('ModelSelect search and provider groups', () => {
+  const groups = [
+    { id: 'kilo', name: 'Kilo', models: [{ id: 'auto-free', name: 'Auto Free' }, { id: 'laguna', name: 'Poolside: Laguna S 2.1' }] },
+    { id: 'zai', name: 'zai', models: [{ id: 'glm-4.7-flash', name: 'glm-4.7-flash' }] },
+  ]
+  const open = (select = vi.fn().mockResolvedValue({ ok: true, value: undefined })) => {
+    render(<ModelSelect locked={false} available
+      directory={createSnapshotStore(state({ current: null, groups }))}
+      load={vi.fn()} select={select} t={t} />)
+    fireEvent.click(screen.getByRole('button', { name: '请选择模型' }))
+  }
+  const rowNames = () => screen.queryAllByRole('menuitemradio').map(row => row.textContent)
+
+  afterEach(() => { window.localStorage.clear() })
+
+  it('filters models by model name and shows every model of a matching provider', () => {
+    open()
+    const search = screen.getByRole('searchbox', { name: zh['search.placeholder'] })
+    fireEvent.change(search, { target: { value: 'laguna' } })
+    expect(rowNames()).toEqual(['Poolside: Laguna S 2.1'])
+    fireEvent.change(search, { target: { value: 'ZAI' } })
+    expect(rowNames()).toEqual(['glm-4.7-flash'])
+    fireEvent.change(search, { target: { value: 'nothing-matches' } })
+    expect(rowNames()).toEqual([])
+    expect(screen.getByText('没有匹配“nothing-matches”的模型。')).toBeTruthy()
+  })
+
+  it('collapses a provider group, remembers it, and expands it while a search matches', () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: /Kilo/, expanded: true }))
+    expect(rowNames()).toEqual(['glm-4.7-flash'])
+    expect(JSON.parse(window.localStorage.getItem('dsh.modelSelect.collapsedGroups') ?? '[]')).toEqual(['kilo'])
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'auto' } })
+    expect(rowNames()).toEqual(['Auto Free'])
+    cleanup()
+    open()
+    expect(rowNames()).toEqual(['glm-4.7-flash'])
+    expect(screen.getByRole('group', { name: 'Kilo' })).toBeTruthy()
+  })
+
+  it('continues typing from a model row in the search field and picks the first match on Enter', () => {
+    const select = vi.fn().mockResolvedValue({ ok: true, value: undefined })
+    open(select)
+    const row = screen.getAllByRole('menuitemradio')[0]
+    row?.focus()
+    fireEvent.keyDown(row as HTMLElement, { key: 'g' })
+    const search = screen.getByRole('searchbox')
+    expect(document.activeElement).toBe(search)
+    expect((search as HTMLInputElement).value).toBe('g')
+    fireEvent.change(search, { target: { value: 'glm' } })
+    fireEvent.keyDown(search, { key: 'Enter' })
+    expect(select).toHaveBeenCalledWith({ provider: 'zai', model: 'glm-4.7-flash' })
+  })
+})

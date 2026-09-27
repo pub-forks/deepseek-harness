@@ -91,6 +91,12 @@ html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
   box-shadow: none !important;
 }
 
+/* The model menu reserves 96px of the viewport by default, which leaves a
+   drawer tab's short iframe only a few rows; let it use nearly all of it. */
+html[data-gaia-embed] [data-model-menu] {
+  max-height: calc(100vh - 24px) !important;
+}
+
 /* A drawer tab belongs to one Gaia project whose folder is already the
    session's workspace; the empty-session hero's workspace chip would let the
    user move the tab out of its project, so it is hidden. DSH's "Into the
