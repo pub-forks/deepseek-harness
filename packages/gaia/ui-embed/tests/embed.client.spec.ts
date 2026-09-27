@@ -47,6 +47,31 @@ describe('isGaiaIncomingMessage', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'insertText', text: 123 })).toBe(false)
   })
 
+  it('validates resumeSessions messages with session rows and errors', () => {
+    const validRow = { sessionId: 's-123', title: 'My session', archived: false, open: true, updatedAt: 1000 }
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [validRow] })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [] })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', error: 'failed to load' })).toBe(true)
+
+    // Invalid reqId
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: '', sessions: [] })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'a'.repeat(65), sessions: [] })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 123, sessions: [] })).toBe(false)
+
+    // Invalid error
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', error: 'a'.repeat(513) })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', error: 'err', sessions: [] })).toBe(false)
+
+    // Invalid sessions
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: 'not-array' })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: new Array(501).fill(validRow) })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [{ ...validRow, sessionId: 'bad/id!' }] })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [{ ...validRow, title: 'a'.repeat(513) }] })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [{ ...validRow, archived: 'yes' }] })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [{ ...validRow, open: 1 }] })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [{ ...validRow, updatedAt: {} }] })).toBe(false)
+  })
+
   it('rejects unrecognized or malformed payloads', () => {
     expect(isGaiaIncomingMessage(null)).toBe(false)
     expect(isGaiaIncomingMessage({})).toBe(false)
@@ -225,6 +250,22 @@ describe('ui-embed client plugin', () => {
     }
     ctx.provide('slots', slots)
 
+    const registeredCommands: Array<{
+      name: string
+      label?: () => string
+      description?: () => string
+      available: (session: unknown) => boolean
+      ui: { kind: string; options: (session: unknown, signal: AbortSignal) => Promise<unknown>; onSelect: (option: { id: string }) => void }
+    }> = []
+    const commandUiDisposer = vi.fn()
+    const commandUi = {
+      register: vi.fn((cmd: typeof registeredCommands[number]) => {
+        registeredCommands.push(cmd)
+        return commandUiDisposer
+      }),
+    }
+    ctx.provide('commandUi', commandUi)
+
     return {
       ctx,
       slotRegistrations,
@@ -263,6 +304,9 @@ describe('ui-embed client plugin', () => {
       setInsertTextShouldSucceed: (s: boolean) => {
         insertTextShouldSucceed = s
       },
+      commandUi,
+      registeredCommands,
+      commandUiDisposer,
     }
   }
 
@@ -591,6 +635,175 @@ describe('ui-embed client plugin', () => {
     expect(document.documentElement.hasAttribute('data-gaia-embed')).toBe(false)
     expect(document.getElementById(GAIA_EMBED_STYLE_ID)).toBeNull()
   })
+
+  describe('/resume command contribution', () => {
+    beforeEach(() => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    const flushTicks = async () => {
+      for (let i = 0; i < 10; i++) await Promise.resolve()
+    }
+
+    it('registers /resume command contribution in embed mode when running in iframe', async () => {
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+
+      expect(mock.commandUi.register).toHaveBeenCalledTimes(1)
+      const cmd = mock.registeredCommands[0]
+      expect(cmd?.name).toBe('resume')
+      expect(cmd?.label?.()).toBe('Resume')
+      expect(cmd?.description?.()).toBe('Switch this tab to a previous session')
+      expect(cmd?.available(undefined)).toBe(true)
+      expect(cmd?.ui.kind).toBe('popupSelect')
+    })
+
+    it('does not register /resume command when window.parent === window', () => {
+      Object.defineProperty(window, 'parent', {
+        value: window,
+        writable: true,
+        configurable: true,
+      })
+      const mock = createMockContext()
+      apply(mock.ctx)
+
+      expect(mock.commandUi.register).not.toHaveBeenCalled()
+    })
+
+    it('queries sessions via postMessage and maps to select options', async () => {
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+      const cmd = mock.registeredCommands[0]!
+
+      const ac = new AbortController()
+      const optionsPromise = cmd.ui.options({}, ac.signal)
+
+      const listMsg = parentMessages.find(m => m.type === 'resumeList') as { type: 'resumeList'; reqId: string } | undefined
+      expect(listMsg).toBeTruthy()
+      expect(typeof listMsg?.reqId).toBe('string')
+
+      const now = Date.now()
+      window.dispatchEvent(new MessageEvent('message', {
+        source: fakeParent,
+        origin: window.location.origin,
+        data: {
+          source: 'gaia-dsh',
+          v: 1,
+          type: 'resumeSessions',
+          reqId: listMsg!.reqId,
+          sessions: [
+            { sessionId: 's-open', title: 'Open Session', archived: false, open: true, updatedAt: now - 300_000 },
+            { sessionId: 's-archived', title: '', archived: true, open: false, updatedAt: null },
+          ],
+        },
+      }))
+
+      const options = await optionsPromise as Array<{ id: string; label: string; detail?: string; badge?: string }>
+      expect(options).toEqual([
+        { id: 's-open', label: 'Open Session', detail: '5m ago', badge: 'open' },
+        { id: 's-archived', label: 'Untitled session', badge: 'archived' },
+      ])
+    })
+
+    it('throws an error when session list is empty', async () => {
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+      const cmd = mock.registeredCommands[0]!
+
+      const ac = new AbortController()
+      const optionsPromise = cmd.ui.options({}, ac.signal)
+      const listMsg = parentMessages.find(m => m.type === 'resumeList') as { type: 'resumeList'; reqId: string }
+
+      window.dispatchEvent(new MessageEvent('message', {
+        source: fakeParent,
+        origin: window.location.origin,
+        data: {
+          source: 'gaia-dsh',
+          v: 1,
+          type: 'resumeSessions',
+          reqId: listMsg.reqId,
+          sessions: [],
+        },
+      }))
+
+      await expect(optionsPromise).rejects.toThrow('No previous sessions in this project')
+    })
+
+    it('throws an error when reply carries error message', async () => {
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+      const cmd = mock.registeredCommands[0]!
+
+      const ac = new AbortController()
+      const optionsPromise = cmd.ui.options({}, ac.signal)
+      const listMsg = parentMessages.find(m => m.type === 'resumeList') as { type: 'resumeList'; reqId: string }
+
+      window.dispatchEvent(new MessageEvent('message', {
+        source: fakeParent,
+        origin: window.location.origin,
+        data: {
+          source: 'gaia-dsh',
+          v: 1,
+          type: 'resumeSessions',
+          reqId: listMsg.reqId,
+          error: 'Backend failure',
+        },
+      }))
+
+      await expect(optionsPromise).rejects.toThrow('Backend failure')
+    })
+
+    it('rejects on abort signal', async () => {
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+      const cmd = mock.registeredCommands[0]!
+
+      const ac = new AbortController()
+      const optionsPromise = cmd.ui.options({}, ac.signal)
+      ac.abort()
+
+      await expect(optionsPromise).rejects.toThrow(/abort/i)
+    })
+
+    it('rejects after 10 second timeout', async () => {
+      vi.useFakeTimers()
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+      const cmd = mock.registeredCommands[0]!
+
+      const ac = new AbortController()
+      const optionsPromise = cmd.ui.options({}, ac.signal)
+
+      vi.advanceTimersByTime(10_000)
+
+      await expect(optionsPromise).rejects.toThrow('Timed out waiting for session list')
+    })
+
+    it('posts resume message on onSelect', async () => {
+      const mock = createMockContext()
+      apply(mock.ctx)
+      await flushTicks()
+      const cmd = mock.registeredCommands[0]!
+
+      cmd.ui.onSelect({ id: 's-selected-42' })
+      expect(parentMessages).toContainEqual({
+        source: 'gaia-dsh',
+        v: 1,
+        type: 'resume',
+        sessionId: 's-selected-42',
+      })
+    })
+  })
 })
 
 describe('embed styles', () => {
@@ -674,3 +887,5 @@ describe('embed send button', () => {
     expect(paletteTokens({ accent: '#e8590c' })['--dsw-alias-button-info-hover']?.dark).toBe('color-mix(in oklch, #e8590c, black 12%)')
   })
 })
+
+

@@ -13,6 +13,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
 import type { SessionInput, TokenSpan } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { injectEmbedStyles } from './styles.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
@@ -26,6 +27,26 @@ declare module '@deepseek-ai/cordis' {
 export * from './bridge.ts'
 export * from './styles.ts'
 export * from './palette.ts'
+
+/**
+ * Format a timestamp into relative human-readable time (e.g. "5m ago").
+ * @param updatedAt - Epoch timestamp or ISO date string, or null.
+ * @returns Formatted relative time string, or undefined if unavailable.
+ */
+export function formatRelativeTime(updatedAt: number | string | null): string | undefined {
+  if (updatedAt === null) return undefined
+  const ms = typeof updatedAt === 'number' ? updatedAt : new Date(updatedAt).getTime()
+  if (Number.isNaN(ms)) return undefined
+  const diff = Math.max(0, Date.now() - ms)
+  const secs = Math.floor(diff / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
 
 /** Renders nothing; used to shadow slot entries that make no sense in a drawer tab. */
 function HiddenEntry(): null { return null }
@@ -268,9 +289,98 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         }
         break
       }
+      case 'resumeSessions':
+        break
     }
   }
   window.addEventListener('message', onMessage)
+
+  if (window.parent !== window) {
+    ctx.inject(['commandUi'], (scope: Context) => {
+      scope.effect(() => scope.commandUi.register({
+        name: 'resume',
+        label: () => 'Resume',
+        description: () => 'Switch this tab to a previous session',
+        available: () => true,
+        ui: {
+          kind: 'popupSelect',
+          options: async (_session, signal) => {
+            return new Promise<readonly SelectOption[]>((resolve, reject) => {
+              if (signal.aborted) {
+                reject(signal.reason instanceof Error ? signal.reason : new Error('Aborted'))
+                return
+              }
+
+              const reqId = Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+
+              const onAbort = () => {
+                cleanup()
+                reject(signal.reason instanceof Error ? signal.reason : new Error('Aborted'))
+              }
+
+              const onReply = (event: MessageEvent) => {
+                if (event.source !== window.parent || event.origin !== window.location.origin) return
+                if (!isGaiaIncomingMessage(event.data)) return
+                if (event.data.type !== 'resumeSessions' || event.data.reqId !== reqId) return
+
+                cleanup()
+                if ('error' in event.data && typeof event.data.error === 'string') {
+                  reject(new Error(event.data.error))
+                  return
+                }
+                if ('sessions' in event.data && Array.isArray(event.data.sessions)) {
+                  if (event.data.sessions.length === 0) {
+                    reject(new Error('No previous sessions in this project'))
+                    return
+                  }
+                  const options: SelectOption[] = event.data.sessions.map((row) => {
+                    const detail = formatRelativeTime(row.updatedAt)
+                    const badge = row.open ? 'open' : row.archived ? 'archived' : undefined
+                    return {
+                      id: row.sessionId,
+                      label: row.title.trim() || 'Untitled session',
+                      ...(detail === undefined ? {} : { detail }),
+                      ...(badge === undefined ? {} : { badge }),
+                    }
+                  })
+                  resolve(options)
+                }
+              }
+
+              const timer = setTimeout(() => {
+                cleanup()
+                reject(new Error('Timed out waiting for session list'))
+              }, 10_000)
+
+              function cleanup() {
+                clearTimeout(timer)
+                signal.removeEventListener('abort', onAbort)
+                window.removeEventListener('message', onReply)
+              }
+
+              signal.addEventListener('abort', onAbort, { once: true })
+              window.addEventListener('message', onReply)
+
+              postToParent({
+                source: 'gaia-dsh',
+                v: 1,
+                type: 'resumeList',
+                reqId,
+              })
+            })
+          },
+          onSelect: (option) => {
+            postToParent({
+              source: 'gaia-dsh',
+              v: 1,
+              type: 'resume',
+              sessionId: option.id,
+            })
+          },
+        },
+      }), 'gaia-ui-embed: /resume command')
+    })
+  }
 
   // Scope effect for teardown.
   return ctx.effect(() => {

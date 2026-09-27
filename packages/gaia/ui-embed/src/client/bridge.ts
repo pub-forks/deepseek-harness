@@ -18,6 +18,8 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'turn'; running: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'title'; title: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'error'; code: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeList'; reqId: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resume'; sessionId: string }
 
 /** Keys of the Gaia palette a theme message may carry. */
 export const GAIA_PALETTE_KEYS = ['background', 'surface', 'border', 'foreground', 'mutedForeground', 'accent'] as const
@@ -39,12 +41,23 @@ export function isSafeCssColor(value: unknown): value is string {
     || /^(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([a-z0-9.,%\s/+-]*\)$/i.test(value)
 }
 
+/** One session row in a resume session list reply. */
+export interface ResumeSessionRow {
+  sessionId: string
+  title: string
+  archived: boolean
+  open: boolean
+  updatedAt: number | string | null
+}
+
 /** Incoming messages accepted from the Gaia parent frame. */
 export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'theme'; mode: 'light' | 'dark'; palette?: GaiaPalette }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'focus' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'insertText'; text: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'clear' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; sessions: ResumeSessionRow[] }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; error: string }
 
 /**
  * Validate that a session string conforms to the safe session identifier grammar.
@@ -85,6 +98,25 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
     }
     case 'clear':
       return true
+    case 'resumeSessions': {
+      if (typeof msg.reqId !== 'string' || msg.reqId.length === 0 || msg.reqId.length > 64) {
+        return false
+      }
+      if (typeof msg.error === 'string') {
+        return msg.error.length <= 512 && msg.sessions === undefined
+      }
+      if (!Array.isArray(msg.sessions) || msg.sessions.length > 500) {
+        return false
+      }
+      return msg.sessions.every((row: unknown) => {
+        if (typeof row !== 'object' || row === null) return false
+        const r = row as Record<string, unknown>
+        if (typeof r.sessionId !== 'string' || !isValidSessionId(r.sessionId)) return false
+        if (typeof r.title !== 'string' || r.title.length > 512) return false
+        if (typeof r.archived !== 'boolean' || typeof r.open !== 'boolean') return false
+        return r.updatedAt === null || typeof r.updatedAt === 'number' || typeof r.updatedAt === 'string'
+      })
+    }
     default:
       return false
   }
