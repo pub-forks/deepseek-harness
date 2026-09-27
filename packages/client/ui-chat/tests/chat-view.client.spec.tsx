@@ -80,6 +80,20 @@ afterEach(() => {
 beforeEach(() => {
   localStorage.clear()
   installTurnNavigatorObserver()
+  // jsdom has no Element.scrollTo; model a native smooth scroll that completes
+  // at once: position, then deliver scroll and scrollend like a browser.
+  Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+    configurable: true,
+    writable: true,
+    value(this: HTMLElement, options: ScrollToOptions) {
+      if (options.top !== undefined) this.scrollTop = options.top
+      this.dispatchEvent(new Event('scroll'))
+      this.dispatchEvent(new Event('scrollend'))
+    },
+  })
+})
+afterEach(() => {
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
 })
 
 const SID = 's1' as SessionId
@@ -3499,6 +3513,27 @@ describe('ChatView', () => {
     expect(view.container.querySelector('[data-chat-following-tail]')).not.toBeNull()
     // At the bottom again: follow re-arms and the button unmounts.
     expect(view.queryByLabelText('回到底部')).toBeNull()
+  })
+
+  it('returns to the bottom with a smooth scroll and yields to a reader who interrupts it', () => {
+    const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
+    const view = render(<h.ChatView {...h.props} />)
+    const scroller = view.container.querySelector('[data-chat-flow]')!.parentElement as HTMLDivElement
+    Object.defineProperty(scroller, 'scrollHeight', { value: 1000, writable: true })
+    Object.defineProperty(scroller, 'clientHeight', { value: 300, writable: true })
+    readerScroll(scroller, 100)
+    // A browser animation still in flight: record the request, move nothing yet.
+    const scrollTo = vi.fn()
+    Object.defineProperty(scroller, 'scrollTo', { configurable: true, value: scrollTo })
+    fireEvent.click(view.getByLabelText('回到底部'))
+    expect(scrollTo).toHaveBeenCalledWith({ top: 700, behavior: 'smooth' })
+    // The reader scrolls up mid-animation; the animation stops short at scrollend.
+    readerScroll(scroller, 250)
+    act(() => {
+      h.setChat({ partial: { turn: 1, step: 1, blocks: [{ kind: 'text', text: 'grow' }] } })
+    })
+    expect(scroller.scrollTop).toBe(250)
+    expect(view.getByLabelText('回到底部')).toBeTruthy()
   })
 
   it('keeps following when a stream-finalization shrink clamp delivers its scroll', () => {

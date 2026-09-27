@@ -76,9 +76,13 @@ export class ChatReading {
     this.publish({ ...this.state, followingTail: false })
   }
 
-  /** Land at the current floor and clear saved reader position. */
-  followTail(): void {
-    const landing = this.viewport.scrollToBottom(this.follow)
+  /**
+   * Land at the current floor and clear saved reader position.
+   * @param behavior - `smooth` animates the move (GAIA: the jump-to-latest
+   * button); every automatic follow stays `instant`.
+   */
+  followTail(behavior: 'instant' | 'smooth' = 'instant'): void {
+    const landing = this.viewport.scrollToBottom(this.follow, behavior)
     if (landing === null) return
     this.cancelPending()
     this.commit(landing, true, this.viewport.latestTurn)
@@ -133,8 +137,18 @@ export class ChatReading {
     this.sampleTimer ??= window.setTimeout(this.flushSample, SCROLL_SAMPLE_INTERVAL_MS)
   }
 
-  /** Settle pending reader movement at the browser's scrollend. */
-  readonly onScrollEnd = (): void => { this.flushSample() }
+  /**
+   * Settle pending reader movement at the browser's scrollend. GAIA: a smooth
+   * back-to-bottom that the reader interrupted stops short of its target;
+   * settling it releases follow so reader movement is sampled again.
+   */
+  readonly onScrollEnd = (): void => {
+    if (this.follow.animating) {
+      const scroll = this.viewport.readScroll()
+      if (scroll !== null) this.follow.settle(scroll.metrics)
+    }
+    this.flushSample()
+  }
 
   /** Reconcile a layout change without overriding unsampled reader input. */
   onResize(): void {

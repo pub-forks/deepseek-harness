@@ -382,13 +382,15 @@ export class ChatViewport {
   /**
    * Align the scrollport with its current floor.
    * @param follow - independent follow intent and scrolling controller.
+   * @param behavior - immediate positioning, or a native smooth scroll that
+   * lands at `scrollend` (reduced motion still jumps).
    * @returns the actual floor landing, or null while detached.
    */
-  scrollToBottom(follow: ScrollFollow): ViewportLanding | null {
+  scrollToBottom(follow: ScrollFollow, behavior: 'instant' | 'smooth' = 'instant'): ViewportLanding | null {
     const metrics = this.metrics()
     if (metrics === null || this.elements === null) return null
     const landing: ViewportLanding = {
-      metrics: follow.toBottom(this.elements.scroller, metrics, 'instant'),
+      metrics: follow.toBottom(this.elements.scroller, metrics, behavior),
       position: null,
       turn: this.latestTurn,
     }

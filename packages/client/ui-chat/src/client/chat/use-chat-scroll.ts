@@ -126,7 +126,8 @@ export function useChatScroll(input: ChatScrollInput): ChatScrollState {
 
   const returnToBottom = useCallback(() => {
     navigation.cancel()
-    reading.followTail()
+    // GAIA: the jump-to-latest button scrolls smoothly instead of snapping.
+    reading.followTail('smooth')
   }, [navigation, reading])
 
   return {
