@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/ui-markdown/README.md
+/:
+  en: 617db3c15832ff9d
+  zh: be129b775e8a42db
+/deepseek-ai-dsh-gaia-ui-markdown:
+  en: b2c93b2bab18bf7d
+  zh: 8c2d21b0b93552ad
+/deepseek-ai-dsh-gaia-ui-markdown/summary:
+  en: 5ad21a878b460656
+  zh: b8011ce409eabbb6
+/deepseek-ai-dsh-gaia-ui-markdown/table-of-contents:
+  en: 134c9b5c374e0e8e
+  zh: 134c9b5c374e0e8e
+/deepseek-ai-dsh-gaia-ui-markdown/use-this-package:
+  en: c8d2f322ee145f81
+  zh: 1f3450774271e17d
+/deepseek-ai-dsh-gaia-ui-markdown/dev-note:
+  en: 68b76adbd630b532
+  zh: 96776bff305aa319
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience:
+  en: 215e7ba838619b7b
+  zh: 215e7ba838619b7b
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/document-preview:
+  en: c756214ac4a5a629
+  zh: eb25d371cf21153c
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/document-preview/what-the-model-sees:
+  en: 95893b17fea2aa9a
+  zh: 781eff7fa1decc0a
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/document-preview/token-effect:
+  en: 57aeae7253e5418f
+  zh: 66ff95b8c66121ad
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/document-preview/kv-cache-effect:
+  en: 8ad497ee1947660e
+  zh: 6c61827846174a9c
+/deepseek-ai-dsh-gaia-ui-markdown/known-limitations-and-deferred-work:
+  en: fd566f5a3ac6ec26
+  zh: bafed532f4347bd4

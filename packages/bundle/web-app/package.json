@@ -176,6 +176,7 @@
     "@deepseek-ai/dsh-api-account-controller": "workspace:*",
     "@deepseek-ai/dsh-gaia-ui-authorization": "workspace:*",
     "@deepseek-ai/dsh-gaia-ui-embed": "workspace:*",
+    "@deepseek-ai/dsh-gaia-ui-markdown": "workspace:*",
     "@deepseek-ai/dsh-client-ui-settings-account": "workspace:*",
     "@deepseek-ai/dsh-client-shortcuts": "workspace:*",
     "@deepseek-ai/dsh-client-ui-shortcuts": "workspace:*"

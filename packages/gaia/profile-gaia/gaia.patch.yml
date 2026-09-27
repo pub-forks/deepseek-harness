@@ -43,3 +43,6 @@
     # GAIA: browser bundle contributes the single-session drawer embed mode.
     - id: gaia-ui-embed
       name: '@deepseek-ai/dsh-gaia-ui-embed'
+    # GAIA: Markdown document renderer overrides DSH's builtin preview.
+    - id: gaia-ui-markdown
+      name: '@deepseek-ai/dsh-gaia-ui-markdown'
