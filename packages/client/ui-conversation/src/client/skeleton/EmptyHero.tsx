@@ -47,6 +47,8 @@ export function WorkspaceChip({ buttonRef, label, menuOpen = false, onClick, t }
       ref={buttonRef}
       type="button"
       className={css.workspace}
+      // GAIA: stable hook so the Gaia drawer embed can hide the workspace chip.
+      data-hero-workspace=""
       aria-label={t('hero.chooseWorkspace')}
       aria-haspopup="menu"
       aria-expanded={menuOpen}

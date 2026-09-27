@@ -89,6 +89,13 @@ html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
   box-shadow: inset 0 0 0 1px var(--dsw-alias-button-info-fill) !important;
 }
 
+/* A drawer tab belongs to one Gaia project whose folder is already the
+   session's workspace; the empty-session hero's workspace chip would let the
+   user move the tab out of its project, so it is hidden. */
+html[data-gaia-embed] [data-hero-workspace] {
+  display: none !important;
+}
+
 /* The /resume popup lists session titles with a badge and a relative time;
    DSH's compact 220px card truncates them, so widen it (still capped at the
    composer width by the card's own max-width). */
