@@ -6,6 +6,8 @@ export const REMOTE_ALLOWLIST = {
   credentials: { describe: 'unary', set: 'unary', unset: 'unary' },
   // @deepseek-ai/dsh-client-ui-settings-models consumes model provider reads and discovery.
   llm: { listProviders: 'unary', listConfigurableProviders: 'unary', discoverModels: 'unary' },
+  // @deepseek-ai/dsh-client-ui-settings-models uses this read to gate its account model row.
+  session: { modelCatalog: 'unary' },
   // @deepseek-ai/dsh-client-ui-plugin-manager consumes plugin inventory and profile mutations.
   pluginManager: {
     listVersionExemptions: 'unary', setVersionExemption: 'unary', listPlugins: 'unary', listBundles: 'unary',
