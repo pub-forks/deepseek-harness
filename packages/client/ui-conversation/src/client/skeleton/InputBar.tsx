@@ -462,6 +462,8 @@ export const InputBar = memo(function InputBar({
                 <button
                   type="button"
                   className={css.primary}
+                  // GAIA: stable hook for the embed's reversed hover styling.
+                  data-composer-primary=""
                   aria-label={t('input.stop')}
                   disabled={stop === undefined}
                   onMouseDown={keepFocus}
@@ -477,6 +479,8 @@ export const InputBar = memo(function InputBar({
               <button
                 type="button"
                 className={css.primary}
+                // GAIA: stable hook for the embed's reversed hover styling.
+                data-composer-primary=""
                 aria-label={primaryLabel}
                 disabled={primaryDisabled}
                 onMouseDown={keepFocus}

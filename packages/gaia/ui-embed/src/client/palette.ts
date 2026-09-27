@@ -71,6 +71,8 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
     flat['--dsw-alias-link'] = accent
     flat['--dsw-alias-state-business-primary'] = accent
     flat['--dsw-alias-button-info-fill'] = accent
+    // DSH's info-button hover is its own blue; keep hovers on Gaia's accent.
+    flat['--dsw-alias-button-info-hover'] = `color-mix(in oklch, ${accent}, black 12%)`
   }
   return Object.fromEntries(Object.entries(flat).map(([name, value]) => [name, { light: value, dark: value }]))
 }
