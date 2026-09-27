@@ -240,7 +240,12 @@ export function ModelSelect(
     place()
     window.addEventListener('scroll', place, true)
     window.addEventListener('resize', place)
+    // GAIA: collapsing a provider or filtering resizes the card without a
+    // pane or directory change; re-place so it stays anchored to the trigger.
+    const resizes = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(place)
+    if (menuRef.current !== null) resizes?.observe(menuRef.current)
     return () => {
+      resizes?.disconnect()
       window.removeEventListener('scroll', place, true)
       window.removeEventListener('resize', place)
     }

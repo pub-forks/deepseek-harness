@@ -639,6 +639,37 @@ describe('ModelSelect search and provider groups', () => {
     expect(screen.getByRole('group', { name: 'Kilo' })).toBeTruthy()
   })
 
+  it('re-places the card above the trigger when collapsing a provider shrinks it', () => {
+    const offsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')!
+    const rect = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')!
+    const original = globalThis.ResizeObserver
+    let height = 300
+    let onResize: (() => void) | undefined
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => height })
+    Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
+      configurable: true, value: () => ({ top: 700, bottom: 728, left: 400, right: 500, width: 100, height: 28, x: 400, y: 700, toJSON: () => ({}) }),
+    })
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) { onResize = () => { callback([], this) } }
+      observe(): void { /* the stub fires only when the test calls onResize */ }
+      unobserve(): void { /* nothing observed individually */ }
+      disconnect(): void { onResize = undefined }
+    }
+    try {
+      open()
+      // 700 (trigger top) - 8 (gap) - 300 (card height).
+      expect(screen.getByRole('menu').style.top).toBe('392px')
+      fireEvent.click(screen.getByRole('button', { name: /Kilo/, expanded: true }))
+      height = 120
+      act(() => { onResize?.() })
+      expect(screen.getByRole('menu').style.top).toBe('572px')
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offsetHeight)
+      Object.defineProperty(Element.prototype, 'getBoundingClientRect', rect)
+      globalThis.ResizeObserver = original
+    }
+  })
+
   it('continues typing from a model row in the search field and picks the first match on Enter', () => {
     const select = vi.fn().mockResolvedValue({ ok: true, value: undefined })
     open(select)
