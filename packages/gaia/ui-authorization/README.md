@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This private client plugin registers a localized Sign-in section in Settings. It renders every registered authorization flow through the Gaia Remote, including notices, device codes, prompts, cancellation, and confirmed sign-out. The section keeps secret answers in its input state and sends them only through `answer`.
+This private client plugin registers a localized Sign-in section in Settings. It lists only registered flows that offer OAuth, with API-key providers configured in Models. OAuth sign-ins support notices, device codes, prompts, cancellation, and confirmed sign-out. The section keeps secret answers in its input state and sends them only through `answer`.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ This private client plugin registers a localized Sign-in section in Settings. It
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount the plugin in Gaia's patch overlay with the host authorization controller. The Client module table loads its browser bundle automatically through `dsh.client`. A device-code method is preferred when offered; for the Codex method picker, the device-code option starts selected while manual callback text remains available.
+Mount the plugin in Gaia's patch overlay with the host authorization controller. The Client module table loads its browser bundle automatically through `dsh.client`. Only OAuth flows appear in this section; configure API-key providers in Models. For OpenAI Codex, the device-code option starts selected while manual callback text remains available.
 
 -----
 

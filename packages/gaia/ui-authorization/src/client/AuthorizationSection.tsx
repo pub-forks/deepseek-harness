@@ -94,12 +94,15 @@ export function AuthorizationSection({ t, listFlows, start, answer, cancel, sign
     {terminal?.type === 'done' && terminal.outcome === 'authorized' && <p>{t('modelsHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>}
     {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch(() => { setActionError(true) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
   </div>
-  // OAuth sign-ins (ChatGPT, Claude Pro/Max, Copilot…) are what this section
-  // exists for; list them first, keeping the catalog order within each group.
-  const ordered = [...flows].sort((a, b) => Number(b.methods.some(m => m.id === 'oauth')) - Number(a.methods.some(m => m.id === 'oauth')))
+  // Keep catalog order except that OpenAI Codex is the first OAuth sign-in.
+  const oauthFlows = flows
+    .map(flow => ({ ...flow, methods: flow.methods.filter(method => method.id === 'oauth') }))
+    .filter(flow => flow.methods.length > 0)
+  const ordered = [...oauthFlows].sort((a, b) => Number(b.key === 'llm-pi-ai/openai-codex') - Number(a.key === 'llm-pi-ai/openai-codex'))
   return <section className={css.section} aria-label={t('nav')}>
     <h2>{t('title')}</h2><p className={css.intro}>{t('intro')}</p>
-    {loading ? <p>{t('loading')}</p> : failed ? <p role="alert">{t('failed')}</p> : flows.length === 0 ? <p>{t('empty')}</p> :
+    <p>{t('apiKeyHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>
+    {loading ? <p>{t('loading')}</p> : failed ? <p role="alert">{t('failed')}</p> : ordered.length === 0 ? <p>{t('empty')}</p> :
       <ul className={css.list}>{ordered.map(flow => <li key={flow.key} className={css.card}>
         <div className={css.row}><strong>{flow.label}</strong><span className={css.status}>{t(flow.signedIn ? 'signedIn' : 'signedOut')}{flow.expiresAt === undefined ? '' : ` · ${t('expires')} ${new Date(flow.expiresAt).toLocaleString()}`}</span></div>
         <div className={css.actions}>

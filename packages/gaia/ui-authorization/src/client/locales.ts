@@ -2,7 +2,8 @@
 export type AuthorizationKey = keyof typeof en
 export const en = {
   nav: 'Sign-in', title: 'Sign-in', intro: 'Connect a provider to use its models.',
-  loading: 'Loading sign-in options…', empty: 'No sign-in flows are available.', failed: 'Sign-in options are unavailable.',
+  loading: 'Loading sign-in options…', empty: 'No OAuth sign-in flows are available.', failed: 'Sign-in options are unavailable.',
+  apiKeyHint: 'API-key providers are configured in Models.',
   signedIn: 'Signed in', signedOut: 'Signed out', expires: 'Expires', signIn: 'Sign in', signOut: 'Sign out',
   method: 'Sign-in method', cancel: 'Cancel', submit: 'Continue', open: 'Open', copy: 'Copy', copied: 'Copied',
   busy: 'A sign-in is already in progress.', authorized: 'Signed in successfully.', cancelled: 'Sign-in cancelled.', error: 'Sign-in failed.',
@@ -11,7 +12,8 @@ export const en = {
 } as const
 export const zh: Record<AuthorizationKey, string> = {
   nav: '登录', title: '登录', intro: '连接服务提供方以使用其模型。',
-  loading: '正在加载登录选项…', empty: '没有可用的登录流程。', failed: '无法加载登录选项。',
+  loading: '正在加载登录选项…', empty: '没有可用的 OAuth 登录流程。', failed: '无法加载登录选项。',
+  apiKeyHint: 'API 密钥提供方请在模型中配置。',
   signedIn: '已登录', signedOut: '未登录', expires: '到期', signIn: '登录', signOut: '退出登录',
   method: '登录方式', cancel: '取消', submit: '继续', open: '打开', copy: '复制', copied: '已复制',
   busy: '已有登录流程正在进行。', authorized: '登录成功。', cancelled: '登录已取消。', error: '登录失败。',
