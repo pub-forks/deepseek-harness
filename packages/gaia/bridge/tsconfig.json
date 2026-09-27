@@ -10,6 +10,7 @@
     { "path": "../../core/session" },
     { "path": "../../session/session-title" },
     { "path": "../../boot/app-boot" },
-    { "path": "../../core/agent" }
+    { "path": "../../core/agent" },
+    { "path": "../../api/gateway/tsconfig.host.json" }
   ]
 }

@@ -8562,6 +8562,9 @@ importers:
       '@deepseek-ai/dsh-workspace':
         specifier: workspace:*
         version: link:../../workspace/workspace
+      yaml:
+        specifier: ^2.8.1
+        version: 2.9.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -8569,6 +8572,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: workspace:*
         version: link:../../core/agent
+      '@deepseek-ai/dsh-api-gateway':
+        specifier: workspace:*
+        version: link:../../api/gateway
       '@deepseek-ai/dsh-config-editor':
         specifier: workspace:*
         version: link:../../boot/config-editor

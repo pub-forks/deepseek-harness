@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`@deepseek-ai/dsh-gaia-bridge` registers `/gaia/control/` on the Host webserver for Gaia's server. Calls require a loopback peer and `Authorization: Bearer <GAIA_CONTROL_SECRET>`. The secret is sampled once at activation; a missing or shorter than 32-character value makes every request return 503. Responses are JSON with `Cache-Control: no-store`; errors contain a short code only.
+`@deepseek-ai/dsh-gaia-bridge` registers `/gaia/control/` on the Host webserver for Gaia's server. Calls require a loopback peer and `Authorization: Bearer <GAIA_CONTROL_SECRET>`. The secret is sampled once at activation; a missing or shorter than 32-character value makes every request return 503. Responses are JSON with `Cache-Control: no-store`; errors omit stacks and request bodies are never logged.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin in the Gaia Web overlay and supply the secret in the DSH child environment. `GET health` reports readiness and version. `POST workspaces/ensure` realpaths an absolute existing directory and returns its durable Workspace id. `POST sessions` creates a Session in a known Workspace and optionally renames it. `GET sessions?workspaceId=` lists that Workspace's Sessions. `POST sessions/:id/rename` renames one Session; `POST sessions/:id/archive` uses the registry archive operation with activity stopping. JSON bodies have a 16 KiB limit.
+Mount this plugin in the Gaia Web overlay and supply the secret in the DSH child environment. Existing endpoints include `GET health`, workspace ensure, session create/list/rename/archive/unarchive, and `GET activity`. `POST remote` invokes an allowlisted unary Remote; `POST streams` opens an allowlisted stream Remote, `GET streams/:id?after=` long-polls buffered items, and `DELETE streams/:id` cancels it. The Remote allowlist is in `src/allowlist.ts`; all other methods return `not_allowed`. `GET/PUT config-document` edits the active profile patch with YAML validation, SHA-256 preconditions, a 1 MiB file cap, and atomic replacement. `GET profile-files` lists only `cordis.patch.yml`, `cordis.yml`, `package.json`, and `pnpm-workspace.yaml`; `GET/PUT profile-files/:name` reads or updates one of those fixed names. File writes use SHA-256 preconditions, format validation, and atomic replacement. Request bodies are limited to 16 KiB on existing routes, 256 KiB for Remote calls, and 1.25 MiB for document and profile-file writes.
 
 -----
 
@@ -56,4 +56,3 @@ This package neither assembles nor sends model requests.
 <a id="known-limitations-and-deferred-work"></a>
 
 - `GET activity` counts running Agents, but the Gateway publishes no live browser event-stream connection count. It reports `attachedClients: 0` and `approximate: true`; Gaia must not use that value alone to stop a runtime while browser clients may be attached.
-
