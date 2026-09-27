@@ -12,6 +12,7 @@ function fixture(value: string | undefined = secret) {
   let handler: Handler | undefined
   const workspaces = new Map<string, { id: string; path: string; sessionIds: string[] }>()
   const sessions: { sessionId: string; running: boolean; updatedAt: number; projections: { values: { title: string } } }[] = []
+  const archivedSessions = new Set<string>()
   const ctx = {
     logger: () => ({ warn: vi.fn() }),
     effect: (register: () => () => void) => { register() },
@@ -26,7 +27,9 @@ function fixture(value: string | undefined = secret) {
       },
       get: (id: string) => [...workspaces.values()].find(workspace => workspace.id === id),
       list: () => [...workspaces.values()],
-      archiveSession: vi.fn(async () => {}),
+      get archivedSessionIds() { return [...archivedSessions] },
+      archiveSession: vi.fn(async (sessionId: string) => { archivedSessions.add(sessionId) }),
+      unarchiveSession: vi.fn(async (sessionId: string) => { archivedSessions.delete(sessionId) }),
     },
     sessionController: {
       create: vi.fn(async ({ workspaceId }: { workspaceId: string }) => {
@@ -98,10 +101,45 @@ describe('Gaia control bridge', () => {
     const created = await f.call('POST', '/gaia/control/sessions', { workspaceId: first.body.workspaceId, title: 'Initial' })
     expect(created.body.sessionId).toBe('session-1')
     const listed = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}`)
-    expect(listed.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Initial', running: false, updatedAt: 1 }])
+    expect(listed.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Initial', running: false, updatedAt: 1, archived: false }])
     expect((await f.call('POST', '/gaia/control/sessions/session-1/rename', { title: 'Next' })).body.ok).toBe(true)
     expect((await f.call('POST', '/gaia/control/sessions/session-1/archive', {})).body.ok).toBe(true)
     expect(f.ctx.workspaceRegistry.archiveSession).toHaveBeenCalled()
+
+    // Without includeArchived, archived session is omitted
+    const unarchivedOnly = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}`)
+    expect(unarchivedOnly.body.sessions).toEqual([])
+
+    // With includeArchived=1, archived session is included with archived: true
+    const withArchived = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}&includeArchived=1`)
+    expect(withArchived.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: true }])
+
+    // Query validation
+    expect((await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}&includeArchived=0`)).status).toBe(400)
+    expect((await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}&extra=true`)).status).toBe(400)
+
+    // Unarchive unknown session -> 404
+    expect((await f.call('POST', '/gaia/control/sessions/nonexistent/unarchive', {})).status).toBe(404)
+
+    // Unarchive session-1
+    const unarchiveRes = await f.call('POST', '/gaia/control/sessions/session-1/unarchive', {})
+    expect(unarchiveRes.status).toBe(200)
+    expect(unarchiveRes.body.ok).toBe(true)
+    expect(f.ctx.workspaceRegistry.unarchiveSession).toHaveBeenCalledWith('session-1')
+
+    // Session is now unarchived in list
+    const afterUnarchive = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}`)
+    expect(afterUnarchive.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: false }])
+  })
+
+  it('includes contentless sessions defaulting title and updatedAt', async () => {
+    const f = fixture()
+    const ws = await f.call('POST', '/gaia/control/workspaces/ensure', { path: '/tmp' })
+    // Manually add a session id to workspace that is not in sessionController.list()
+    const workspace = f.ctx.workspaceRegistry.get(ws.body.workspaceId as string)
+    workspace?.sessionIds.push('fresh-session')
+    const listed = await f.call('GET', `/gaia/control/sessions?workspaceId=${ws.body.workspaceId}`)
+    expect(listed.body.sessions).toEqual([{ sessionId: 'fresh-session', title: '', running: false, updatedAt: null, archived: false }])
   })
 
   it('reports an explicit approximation for activity', async () => {

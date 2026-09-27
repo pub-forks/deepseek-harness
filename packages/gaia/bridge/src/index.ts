@@ -125,24 +125,41 @@ export function apply(ctx: Context): void {
           answer(res, 200, { sessionId: created.sessionId })
         } else if (method === 'GET' && path === `${PREFIX}/sessions`) {
           const rawId = url.searchParams.get('workspaceId')
-          if (rawId === null || !rawId || url.searchParams.size !== 1) throw new RequestError(400, 'invalid_workspaceId')
+          if (rawId === null || !rawId) throw new RequestError(400, 'invalid_workspaceId')
+          const rawIncludeArchived = url.searchParams.get('includeArchived')
+          if (rawIncludeArchived !== null && rawIncludeArchived !== '1') throw new RequestError(400, 'invalid_includeArchived')
+          for (const key of url.searchParams.keys()) {
+            if (key !== 'workspaceId' && key !== 'includeArchived') {
+              throw new RequestError(400, `invalid_${key}`)
+            }
+          }
+          const includeArchived = rawIncludeArchived === '1'
           const workspace = ctx.workspaceRegistry.get(WorkspaceId(rawId))
           if (workspace === undefined) throw new RequestError(404, 'workspace_not_found')
-          const ids = new Set(workspace.sessionIds)
+          const archivedSet = new Set(ctx.workspaceRegistry.archivedSessionIds)
           const items = (await ctx.sessionController.list({}, new AbortController().signal)).items
-          answer(res, 200, { sessions: items.filter(item => ids.has(item.sessionId)).map(item => ({
-            sessionId: item.sessionId,
-            title: item.projections?.values.title ?? '',
-            running: item.running,
-            updatedAt: item.updatedAt,
-          })) })
+          const itemMap = new Map(items.map(item => [item.sessionId, item]))
+          const sessions = []
+          for (const sessionId of workspace.sessionIds) {
+            const isArchived = archivedSet.has(sessionId)
+            if (!includeArchived && isArchived) continue
+            const item = itemMap.get(sessionId)
+            sessions.push({
+              sessionId,
+              title: item?.projections?.values.title ?? '',
+              running: item?.running ?? false,
+              updatedAt: item?.updatedAt ?? null,
+              archived: isArchived,
+            })
+          }
+          answer(res, 200, { sessions })
         } else if (method === 'GET' && path === `${PREFIX}/activity`) {
           answer(res, 200, {
             attachedClients: 0,
             runningTurns: ctx.agents.list().filter(agent => agent.status === 'running').length,
             approximate: true,
           })
-        } else if (method === 'POST' && /^\/gaia\/control\/sessions\/[^/]+\/(rename|archive)$/.test(path)) {
+        } else if (method === 'POST' && /^\/gaia\/control\/sessions\/[^/]+\/(rename|archive|unarchive)$/.test(path)) {
           const parts = path.split('/')
           const id = decodeURIComponent(parts[4] ?? '')
           const request = await body(req)
@@ -156,9 +173,12 @@ export function apply(ctx: Context): void {
           if (parts[5] === 'rename') {
             exactFields(request, ['title'])
             await ctx.sessionController.rename({ sessionId, title: stringField(request, 'title') })
-          } else {
+          } else if (parts[5] === 'archive') {
             exactFields(request, [])
             await ctx.workspaceRegistry.archiveSession(sessionId, { stopActivity: true })
+          } else {
+            exactFields(request, [])
+            await ctx.workspaceRegistry.unarchiveSession(sessionId)
           }
           answer(res, 200, { ok: true })
         } else {
