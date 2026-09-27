@@ -15,6 +15,7 @@
     { "path": "../../api/session-controller/tsconfig.client.json" },
     { "path": "../../client/ui-renderer" },
     { "path": "../../client/ui-open-in-app" },
-    { "path": "../../client/ui-commands" }
+    { "path": "../../client/ui-commands" },
+    { "path": "../../client/ui-primitives" }
   ]
 }

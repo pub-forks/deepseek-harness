@@ -88,6 +88,13 @@ html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
   color: var(--dsw-alias-button-info-fill) !important;
   box-shadow: inset 0 0 0 1px var(--dsw-alias-button-info-fill) !important;
 }
+
+/* The /resume popup lists session titles with a badge and a relative time;
+   DSH's compact 220px card truncates them, so widen it (still capped at the
+   composer width by the card's own max-width). */
+html[data-gaia-embed] :has(> [role="listbox"][aria-label^="/resume"]) {
+  min-width: min(480px, 100%);
+}
 `
 
 /**

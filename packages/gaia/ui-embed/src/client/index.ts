@@ -14,6 +14,7 @@ import type { SessionInput, TokenSpan } from '@deepseek-ai/dsh-client-ui-convers
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
+import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { injectEmbedStyles } from './styles.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
@@ -301,6 +302,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         name: 'resume',
         label: () => 'Resume',
         description: () => 'Switch this tab to a previous session',
+        icon: IconClockOutlineRegular,
         available: () => true,
         ui: {
           kind: 'popupSelect',
