@@ -276,7 +276,8 @@ export function ChatView({
         </div>
       </div>
       {!scroll.followingTail && (
-        <div className={css.toBottomSlot}>
+        // GAIA: stable hook so the Gaia drawer embed can hide the button under its /resume popup.
+        <div className={css.toBottomSlot} data-chat-to-bottom="">
           <button
             type="button"
             className={css.toBottom}

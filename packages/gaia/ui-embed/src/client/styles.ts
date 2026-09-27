@@ -98,11 +98,56 @@ html[data-gaia-embed] [data-hero-headline] {
   display: none !important;
 }
 
-/* The /resume popup lists session titles with a badge and a relative time;
-   DSH's compact 220px card truncates them, so widen it (still capped at the
-   composer width by the card's own max-width). */
+/* The /resume popup spans the composer width. Each row reads: session title
+   (takes the free space), relative last activity, then the status as a tag
+   on the right. DSH's row nests the badge in the label span as a superscript;
+   display:contents flattens that span so its children join the row's flex
+   order. An "open" option's aria-label ends in " open" (label + badge). */
 html[data-gaia-embed] :has(> [role="listbox"][aria-label^="/resume"]) {
-  min-width: min(480px, 100%);
+  width: 100%;
+  min-width: 100% !important;
+}
+/* DSH's floating "jump to latest" button sits over the popup's right edge
+   (the status tags) in a short drawer; hide it while the list is open. */
+html[data-gaia-embed]:has([role="listbox"][aria-label^="/resume"]) [data-chat-to-bottom] {
+  visibility: hidden;
+}
+html[data-gaia-embed] [role="listbox"][aria-label^="/resume"] > [role="option"] {
+  gap: 12px;
+  padding: 7px 10px;
+}
+html[data-gaia-embed] [role="listbox"][aria-label^="/resume"] > [role="option"] > span:first-child {
+  display: contents;
+}
+html[data-gaia-embed] [role="listbox"][aria-label^="/resume"] > [role="option"] > span:first-child > span {
+  flex: 1 1 auto;
+  order: 0;
+}
+html[data-gaia-embed] [role="listbox"][aria-label^="/resume"] > [role="option"] > span:not(:first-child) {
+  flex: none;
+  order: 1;
+  font-variant-numeric: tabular-nums;
+}
+html[data-gaia-embed] [role="listbox"][aria-label^="/resume"] > [role="option"] sup {
+  order: 2;
+  align-self: center;
+  margin: 0;
+  min-width: 56px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  text-align: center;
+  border: 1px solid var(--dsw-alias-border-l3);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 500;
+  vertical-align: baseline;
+  color: var(--dsw-alias-label-tertiary);
+}
+html[data-gaia-embed] [role="listbox"][aria-label^="/resume"] > [role="option"][aria-label$=" open"] sup {
+  border-color: color-mix(in srgb, var(--dsw-alias-link) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-link) 12%, transparent);
+  color: var(--dsw-alias-link);
 }
 `
 
