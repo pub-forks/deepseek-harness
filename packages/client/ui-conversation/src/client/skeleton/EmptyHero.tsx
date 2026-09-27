@@ -154,7 +154,8 @@ export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
           <span className={css.titleGroup}>
             {/* Own element: keeps the headline text addressable apart from the badge. */}
             <span>{t('hero.headline')}</span>
-            <span className={css.previewBadge}>{t('hero.preview')}</span>
+            {/* GAIA: stable hook so the Gaia drawer embed can hide the badge. */}
+            <span className={css.previewBadge} data-hero-preview="">{t('hero.preview')}</span>
           </span>
         </div>
         <div className={css.body}>

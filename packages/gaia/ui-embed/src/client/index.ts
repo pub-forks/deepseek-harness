@@ -17,6 +17,7 @@ import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { injectEmbedStyles } from './styles.ts'
+import { GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -121,6 +122,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities', id: 'open-in-app', order: -10, priority: -1,
   }, HiddenEntry))
+
+  // The empty-session hero shows Gaia's mark instead of DSH's whale.
+  ctx.slots.inject('conversation.hero.brand.mark', () => ctx.slots.register({
+    name: 'conversation.hero.brand.mark',
+  }, GaiaMark))
 
   // Register Gaia themes once at activation (only in embed mode).
   // Non-built-in ids ('gaia-embed-dark' / 'gaia-embed-light') ensure setTheme does not
