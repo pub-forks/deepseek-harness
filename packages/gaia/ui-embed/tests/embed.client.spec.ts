@@ -877,12 +877,15 @@ describe('embed composer styles', () => {
 })
 
 describe('embed send button', () => {
-  it('reverses the send button colors on hover and keeps hovers off DSH blue', async () => {
+  it('shows an accent outline at rest and an accent fill on hover, never DSH blue', async () => {
     const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
-    const rule = GAIA_EMBED_CSS.split('html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {')[1]?.split('}')[0] ?? ''
-    expect(rule).toContain('background: var(--dsw-alias-bg-base) !important;')
-    expect(rule).toContain('color: var(--dsw-alias-button-info-fill) !important;')
-    expect(GAIA_EMBED_CSS).toContain('html[data-gaia-embed] [data-composer-primary] {\n  color: var(--dsw-alias-bg-base) !important;')
+    const ruleOf = (selector: string) => GAIA_EMBED_CSS.split(`${selector} {`)[1]?.split('}')[0] ?? ''
+    const rest = ruleOf('html[data-gaia-embed] [data-composer-primary]')
+    expect(rest).toContain('background: var(--dsw-alias-bg-base) !important;')
+    expect(rest).toContain('color: var(--dsw-alias-button-info-fill) !important;')
+    const hover = ruleOf('html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled)')
+    expect(hover).toContain('background: var(--dsw-alias-button-info-fill) !important;')
+    expect(hover).toContain('color: var(--dsw-alias-bg-base) !important;')
     const { paletteTokens } = await import('../src/client/palette.ts')
     expect(paletteTokens({ accent: '#e8590c' })['--dsw-alias-button-info-hover']?.dark).toBe('color-mix(in oklch, #e8590c, black 12%)')
   })

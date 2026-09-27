@@ -76,17 +76,19 @@ html[data-gaia-embed] [data-composer-card]:focus-within::before {
 @media (prefers-reduced-motion: reduce) {
   html[data-gaia-embed] [data-composer-card]:focus-within::before { animation: none; }
 }
-/* Send/stop button: accent fill with a glyph in the page background color
-   (black on dark themes, white on light ones); on hover the colors reverse
-   (page-background fill, accent glyph) instead of DSH's blue hover. The
-   accent ring keeps the reversed button visible against the page. */
+/* Send/stop button: page-background fill with an accent glyph and accent
+   ring at rest; on hover the colors reverse (accent fill, glyph in the page
+   background color: black on dark themes, white on light ones) instead of
+   DSH's blue hover. */
 html[data-gaia-embed] [data-composer-primary] {
-  color: var(--dsw-alias-bg-base) !important;
-}
-html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
   background: var(--dsw-alias-bg-base) !important;
   color: var(--dsw-alias-button-info-fill) !important;
   box-shadow: inset 0 0 0 1px var(--dsw-alias-button-info-fill) !important;
+}
+html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
+  background: var(--dsw-alias-button-info-fill) !important;
+  color: var(--dsw-alias-bg-base) !important;
+  box-shadow: none !important;
 }
 
 /* A drawer tab belongs to one Gaia project whose folder is already the
