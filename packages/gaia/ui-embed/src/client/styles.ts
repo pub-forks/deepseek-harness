@@ -23,6 +23,59 @@ html[data-gaia-embed] [data-conversation-header-leading],
 html[data-gaia-embed] [data-conversation-header-corner] {
   display: none !important;
 }
+
+/* Composer: Gaia's agent composer look (page background, Gaia's border,
+   12px corners), replacing DSH's gray pill. On focus a soft arc in Gaia's
+   accent travels around the edge: the ::before is a conic-gradient ring
+   masked to the border only, so it overlays the border with no reflow. */
+@property --gaia-composer-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes gaia-composer-border-spin {
+  to { --gaia-composer-angle: 360deg; }
+}
+html[data-gaia-embed] [data-composer-card] {
+  position: relative;
+  background: var(--dsw-alias-bg-base) !important;
+  border: 1px solid var(--dsw-alias-border-l2) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05) !important;
+  transition: border-color 0.2s ease;
+}
+html[data-gaia-embed] [data-composer-card]:focus-within {
+  border-color: color-mix(in oklch, var(--dsw-alias-link), transparent 50%) !important;
+}
+html[data-gaia-embed] [data-composer-card]::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--gaia-composer-angle),
+    transparent 0deg,
+    color-mix(in oklch, var(--dsw-alias-link), transparent 70%) 18deg,
+    color-mix(in oklch, var(--dsw-alias-link), white 40%) 45deg,
+    color-mix(in oklch, var(--dsw-alias-link), transparent 70%) 72deg,
+    transparent 92deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+html[data-gaia-embed] [data-composer-card]:focus-within::before {
+  opacity: 1;
+  animation: gaia-composer-border-spin 5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-gaia-embed] [data-composer-card]:focus-within::before { animation: none; }
+}
 `
 
 /**

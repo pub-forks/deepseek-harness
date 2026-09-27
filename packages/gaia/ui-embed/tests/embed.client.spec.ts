@@ -649,3 +649,16 @@ describe('embed integration of the palette and header entries', () => {
     expect(overrideTokens).toHaveBeenCalledWith('gaia-embed-palette', expect.objectContaining({ '--dsw-alias-bg-base': { light: 'hsl(0 0% 3.9%)', dark: 'hsl(0 0% 3.9%)' } }))
   })
 })
+
+describe('embed composer styles', () => {
+  it('restyles only the composer card inside the embed, with a reduced-motion fallback', async () => {
+    const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
+    expect(GAIA_EMBED_CSS).toContain('html[data-gaia-embed] [data-composer-card] {')
+    expect(GAIA_EMBED_CSS).toContain('background: var(--dsw-alias-bg-base) !important;')
+    expect(GAIA_EMBED_CSS).toContain('border: 1px solid var(--dsw-alias-border-l2) !important;')
+    expect(GAIA_EMBED_CSS).toMatch(/prefers-reduced-motion: reduce[\s\S]*animation: none/)
+    for (const rule of GAIA_EMBED_CSS.split('}').filter(r => r.includes('data-composer-card') && r.includes('{'))) {
+      expect(rule.trim().startsWith('html[data-gaia-embed]') || rule.includes('@media')).toBe(true)
+    }
+  })
+})
