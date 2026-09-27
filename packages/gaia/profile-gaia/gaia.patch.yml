@@ -21,6 +21,16 @@
   disabled: true
 - id: session-telemetry-otel
   disabled: true
+# GAIA: no feedback surface. ui-message-feedback owns Like/Dislike under
+# replies, the feedback dialog and the Session menu's Feedback entry (that
+# entry appears only while its feedbackUi service exists); message-feedback
+# and command-feedback are its host Remotes and the /feedback command.
+- id: ui-message-feedback
+  disabled: true
+- id: message-feedback
+  disabled: true
+- id: command-feedback
+  disabled: true
 - insert:
     - id: gaia-bridge
       name: '@deepseek-ai/dsh-gaia-bridge'
