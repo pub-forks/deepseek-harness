@@ -18,6 +18,7 @@
     { "path": "../../client/ui-commands" },
     { "path": "../../client/ui-primitives" },
     { "path": "../../client/ui-sidebar-right" },
+    { "path": "../../client/ui-settings-general/tsconfig.client.json" },
     { "path": "../../util/workspace-path" }
   ]
 }

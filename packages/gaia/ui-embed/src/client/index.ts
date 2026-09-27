@@ -9,6 +9,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // Type-only: the ctx.sidebarRight Context merge.
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+// Type-only: the `settings` locale namespace the document action reads.
+import type {} from '@deepseek-ai/dsh-client-ui-settings-general/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
@@ -19,6 +21,7 @@ import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
+import { GaiaDocumentAction } from './document-action.ts'
 import { injectEmbedStyles } from './styles.ts'
 import { GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
@@ -72,7 +75,15 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   if (typeof window === 'undefined') return
 
   const params = new URLSearchParams(window.location.search)
-  if (params.get('gaia') !== 'embed') return
+  const mode = params.get('gaia')
+  // Both Gaia frames (drawer embed and the full /harness page) edit the
+  // profile document in Gaia's editor rather than a desktop application.
+  if ((mode === 'embed' || mode === 'full') && window.parent !== window) {
+    ctx.slots.inject('settings.action', () => ctx.slots.register({
+      name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
+    }, GaiaDocumentAction))
+  }
+  if (mode !== 'embed') return
 
   const rawSession = params.get('session')
   if (!rawSession || !isValidSessionId(rawSession)) {
