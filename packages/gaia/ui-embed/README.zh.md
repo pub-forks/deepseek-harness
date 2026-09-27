@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-当页面带有指定单会话嵌入模式的查询参数加载时，此私有客户端插件激活。它隐藏导航与窗口外框，拦截导航快捷键，并管理与宿主父框架的 postMessage 桥接通信。
+此私有客户端插件支持两种 Gaia iframe 模式。两种模式都会通过经过验证的 postMessage 桥接接收 Gaia 主题、调色板和视觉样式。嵌入模式还会将单个会话显示为抽屉聊天并隐藏外框；完整模式保留 DSH 的全部外框，包括导航和设置。
 
 ## 目录
 
@@ -23,7 +23,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用
 
-在 Gaia Web 配置文件补丁覆盖层中挂载该插件。仅当浏览器地址包含 `gaia=embed` 且附带有效 `session` 查询参数时激活。
+在 Gaia Web 配置文件补丁覆盖层中挂载该插件。iframe 地址为 `gaia=embed`（并带有效 `session` 才启用聊天行为）或 `gaia=full`（完整外框）时插件激活；顶层窗口中不会激活。两种模式都会发送一次 `ready` 并接受经过验证的同源主题消息；只有嵌入模式会打开并固定会话、隐藏导航外框，并启用抽屉专用命令和控件。
 
 -----
 
@@ -37,11 +37,11 @@ kind: "package-reference"
 <a id="model-experience"></a>
 ## 模型体验
 
-### Gaia iframe 嵌入
+### Gaia iframe 模式
 
 #### 模型能看到什么
 
-没有直接贡献；嵌入展示只调整带有 `data-gaia-embed` 的浏览器视口，不改变发送给模型的提示词。
+没有直接贡献。两种模式都会应用 Gaia 视觉样式；嵌入模式还会调整带有 `data-gaia-embed` 的视口，不改变发送给模型的提示词。
 
 #### Token 影响
 

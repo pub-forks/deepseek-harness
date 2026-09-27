@@ -22,7 +22,7 @@ import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
 import { GaiaDocumentAction } from './document-action.ts'
-import { injectEmbedStyles } from './styles.ts'
+import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
 import { GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
 
@@ -67,7 +67,8 @@ export const inject = ['layout', 'uiWorkspace', 'sessions', 'connection', 'uiSes
 
 /**
  * Mount the Gaia embed plugin into the client context.
- * Reads location.search once at startup; if gaia !== 'embed', does nothing.
+ * Reads location.search once at startup; Gaia frames share theme integration,
+ * while only embed mode activates the single-session drawer behavior.
  * @param ctx - client root context with layout, workspace, session, and theme services.
  * @returns lifecycle disposer when activated, or void.
  */
@@ -76,14 +77,61 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const params = new URLSearchParams(window.location.search)
   const mode = params.get('gaia')
-  // Both Gaia frames (drawer embed and the full /harness page) edit the
-  // profile document in Gaia's editor rather than a desktop application.
-  if ((mode === 'embed' || mode === 'full') && window.parent !== window) {
-    ctx.slots.inject('settings.action', () => ctx.slots.register({
-      name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
-    }, GaiaDocumentAction))
+  const inGaiaFrame = (mode === 'embed' || mode === 'full') && window.parent !== window
+  if (!inGaiaFrame) return
+
+  // Both Gaia frames use Gaia's editor for the profile document action.
+  ctx.slots.inject('settings.action', () => ctx.slots.register({
+    name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
+  }, GaiaDocumentAction))
+
+  const root = document.documentElement
+  const rootAttribute = mode === 'full' ? 'data-gaia-full' : 'data-gaia-embed'
+  root.setAttribute(rootAttribute, '')
+  const removeSkin = injectGaiaSkin()
+
+  // Registered ids are deliberately non-built-in so Gaia's preference is not
+  // persisted over the user's DSH theme setting.
+  const disposeDarkTheme = ctx.theme.register({ id: 'gaia-embed-dark', colorScheme: 'dark', tokens: {} })
+  const disposeLightTheme = ctx.theme.register({ id: 'gaia-embed-light', colorScheme: 'light', tokens: {} })
+  let desiredTheme: string | undefined
+  let disposePalette: (() => void) | undefined
+  ctx.on('theme/change', (snapshot) => {
+    if (desiredTheme !== undefined && snapshot.preference !== desiredTheme) ctx.theme.setTheme(desiredTheme)
+  })
+
+  // Theme updates have their own listener so embed controls can never process
+  // the same theme message a second time.
+  const onThemeMessage = (event: MessageEvent): void => {
+    if (event.source !== window.parent || event.origin !== window.location.origin) return
+    if (!isGaiaIncomingMessage(event.data) || event.data.type !== 'theme') return
+    desiredTheme = event.data.mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light'
+    ctx.theme.setTheme(desiredTheme)
+    if (event.data.palette !== undefined) {
+      disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
+    }
   }
-  if (mode !== 'embed') return
+  window.addEventListener('message', onThemeMessage)
+  postToParent({ source: 'gaia-dsh', v: 1, type: 'ready' })
+
+  // Narrow layouts auto-collapse; toggle only at activation, so later user
+  // choices remain authoritative for the lifetime of this page.
+  if (mode === 'full') {
+    const layout = ctx.layout.layoutInfo?.getSnapshot()
+    const collapsed = layout !== undefined
+      && (layout.viewportWidth < 1024 ? !layout.narrowExpanded : layout.sidebar === 0)
+    if (collapsed) ctx.layout.toggleSidebar()
+  }
+
+  const commonDisposer = ctx.effect(() => () => {
+    root.removeAttribute(rootAttribute)
+    removeSkin()
+    window.removeEventListener('message', onThemeMessage)
+    disposePalette?.()
+    disposeDarkTheme()
+    disposeLightTheme()
+  }, 'gaia-ui-embed: shared Gaia frame lifecycle')
+  if (mode !== 'embed') return commonDisposer
 
   const rawSession = params.get('session')
   if (!rawSession || !isValidSessionId(rawSession)) {
@@ -100,14 +148,13 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       type: 'error',
       code: !rawSession ? 'missing_session' : 'invalid_session',
     })
-    return
+    return commonDisposer
   }
 
   const sessionId = SessionId(rawSession)
 
   // Mark the root document for scoped embed CSS.
-  document.documentElement.setAttribute('data-gaia-embed', '')
-  const removeStyles = injectEmbedStyles()
+  const removeChrome = injectEmbedChrome()
 
   // Neutralize chrome via public layout seam.
   ctx.layout.selectPanel(null)
@@ -142,22 +189,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     name: 'conversation.hero.brand.mark',
   }, GaiaMark))
 
-  // Register Gaia themes once at activation (only in embed mode).
-  // Non-built-in ids ('gaia-embed-dark' / 'gaia-embed-light') ensure setTheme does not
-  // persist the user's preference (ui-theme setTheme only persists built-in ids: 'light' | 'dark' | 'system').
-  const disposeDarkTheme = ctx.theme.register({ id: 'gaia-embed-dark', colorScheme: 'dark', tokens: {} })
-  const disposeLightTheme = ctx.theme.register({ id: 'gaia-embed-light', colorScheme: 'light', tokens: {} })
-
-  // The theme service adopts the user's persisted preference whenever its
-  // settings scope loads or changes, which can land after Gaia's override and
-  // silently revert the embed to the saved (or system) theme. Keep re-applying
-  // the mode Gaia asked for; setTheme is a no-op when the id already matches.
-  let desiredTheme: string | undefined
-  let disposePalette: (() => void) | undefined
-  ctx.on('theme/change', (snapshot) => {
-    if (desiredTheme !== undefined && snapshot.preference !== desiredTheme) ctx.theme.setTheme(desiredTheme)
-  })
-
   // Track title, existence, and session opening.
   let openedSession = false
   let lastTitle: string | undefined
@@ -183,9 +214,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   // Attempt initial session opening.
   attemptOpenSession()
-
-  // Notify parent of readiness.
-  postToParent({ source: 'gaia-dsh', v: 1, type: 'ready' })
 
   // Track connection status.
   const connection = ctx.get('connection')
@@ -282,16 +310,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     if (!isGaiaIncomingMessage(event.data)) return
 
     switch (event.data.type) {
-      case 'theme': {
-        desiredTheme = event.data.mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light'
-        ctx.theme.setTheme(desiredTheme)
-        // Gaia's own colors ride along; one override layer, replaced on each
-        // message, so the tab follows theme and accent changes live.
-        if (event.data.palette !== undefined) {
-          disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
-        }
-        break
-      }
+      case 'theme': break
       case 'focus': {
         const session = getSessionInput()
         session?.input.focus()
@@ -419,20 +438,17 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   // Scope effect for teardown.
   return ctx.effect(() => {
-    return () => {
-      document.documentElement.removeAttribute('data-gaia-embed')
-      removeStyles()
+    return async () => {
+      removeChrome()
       ctx.layout.toggleSidebar = originalToggleSidebar
       ctx.layout.openRightbar = originalOpenRightbar
       window.removeEventListener('keydown', onKeyDown, { capture: true })
       window.removeEventListener('message', onMessage)
-      disposePalette?.()
-      disposeDarkTheme()
-      disposeLightTheme()
       unsubConnection?.()
       unsubSessionStatus()
       unsubList()
       sessionObserver.disconnect()
+      await commonDisposer()
     }
   }, 'gaia-ui-embed: lifecycle')
 }

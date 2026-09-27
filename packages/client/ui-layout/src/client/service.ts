@@ -10,7 +10,7 @@
  */
 import type { BoundActions, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { createLayoutStore } from './stores.ts'
+import type { LayoutInfo, createLayoutStore } from './stores.ts'
 
 /** Identity shared by a sidebar panel entry and its main-slot occupant. */
 export type MainPanelId = Branded<'MainPanelId'>
@@ -26,6 +26,8 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
 /** Panel navigation and geometry actions exposed through ctx.layout. */
 export interface ILayout {
+  /** GAIA: Read-only responsive layout state for host integrations. */
+  readonly layoutInfo?: HostObservable<LayoutInfo> | undefined
   /** Selected central panel from the same root store used by `usePanelInfo`. */
   readonly panelInfo: HostObservable<PanelInfo>
   /**
@@ -66,6 +68,7 @@ export class LayoutController implements ILayout {
     private readonly panels: PanelActions,
     private readonly hasMainPanel: (id: MainPanelId) => boolean,
     readonly panelInfo: HostObservable<PanelInfo>,
+    readonly layoutInfo?: HostObservable<LayoutInfo>,
   ) {}
 
   /** Select a global panel or return to the Conversation. */

@@ -1,5 +1,5 @@
 /**
- * Map Gaia's resolved theme colors onto DSH's alias tokens, so an embedded
+ * Map Gaia's resolved theme colors onto DSH's alias tokens, so a Gaia frame
  * harness tab paints with the host application's colors (e.g. Gaia's near
  * black dark background instead of DSH's bluish dark gray).
  *

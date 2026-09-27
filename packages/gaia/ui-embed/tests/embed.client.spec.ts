@@ -9,6 +9,7 @@ import {
   isGaiaIncomingMessage,
   isValidSessionId,
   GAIA_EMBED_STYLE_ID,
+  GAIA_SKIN_STYLE_ID,
   type GaiaOutgoingMessage,
 } from '../src/client/index.ts'
 
@@ -121,7 +122,9 @@ describe('ui-embed client plugin', () => {
       configurable: true,
     })
     document.documentElement.removeAttribute('data-gaia-embed')
+    document.documentElement.removeAttribute('data-gaia-full')
     document.getElementById(GAIA_EMBED_STYLE_ID)?.remove()
+    document.getElementById(GAIA_SKIN_STYLE_ID)?.remove()
     vi.restoreAllMocks()
   })
 
@@ -132,11 +135,16 @@ describe('ui-embed client plugin', () => {
     const connectionListeners = new Set<() => void>()
 
     const toggleSidebarSpy = vi.fn()
+    let layoutSnapshot = { viewportWidth: 1280, narrowExpanded: false, sidebar: 280 }
     const openRightbarSpy = vi.fn()
     const layout = {
       selectPanel: vi.fn(),
       closeRightbar: vi.fn(),
-      toggleSidebar: toggleSidebarSpy,
+      toggleSidebar: toggleSidebarSpy.mockImplementation(() => {
+        if (layoutSnapshot.viewportWidth < 1024) layoutSnapshot = { ...layoutSnapshot, narrowExpanded: !layoutSnapshot.narrowExpanded }
+        else layoutSnapshot = { ...layoutSnapshot, sidebar: layoutSnapshot.sidebar === 0 ? 280 : 0 }
+      }),
+      layoutInfo: { getSnapshot: () => layoutSnapshot, subscribe: () => () => {} },
       openRightbar: openRightbarSpy,
       beginNavigation: vi.fn(() => new AbortController().signal),
       panelInfo: { getSnapshot: () => ({ current: null }), subscribe: () => () => {} },
@@ -298,6 +306,7 @@ describe('ui-embed client plugin', () => {
       disposePaletteSpy,
       disposeLightSpy,
       toggleSidebarSpy,
+      setLayoutSnapshot: (snapshot: typeof layoutSnapshot) => { layoutSnapshot = snapshot },
       openRightbarSpy,
       focusSpy,
       insertTextSpy,
@@ -322,6 +331,75 @@ describe('ui-embed client plugin', () => {
     expect(dispose).toBeUndefined()
     expect(document.documentElement.hasAttribute('data-gaia-embed')).toBe(false)
     expect(parentMessages).toEqual([])
+  })
+
+  it('does not activate in a top-level window, even with full mode in the URL', () => {
+    setLocationSearch('?gaia=full')
+    Object.defineProperty(window, 'parent', { value: window, writable: true, configurable: true })
+    const mock = createMockContext()
+
+    expect(apply(mock.ctx)).toBeUndefined()
+    expect(mock.theme.register).not.toHaveBeenCalled()
+    expect(parentMessages).toEqual([])
+    Object.defineProperty(window, 'parent', { value: fakeParent, writable: true, configurable: true })
+  })
+
+  it('activates shared Gaia skin and theme bridge in full mode only', async () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+
+    expect(document.documentElement.hasAttribute('data-gaia-full')).toBe(true)
+    expect(document.documentElement.hasAttribute('data-gaia-embed')).toBe(false)
+    expect(document.getElementById(GAIA_SKIN_STYLE_ID)?.textContent).toContain('data-gaia-full')
+    expect(document.getElementById(GAIA_EMBED_STYLE_ID)).toBeNull()
+    expect(mock.theme.register).toHaveBeenCalledTimes(2)
+    expect(parentMessages.filter(message => message.type === 'ready')).toHaveLength(1)
+    expect(mock.uiWorkspace.openSession).not.toHaveBeenCalled()
+    expect(mock.layout.selectPanel).not.toHaveBeenCalled()
+    expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
+    expect(mock.registeredCommands).toHaveLength(0)
+    expect(mock.slotRegistrations.map(({ id }) => id)).toEqual(['open-document'])
+    const blockedKey = new KeyboardEvent('keydown', { code: 'KeyB', metaKey: true, cancelable: true })
+    window.dispatchEvent(blockedKey)
+    expect(blockedKey.defaultPrevented).toBe(false)
+
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: {
+        source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark',
+        palette: { background: '#101010', foreground: '#fefefe', accent: '#f97316' },
+      },
+    }))
+    expect(mock.theme.setTheme).toHaveBeenCalledTimes(1)
+    expect(mock.theme.setTheme).toHaveBeenCalledWith('gaia-embed-dark')
+    expect(mock.theme.overrideTokens).toHaveBeenCalledWith('gaia-embed-palette', expect.objectContaining({
+      '--dsw-alias-bg-base': { light: '#101010', dark: '#101010' },
+      '--dsw-alias-button-info-fill': { light: '#f97316', dark: '#f97316' },
+    }))
+    await dispose?.()
+    expect(document.documentElement.hasAttribute('data-gaia-full')).toBe(false)
+  })
+
+  it('expands a collapsed full-mode sidebar once at a 900px viewport', () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    mock.setLayoutSnapshot({ viewportWidth: 900, narrowExpanded: false, sidebar: 280 })
+    apply(mock.ctx)
+
+    expect(mock.toggleSidebarSpy).toHaveBeenCalledTimes(1)
+    expect(mock.layout.layoutInfo.getSnapshot().narrowExpanded).toBe(true)
+    // Simulate a user collapsing it. A later theme update does not override that choice.
+    mock.layout.toggleSidebar()
+    expect(mock.layout.layoutInfo.getSnapshot().narrowExpanded).toBe(false)
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'theme', mode: 'light' },
+    }))
+    expect(mock.toggleSidebarSpy).toHaveBeenCalledTimes(2)
+    expect(mock.layout.layoutInfo.getSnapshot().narrowExpanded).toBe(false)
   })
 
   it('posts error when session query param is missing', () => {
@@ -808,9 +886,9 @@ describe('ui-embed client plugin', () => {
 
 describe('embed styles', () => {
   it('collapses the frame to one track so the conversation column is not placed in a 0px track', async () => {
-    const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
-    expect(GAIA_EMBED_CSS).toContain('grid-template-columns: minmax(0, 1fr) !important;')
-    expect(GAIA_EMBED_CSS).not.toMatch(/grid-template-columns:\s*0px/)
+    const { GAIA_EMBED_CHROME_CSS } = await import('../src/client/styles.ts')
+    expect(GAIA_EMBED_CHROME_CSS).toContain('grid-template-columns: minmax(0, 1fr) !important;')
+    expect(GAIA_EMBED_CHROME_CSS).not.toMatch(/grid-template-columns:\s*0px/)
   })
 })
 
@@ -864,31 +942,30 @@ describe('embed integration of the palette and header entries', () => {
 })
 
 describe('embed composer styles', () => {
-  it('restyles only the composer card inside the embed, with a reduced-motion fallback', async () => {
-    const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
-    expect(GAIA_EMBED_CSS).toContain('html[data-gaia-embed] [data-composer-card] {')
-    expect(GAIA_EMBED_CSS).toContain('background: var(--dsw-alias-bg-base) !important;')
-    expect(GAIA_EMBED_CSS).toContain('border: 1px solid var(--dsw-alias-border-l2) !important;')
-    expect(GAIA_EMBED_CSS).toMatch(/prefers-reduced-motion: reduce[\s\S]*animation: none/)
-    for (const rule of GAIA_EMBED_CSS.split('}').filter(r => r.includes('data-composer-card') && r.includes('{'))) {
-      expect(rule.trim().startsWith('html[data-gaia-embed]') || rule.includes('@media')).toBe(true)
+  it('applies the composer skin in both modes, with a reduced-motion fallback', async () => {
+    const { GAIA_SKIN_CSS } = await import('../src/client/styles.ts')
+    expect(GAIA_SKIN_CSS).toContain(':is(html[data-gaia-embed], html[data-gaia-full]) [data-composer-card] {')
+    expect(GAIA_SKIN_CSS).toContain('background: var(--dsw-alias-bg-base) !important;')
+    expect(GAIA_SKIN_CSS).toContain('border: 1px solid var(--dsw-alias-border-l2) !important;')
+    expect(GAIA_SKIN_CSS).toMatch(/prefers-reduced-motion: reduce[\s\S]*animation: none/)
+    for (const rule of GAIA_SKIN_CSS.split('}').filter(r => r.includes('data-composer-card') && r.includes('{'))) {
+      expect(rule.trim().startsWith(':is(html[data-gaia-embed], html[data-gaia-full])') || rule.includes('@media') || rule.includes('@property') || rule.includes('@keyframes')).toBe(true)
     }
   })
 })
 
 describe('embed send button', () => {
   it('shows an accent outline at rest and an accent fill on hover, never DSH blue', async () => {
-    const { GAIA_EMBED_CSS } = await import('../src/client/styles.ts')
-    const ruleOf = (selector: string) => GAIA_EMBED_CSS.split(`${selector} {`)[1]?.split('}')[0] ?? ''
-    const rest = ruleOf('html[data-gaia-embed] [data-composer-primary]')
+    const { GAIA_SKIN_CSS } = await import('../src/client/styles.ts')
+    const selector = ':is(html[data-gaia-embed], html[data-gaia-full]) [data-composer-primary]'
+    const ruleOf = (target: string) => GAIA_SKIN_CSS.split(`${target} {`)[1]?.split('}')[0] ?? ''
+    const rest = ruleOf(selector)
     expect(rest).toContain('background: var(--dsw-alias-bg-base) !important;')
     expect(rest).toContain('color: var(--dsw-alias-button-info-fill) !important;')
-    const hover = ruleOf('html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled)')
+    const hover = ruleOf(`${selector}:hover:not(:disabled)`)
     expect(hover).toContain('background: var(--dsw-alias-button-info-fill) !important;')
     expect(hover).toContain('color: var(--dsw-alias-bg-base) !important;')
     const { paletteTokens } = await import('../src/client/palette.ts')
     expect(paletteTokens({ accent: '#e8590c' })['--dsw-alias-button-info-hover']?.dark).toBe('color-mix(in oklch, #e8590c, black 12%)')
   })
 })
-
-

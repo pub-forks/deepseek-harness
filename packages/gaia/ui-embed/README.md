@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This private client plugin activates when the page loads with query parameters specifying embed mode for a single session. It hides the navigation and window chrome, suppresses navigation shortcuts, and manages postMessage communication with the host frame.
+This private client plugin supports two Gaia iframe modes. Both receive Gaia's theme, palette and visual skin through the validated postMessage bridge. Embed mode additionally presents one session as a drawer chat and hides shell chrome; full mode keeps the complete DSH shell, including its navigation and settings.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ This private client plugin activates when the page loads with query parameters s
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount the plugin in the Gaia web profile patch overlay. The browser bundle activates only when `gaia=embed` and a valid `session` query parameter are present in the location search.
+Mount the plugin in the Gaia web profile patch overlay. It activates inside an iframe for `gaia=embed` (with a valid `session` to enable chat behavior) or `gaia=full` (the complete shell). Outside an iframe it does nothing. Both modes post `ready` once and accept same-origin, validated theme messages; only embed mode opens and enforces a session, removes navigation chrome and enables drawer-specific commands and controls.
 
 -----
 
@@ -37,11 +37,11 @@ No runtime invariant companion applies: this plugin's registration and disposal 
 <a id="model-experience"></a>
 ## Model Experience
 
-### Gaia iframe embed
+### Gaia iframe modes
 
 #### What the model sees
 
-No direct contribution; embed presentation adjusts `data-gaia-embed` browser viewports without altering model prompts.
+No direct contribution. Both modes apply the Gaia skin; embed mode additionally adjusts the `data-gaia-embed` viewport without altering model prompts.
 
 #### Token effect
 
