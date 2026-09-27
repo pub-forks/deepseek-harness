@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This Gaia overlay plugin replaces DSH's builtin `.md` and `.markdown` document preview with Gaia's read-only Obsidian-flavored renderer. It uses GFM, Gaia's remark plugin and frontmatter parser, Gaia's sanitization schema, Prism highlighting, and lazily loaded Mermaid diagrams. Wikilinks, relative file links and image embeds resolve from the current document; file navigation uses the Sidebar resource action.
+This Gaia overlay plugin replaces DSH's builtin `.md` and `.markdown` document preview with Gaia's read-only Obsidian-flavored renderer. It uses GFM, Gaia's remark plugin and frontmatter parser, Gaia's sanitization schema, Prism highlighting, and Mermaid diagrams rendered by the Gaia parent frame. Wikilinks, relative file links and image embeds resolve from the current document; file navigation uses the Sidebar resource action.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ This Gaia overlay plugin replaces DSH's builtin `.md` and `.markdown` document p
 
 Mount `gaia-ui-markdown` in `packages/gaia/profile-gaia/gaia.patch.yml`. Its `extension` priority band is ranked above the builtin document renderer, and its keyed `sidebar.right.tab.document` contribution applies wherever DSH renders document previews. The renderer is read-only: GFM task-list checkboxes remain disabled. The host continues to own document reads and images use the authenticated file-media route.
 
-The remark plugin, frontmatter parser and wikilink path helpers are copied from Gaia's web viewer. Keep those ports aligned with their source files. Raw HTML is parsed and sanitized with the Gaia schema before rendering. Mermaid is dynamically imported and initialized with `securityLevel: 'strict'`.
+The remark plugin, frontmatter parser and wikilink path helpers are copied from Gaia's web viewer. Keep those ports aligned with their source files. Raw HTML is parsed and sanitized with the Gaia schema before rendering. Mermaid is not bundled: its async chunks cannot load through the client module table. The viewer posts `renderMermaid {reqId, code, dark}` to the Gaia parent, which renders with its own Mermaid at `securityLevel: 'strict'` and replies `mermaidRendered {reqId, svg | error}`; outside a Gaia frame, or on error or timeout (15 s), the diagram source is shown. The client build maps vfile's `#minpath`/`#minproc`/`#minurl` to their browser variants so the bundle never requires node builtins.
 
 ## Dev Note
 

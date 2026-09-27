@@ -72,3 +72,26 @@ describe('Gaia Markdown remark port', () => {
     expect(own.priority).toBe('extension')
   })
 })
+
+describe('Mermaid diagrams', () => {
+  it('asks the Gaia parent to render and shows its SVG', async () => {
+    const parent = { postMessage: vi.fn() }
+    vi.spyOn(window, 'parent', 'get').mockReturnValue(parent as unknown as Window)
+    render(<MarkdownBody {...props('```mermaid\ngraph TD; A-->B\n```')} />)
+    expect(parent.postMessage).toHaveBeenCalledTimes(1)
+    const [request, origin] = parent.postMessage.mock.calls[0] as [{ type: string; reqId: string; code: string }, string]
+    expect(origin).toBe(window.location.origin)
+    expect(request).toMatchObject({ source: 'gaia-dsh', v: 1, type: 'renderMermaid', code: 'graph TD; A-->B' })
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { source: 'gaia-dsh', v: 1, type: 'mermaidRendered', reqId: request.reqId, svg: '<svg data-test="diagram"></svg>' },
+      origin: window.location.origin, source: parent as unknown as Window,
+    }))
+    expect(await screen.findByText((_, element) => element?.getAttribute('data-test') === 'diagram')).toBeTruthy()
+    vi.restoreAllMocks()
+  })
+
+  it('shows the diagram source outside a Gaia frame', async () => {
+    render(<MarkdownBody {...props('```mermaid\ngraph TD; A-->B\n```')} />)
+    expect(await screen.findByText('graph TD; A-->B')).toBeTruthy()
+  })
+})
