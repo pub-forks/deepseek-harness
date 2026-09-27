@@ -91,10 +91,10 @@ html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
 
 /* A drawer tab belongs to one Gaia project whose folder is already the
    session's workspace; the empty-session hero's workspace chip would let the
-   user move the tab out of its project, so it is hidden. DSH's "Preview"
-   badge beside the hero headline is hidden with it. */
+   user move the tab out of its project, so it is hidden. DSH's "Into the
+   Unknown" headline is hidden with it, leaving the Gaia mark. */
 html[data-gaia-embed] [data-hero-workspace],
-html[data-gaia-embed] [data-hero-preview] {
+html[data-gaia-embed] [data-hero-headline] {
   display: none !important;
 }
 
