@@ -7,6 +7,8 @@ import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+// Type-only: the ctx.sidebarRight Context merge.
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
@@ -16,6 +18,7 @@ import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
+import { lineParam, resolveFileAddress } from './open-file.ts'
 import { injectEmbedStyles } from './styles.ts'
 import { GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
@@ -238,6 +241,19 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const sessionObserver = new MutationObserver(enforceSession)
   sessionObserver.observe(document.body, {
     subtree: true, childList: true, attributes: true, attributeFilter: ['data-conversation-session'],
+  })
+
+  // A drawer tab hides DSH's right Sidebar, where file links, tool rows and
+  // deliverables open files; hand file opens to Gaia's editor instead. Other
+  // resource types still go to the (hidden) Sidebar.
+  ctx.inject(['sidebarRight'], (scope: Context) => {
+    scope.effect(() => scope.sidebarRight.setOpenInterceptor((address, options) => {
+      const path = resolveFileAddress(address, id => ctx.sessions.list.getSnapshot().byId[SessionId(id)]?.cwd)
+      if (path === undefined) return false
+      const line = lineParam(options.params)
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'openFile', path, ...(line === undefined ? {} : { line }) })
+      return true
+    }), 'gaia-ui-embed: open files in the Gaia editor')
   })
 
   /** Resolve SessionInput through the Session scope context. */

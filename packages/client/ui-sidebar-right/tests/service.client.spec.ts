@@ -102,6 +102,20 @@ describe('SidebarRightController — opening', () => {
     } finally { release() }
   })
 
+  it('lets an interceptor claim an open before the seat is consulted, until it is disposed', () => {
+    const { controller } = harness()
+    const seen: string[] = []
+    const dispose = controller.setOpenInterceptor((address) => {
+      seen.push(address)
+      return address.startsWith('dsh-resource://file/')
+    })
+    controller.openResource('dsh-resource://file/session/s-test/a.txt', { params: undefined })
+    controller.openResourceIn(SESSION, 'dsh-resource://file/session/s-test/b.txt')
+    expect(seen).toEqual(['dsh-resource://file/session/s-test/a.txt', 'dsh-resource://file/session/s-test/b.txt'])
+    dispose()
+    expect(() => { controller.openResource('dsh-resource://file/session/s-test/a.txt') }).toThrow('no session surface is mounted')
+  })
+
   it('refuses every write while no seat is mounted', () => {
     const { controller } = harness()
     expect(() => { controller.openResource('dsh-resource://file/session/s-test/a.txt') }).toThrow('no session surface is mounted')

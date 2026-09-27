@@ -145,6 +145,12 @@ export interface SidebarRightOpenResourceOptions extends SidebarRightPlacement {
   readonly params?: SidebarRightResourceParams
 }
 
+/**
+ * GAIA: an embedding host's claim on resource opens; returning `true` means the
+ * host opened the resource itself and the Sidebar does nothing.
+ */
+export type SidebarRightOpenInterceptor = (address: string, options: SidebarRightOpenResourceOptions) => boolean
+
 /** How a caller wants a page type opened. */
 export interface SidebarRightOpenTabOptions<K extends string = string> extends SidebarRightPlacement {
   /** That kind's navigation parameters, typed by kind; delivered as `navigation.params`. */
@@ -240,6 +246,8 @@ export class SidebarRightController implements ISidebarRight {
   /** The mounted seat's session; see {@link ISidebarRight.mounted}. */
   readonly mounted: ObservableSnapshot<SessionId | undefined> = this.mountedSession
   private binding: SidebarRightBinding | undefined
+  // GAIA: set by the Gaia drawer embed, which hides this column and opens files in Gaia's editor.
+  private openInterceptor: SidebarRightOpenInterceptor | undefined
   private readonly closeHandlers = new Map<string, SidebarRightCloseHandler>()
 
   /**
@@ -316,8 +324,21 @@ export class SidebarRightController implements ISidebarRight {
    * @param options - placement, the opening type, and navigation parameters.
    */
   openResource(address: string, options: SidebarRightOpenResourceOptions = {}): void {
+    if (this.openInterceptor?.(address, options) === true) return
     const { sessionId, actions } = this.require()
     this.placeResource(sessionId, actions, address, options)
+  }
+
+  /**
+   * GAIA: let an embedding host claim resource opens before the Sidebar places them.
+   * @param interceptor - returns `true` for an address it opened itself.
+   * @returns a disposer that clears exactly this interceptor.
+   */
+  setOpenInterceptor(interceptor: SidebarRightOpenInterceptor): () => void {
+    this.openInterceptor = interceptor
+    return () => {
+      if (this.openInterceptor === interceptor) this.openInterceptor = undefined
+    }
   }
 
   /**
@@ -339,6 +360,7 @@ export class SidebarRightController implements ISidebarRight {
    * @param options - placement, the opening type, and navigation parameters.
    */
   openResourceIn(sessionId: SessionId, address: string, options: SidebarRightOpenResourceOptions = {}): void {
+    if (this.openInterceptor?.(address, options) === true) return
     const actions = this.actionsFor(sessionId)
     if (actions !== undefined) this.placeResource(sessionId, actions, address, options)
   }
