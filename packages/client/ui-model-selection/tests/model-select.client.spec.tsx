@@ -650,7 +650,7 @@ describe('ModelSelect search and provider groups', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['groups.collapseAll'] }).disabled).toBe(true)
   })
 
-  it('re-places the card above the trigger when collapsing a provider shrinks it', () => {
+  it('keeps the card pinned above the trigger while collapsing a provider shrinks it', () => {
     const offsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')!
     const rect = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')!
     const original = globalThis.ResizeObserver
@@ -669,16 +669,35 @@ describe('ModelSelect search and provider groups', () => {
     }
     try {
       open()
-      // 700 (trigger top) - 8 (gap) - 300 (card height).
-      expect(screen.getByRole('menu').style.top).toBe('392px')
+      // jsdom's 768px viewport - 700 (trigger top) + 8 (gap); room is 700 - 8 - 12.
+      const menu = (): HTMLElement => screen.getByRole('menu')
+      expect(menu().style.bottom).toBe('76px')
+      expect(menu().style.top).toBe('')
+      expect(menu().style.getPropertyValue('--model-menu-room')).toBe('680px')
       fireEvent.click(screen.getByRole('button', { name: /Kilo/, expanded: true }))
       height = 120
       act(() => { onResize?.() })
-      expect(screen.getByRole('menu').style.top).toBe('572px')
+      expect(menu().style.bottom).toBe('76px')
     } finally {
       Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offsetHeight)
       Object.defineProperty(Element.prototype, 'getBoundingClientRect', rect)
       globalThis.ResizeObserver = original
+    }
+  })
+
+  it('opens the card below the trigger when the room above it is short', () => {
+    const rect = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')!
+    Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top: 100, bottom: 128, left: 400, right: 500, width: 100, height: 28, x: 400, y: 100, toJSON: () => ({}) }),
+    })
+    try {
+      open()
+      // 128 (trigger bottom) + 8 (gap); room is 768 - 128 - 8 - 12.
+      expect(screen.getByRole('menu').style.top).toBe('136px')
+      expect(screen.getByRole('menu').style.getPropertyValue('--model-menu-room')).toBe('620px')
+    } finally {
+      Object.defineProperty(Element.prototype, 'getBoundingClientRect', rect)
     }
   })
 

@@ -78,6 +78,9 @@ function writeCollapsedGroups(groups: ReadonlySet<string>): void {
 /** Unplaced portal card: hidden but laid out at a fixed origin so offsetWidth/offsetHeight are real (Menu primitive's measure pass). */
 const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
 
+/** GAIA: room above the trigger, in pixels, below which the card may open underneath it. */
+const MIN_MENU_ROOM = 200
+
 /**
  * Render the composer model seat.
  * @param props - owner share (locked) + injected face (shared directory
@@ -234,21 +237,28 @@ export function ModelSelect(
       const rect = triggerRef.current?.getBoundingClientRect()
       if (rect === undefined) return
       const MARGIN = 12
+      const GAP = 8
       const lw = menuRef.current?.offsetWidth ?? 0
-      const lh = menuRef.current?.offsetHeight ?? 0
       let x = rect.right - lw
-      let y = rect.top - 8 - lh
       if (lw > 0) x = Math.min(Math.max(x, MARGIN), window.innerWidth - lw - MARGIN)
-      if (lh > 0) y = Math.min(Math.max(y, MARGIN), window.innerHeight - lh - MARGIN)
-      setMenuPos({ left: x, top: y })
+      // GAIA: pin the card's near edge to the trigger and cap its height to
+      // the room on that side (--model-menu-room, read by the stylesheet), so
+      // expanding or collapsing providers grows or shrinks the card away from
+      // the trigger instead of sliding it over the trigger. The card opens
+      // above the trigger unless that side is short and the other is roomier.
+      const above = rect.top - GAP - MARGIN
+      const below = window.innerHeight - rect.bottom - GAP - MARGIN
+      setMenuPos(above >= MIN_MENU_ROOM || above >= below
+        ? { left: x, bottom: window.innerHeight - rect.top + GAP, '--model-menu-room': `${Math.max(above, 0)}px` } as CSSProperties
+        : { left: x, top: Math.max(rect.bottom + GAP, MARGIN), '--model-menu-room': `${below}px` } as CSSProperties)
     }
     // First run measures the hidden pre-render (same commit as `open`), so
     // the card lands placed before anything paints.
     place()
     window.addEventListener('scroll', place, true)
     window.addEventListener('resize', place)
-    // GAIA: collapsing a provider or filtering resizes the card without a
-    // pane or directory change; re-place so it stays anchored to the trigger.
+    // GAIA: a width change (filtering, a drilled pane) moves the clamped left
+    // edge without a pane or directory change; re-place on every resize.
     const resizes = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(place)
     if (menuRef.current !== null) resizes?.observe(menuRef.current)
     return () => {

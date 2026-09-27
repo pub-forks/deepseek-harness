@@ -91,10 +91,11 @@ html[data-gaia-embed] [data-composer-primary]:hover:not(:disabled) {
   box-shadow: none !important;
 }
 
-/* The model menu reserves 96px of the viewport by default, which leaves a
-   drawer tab's short iframe only a few rows; let it use nearly all of it. */
+/* The model menu caps itself at 360px and reserves 96px of the viewport,
+   which leaves a drawer tab's short iframe only a few rows; let it fill the
+   room beside its trigger (--model-menu-room, set by its placement). */
 html[data-gaia-embed] [data-model-menu] {
-  max-height: calc(100vh - 24px) !important;
+  max-height: var(--model-menu-room, calc(100vh - 24px)) !important;
 }
 
 /* A drawer tab belongs to one Gaia project whose folder is already the
