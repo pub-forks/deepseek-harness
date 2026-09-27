@@ -23,7 +23,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用
 
-在 Gaia Web 配置文件补丁覆盖层中挂载该插件。iframe 地址为 `gaia=embed`（并带有效 `session` 才启用聊天行为）或 `gaia=full`（完整外框）时插件激活；顶层窗口中不会激活。两种模式都会发送一次 `ready`、接受经过验证的同源主题消息并应用 Gaia 品牌样式。插件卸载时会恢复原页面标题与图标链接。只有嵌入模式会打开并固定会话、隐藏导航外框，并启用抽屉专用命令和控件。
+在 Gaia Web 配置文件补丁覆盖层中挂载该插件。iframe 地址为 `gaia=embed`（并带有效 `session` 才启用聊天行为）或 `gaia=full`（完整外框）时插件激活；顶层窗口中不会激活。两种模式都会发送一次 `ready`、接受经过验证的同源主题消息、应用 Gaia 品牌样式，并观察已加载的 Workspace 列表。Workspace 新增、删除或重命名后，插件会在 500 毫秒防抖后发送不含负载的 `{ source: 'gaia-dsh', v: 1, type: 'workspacesChanged' }`；随后 Gaia 执行本地 Project/Workspace 同步。插件卸载时会恢复原页面标题与图标链接。只有嵌入模式会打开并固定会话、隐藏导航外框，并启用抽屉专用命令和控件。
 
 -----
 

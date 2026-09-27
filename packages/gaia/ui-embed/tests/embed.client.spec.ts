@@ -131,6 +131,7 @@ describe('ui-embed client plugin', () => {
     document.getElementById(GAIA_SKIN_STYLE_ID)?.remove()
     document.querySelector('[data-gaia-favicon]')?.remove()
     vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   function createMockContext() {
@@ -140,6 +141,13 @@ describe('ui-embed client plugin', () => {
     locale.register('settings.account', 'en', { backToHarness: 'Back to DeepSeek Harness' })
     locale.register('settings.account', 'zh', { backToHarness: '返回 DeepSeek Harness' })
     ctx.provide('locale', locale)
+
+    let workspaceSnapshot = { phase: 'pending' as 'pending' | 'ready', items: [] as { workspaceId: string; path: string; title: string }[] }
+    const workspaceListeners = new Set<() => void>()
+    ctx.provide('workspaces', { list: {
+      getSnapshot: () => workspaceSnapshot,
+      subscribe: (listener: () => void) => { workspaceListeners.add(listener); return () => workspaceListeners.delete(listener) },
+    } })
 
     let connectionState: 'connected' | 'connecting' | 'disconnected' = 'connected'
     const connectionListeners = new Set<() => void>()
@@ -300,6 +308,10 @@ describe('ui-embed client plugin', () => {
       sessionCtx,
       layout,
       uiWorkspace,
+      setWorkspaceList: (snapshot: typeof workspaceSnapshot) => {
+        workspaceSnapshot = snapshot
+        workspaceListeners.forEach((listener) => { listener() })
+      },
       connection,
       setConnectionState: (s: 'connected' | 'connecting' | 'disconnected') => {
         connectionState = s
@@ -407,6 +419,23 @@ describe('ui-embed client plugin', () => {
     }))
     await dispose?.()
     expect(document.documentElement.hasAttribute('data-gaia-full')).toBe(false)
+  })
+
+  it.each(['full', 'embed'] as const)('debounces workspace changes after the first ready snapshot in %s mode', async (mode) => {
+    vi.useFakeTimers()
+    setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    mock.setWorkspaceList({ phase: 'ready', items: [{ workspaceId: 'w1', path: '/tmp/one', title: 'One' }] })
+    mock.setWorkspaceList({ phase: 'ready', items: [{ workspaceId: 'w1', path: '/tmp/one', title: 'Renamed' }] })
+    await vi.advanceTimersByTimeAsync(499)
+    expect(parentMessages.filter(message => message.type === 'workspacesChanged')).toHaveLength(0)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(parentMessages.filter(message => message.type === 'workspacesChanged')).toHaveLength(1)
+    mock.setWorkspaceList({ phase: 'ready', items: [] })
+    await vi.advanceTimersByTimeAsync(500)
+    expect(parentMessages.filter(message => message.type === 'workspacesChanged')).toHaveLength(2)
+    expect(parentMessages.filter(message => message.type === 'workspacesChanged')[0]).toEqual({ source: 'gaia-dsh', v: 1, type: 'workspacesChanged' })
   })
 
   it.each(['full', 'embed'] as const)('sets the Gaia title, favicon and brand slots in %s mode', async (mode) => {

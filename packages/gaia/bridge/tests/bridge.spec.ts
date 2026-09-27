@@ -14,7 +14,16 @@ type Handler = (req: IncomingMessage, res: ServerResponse) => Promise<void>
 function fixture(value: string | undefined = secret, documentPath: string | null = '/tmp/cordis.patch.yml') {
   vi.stubEnv('GAIA_CONTROL_SECRET', value ?? '')
   let handler: Handler | undefined
-  const workspaces = new Map<string, { id: string; path: string; sessionIds: string[] }>()
+  type MockWorkspace = {
+    id: string
+    path: string
+    title: string
+    createdAt: string
+    sessionIds: string[]
+    setTitle(title: string): Promise<void>
+    status(): Promise<string>
+  }
+  const workspaces = new Map<string, MockWorkspace>()
   const sessions: { sessionId: string; running: boolean; updatedAt: number; projections: { values: { title: string } } }[] = []
   const archivedSessions = new Set<string>()
   const gateway = {
@@ -29,9 +38,9 @@ function fixture(value: string | undefined = secret, documentPath: string | null
     inject: () => {},
     webServer: { register: (route: { handler: Handler }) => { handler = route.handler; return () => {} } },
     workspaceRegistry: {
-      create: async (path: string) => {
+      create: async (path: string, title?: string) => {
         let workspace = workspaces.get(path)
-        if (!workspace) { workspace = { id: `workspace-${workspaces.size + 1}`, path, sessionIds: [] }; workspaces.set(path, workspace) }
+        if (!workspace) { workspace = { id: `workspace-${workspaces.size + 1}`, path, title: title ?? 'tmp', createdAt: '2026-01-01T00:00:00Z', sessionIds: [], setTitle: async (next) => { workspace!.title = next }, status: async () => 'ok' }; workspaces.set(path, workspace) }
         return workspace
       },
       get: (id: string) => [...workspaces.values()].find(workspace => workspace.id === id),
@@ -145,6 +154,22 @@ describe('Gaia control bridge', () => {
     // Session is now unarchived in list
     const afterUnarchive = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}`)
     expect(afterUnarchive.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: false }])
+  })
+
+  it('lists workspaces and validates and applies workspace titles', async () => {
+    const f = fixture()
+    const created = await f.call('POST', '/gaia/control/workspaces/ensure', { path: '/tmp', title: '  Project  ' })
+    expect(created.status).toBe(200)
+    expect((await f.call('GET', '/gaia/control/workspaces')).body.workspaces).toEqual([{
+      id: 'workspace-1', path: '/tmp', title: 'Project', createdAt: '2026-01-01T00:00:00Z', status: 'ok',
+    }])
+    expect((await f.call('POST', '/gaia/control/workspaces/rename', { workspaceId: 'workspace-1', title: ' Renamed ' })).status).toBe(200)
+    expect((await f.call('GET', '/gaia/control/workspaces')).body.workspaces).toMatchObject([{ title: 'Renamed' }])
+    expect((await f.call('POST', '/gaia/control/workspaces/rename', { workspaceId: 'missing', title: 'Name' })).status).toBe(404)
+    expect((await f.call('POST', '/gaia/control/workspaces/rename', { workspaceId: 'workspace-1', title: '   ' })).status).toBe(400)
+    expect((await f.call('POST', '/gaia/control/workspaces/rename', { workspaceId: 'workspace-1', title: 'x'.repeat(121) })).status).toBe(400)
+    expect((await f.call('POST', '/gaia/control/workspaces/rename', { workspaceId: 'workspace-1', title: 'Title', extra: true })).status).toBe(400)
+    expect((await f.call('GET', '/gaia/control/workspaces?extra=1')).status).toBe(400)
   })
 
   it('includes contentless sessions defaulting title and updatedAt', async () => {

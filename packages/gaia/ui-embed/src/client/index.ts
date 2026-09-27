@@ -148,6 +148,29 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const restoreTitle = setGaiaDocumentTitle()
   const restoreFavicon = setGaiaFavicon()
 
+  const workspaces = ctx.get('workspaces')
+  let workspaceTimer: ReturnType<typeof setTimeout> | undefined
+  let previousWorkspaceFingerprint: string | undefined
+  let workspaceListLoaded = false
+  const disposeWorkspaceSubscription = workspaces?.list.subscribe(() => {
+    const snapshot = workspaces.list.getSnapshot()
+    if (snapshot.phase !== 'ready') return
+    const fingerprint = JSON.stringify(snapshot.items.map(({ workspaceId, path, title }) => [workspaceId, path, title]))
+    if (workspaceListLoaded && fingerprint === previousWorkspaceFingerprint) return
+    workspaceListLoaded = true
+    previousWorkspaceFingerprint = fingerprint
+    clearTimeout(workspaceTimer)
+    workspaceTimer = setTimeout(() => { postToParent({ source: 'gaia-dsh', v: 1, type: 'workspacesChanged' }) }, 500)
+  })
+  if (workspaces) {
+    const snapshot = workspaces.list.getSnapshot()
+    if (snapshot.phase === 'ready') {
+      workspaceListLoaded = true
+      previousWorkspaceFingerprint = JSON.stringify(snapshot.items.map(({ workspaceId, path, title }) => [workspaceId, path, title]))
+      workspaceTimer = setTimeout(() => { postToParent({ source: 'gaia-dsh', v: 1, type: 'workspacesChanged' }) }, 500)
+    }
+  }
+
   const root = document.documentElement
   const rootAttribute = mode === 'full' ? 'data-gaia-full' : 'data-gaia-embed'
   root.setAttribute(rootAttribute, '')
@@ -193,6 +216,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     restoreFavicon()
     disposeLocaleOverrides()
     window.removeEventListener('message', onThemeMessage)
+    disposeWorkspaceSubscription?.()
+    clearTimeout(workspaceTimer)
     disposePalette?.()
     disposeDarkTheme()
     disposeLightTheme()

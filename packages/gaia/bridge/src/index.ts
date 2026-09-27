@@ -404,7 +404,7 @@ export function apply(ctx: Context): void {
             answer(res, 200, { ok: true })
           } else if (method === 'POST' && path === `${PREFIX}/workspaces/ensure`) {
             const request = await body(req)
-            exactFields(request, ['path'])
+            exactFields(request, ['path', 'title'])
             const requested = stringField(request, 'path')
             if (!isAbsolute(requested)) throw new RequestError(400, 'invalid_path')
             let canonical: string
@@ -414,8 +414,27 @@ export function apply(ctx: Context): void {
             } catch {
               throw new RequestError(400, 'invalid_path')
             }
-            const workspace = await ctx.workspaceRegistry.create(canonical)
+            const title = request.title === undefined ? undefined : stringField(request, 'title').trim()
+            if (title !== undefined && title.length > 120) throw new RequestError(400, 'invalid_title')
+            const workspace = await ctx.workspaceRegistry.create(canonical, title)
             answer(res, 200, { workspaceId: workspace.id })
+          } else if (method === 'GET' && path === `${PREFIX}/workspaces`) {
+            if ([...url.searchParams.keys()].length > 0) throw new RequestError(400, 'invalid_query')
+            const workspaces = await Promise.all(ctx.workspaceRegistry.list().map(async workspace => ({
+              id: workspace.id, path: workspace.path, title: workspace.title,
+              createdAt: workspace.createdAt, status: await workspace.status(),
+            })))
+            answer(res, 200, { workspaces })
+          } else if (method === 'POST' && path === `${PREFIX}/workspaces/rename`) {
+            const request = await body(req)
+            exactFields(request, ['workspaceId', 'title'])
+            const workspaceId = WorkspaceId(stringField(request, 'workspaceId'))
+            const title = stringField(request, 'title').trim()
+            if (title.length > 120) throw new RequestError(400, 'invalid_title')
+            const workspace = ctx.workspaceRegistry.get(workspaceId)
+            if (workspace === undefined) throw new RequestError(404, 'workspace_not_found')
+            await workspace.setTitle(title)
+            answer(res, 200, { ok: true })
           } else if (method === 'POST' && path === `${PREFIX}/sessions`) {
             const request = await body(req)
             exactFields(request, ['workspaceId', 'title'])

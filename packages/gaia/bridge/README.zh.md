@@ -23,7 +23,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 Gaia Web 覆盖层中挂载此插件，并在 DSH 子进程环境中提供密钥。现有接口包括 `GET health`、Workspace 创建、Session 创建/列表/重命名/归档/取消归档，以及 `GET activity`。`POST remote` 调用允许列表中的 unary Remote；`POST streams` 打开允许的 stream Remote，`GET streams/:id?after=` 长轮询缓冲项，`DELETE streams/:id` 取消流。Remote 允许列表位于 `src/allowlist.ts`，其他方法返回 `not_allowed`。`GET/PUT config-document` 使用 YAML 验证、SHA-256 前置条件、1 MiB 文件上限和原子替换来编辑当前 profile patch。`GET profile-files` 只列出 `cordis.patch.yml`、`cordis.yml`、`package.json` 和 `pnpm-workspace.yaml`；`GET/PUT profile-files/:name` 读取或更新这些固定名称之一。文件写入使用 SHA-256 前置条件、格式验证和原子替换。现有路由请求体上限为 16 KiB，Remote 请求为 256 KiB，文档和 profile 文件写入为 1.25 MiB。
+在 Gaia Web 覆盖层中挂载此插件，并在 DSH 子进程环境中提供密钥。Workspace 接口为 `GET workspaces`（包含实时目录状态）、`POST workspaces/ensure { path, title? }` 和 `POST workspaces/rename { workspaceId, title }`；标题会去除首尾空格并限制为 120 个字符。其他接口包括 Session 创建/列表/重命名/归档/取消归档以及 `GET activity`。`POST remote` 调用允许列表中的 unary Remote；`POST streams` 打开允许的 stream Remote，`GET streams/:id?after=` 长轮询缓冲项，`DELETE streams/:id` 取消流。Remote 允许列表位于 `src/allowlist.ts`，其他方法返回 `not_allowed`。`GET/PUT config-document` 使用 YAML 验证、SHA-256 前置条件、1 MiB 文件上限和原子替换来编辑当前 profile patch。`GET profile-files` 只列出 `cordis.patch.yml`、`cordis.yml`、`package.json` 和 `pnpm-workspace.yaml`；`GET/PUT profile-files/:name` 读取或更新这些固定名称之一。文件写入使用 SHA-256 前置条件、格式验证和原子替换。现有路由请求体上限为 16 KiB，Remote 请求为 256 KiB，文档和 profile 文件写入为 1.25 MiB。
 
 -----
 

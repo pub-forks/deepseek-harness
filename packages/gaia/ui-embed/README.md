@@ -23,7 +23,7 @@ This private client plugin supports two Gaia iframe modes. Both receive Gaia's t
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount the plugin in the Gaia web profile patch overlay. It activates inside an iframe for `gaia=embed` (with a valid `session` to enable chat behavior) or `gaia=full` (the complete shell). Outside an iframe it does nothing. Both modes post `ready` once, accept same-origin validated theme messages, and apply Gaia branding. The plugin restores the prior title and icon links when disposed. Only embed mode opens and enforces a session, removes navigation chrome and enables drawer-specific commands and controls.
+Mount the plugin in the Gaia web profile patch overlay. It activates inside an iframe for `gaia=embed` (with a valid `session` to enable chat behavior) or `gaia=full` (the complete shell). Outside an iframe it does nothing. Both modes post `ready` once, accept same-origin validated theme messages, apply Gaia branding, and observe the loaded Workspace list. Workspace additions, removals and renames post the payload-free `{ source: 'gaia-dsh', v: 1, type: 'workspacesChanged' }` message after a 500 ms debounce; Gaia then runs local project/workspace reconciliation. The plugin restores the prior title and icon links when disposed. Only embed mode opens and enforces a session, removes navigation chrome and enables drawer-specific commands and controls.
 
 -----
 
