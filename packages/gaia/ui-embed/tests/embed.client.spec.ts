@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import {
@@ -86,6 +87,7 @@ describe('ui-embed client plugin', () => {
   let originalLocation: Location
   let parentMessages: GaiaOutgoingMessage[]
   let fakeParent: Window
+  let contexts: Context[]
 
   const setLocationSearch = (search: string) => {
     Object.defineProperty(window, 'location', {
@@ -97,6 +99,7 @@ describe('ui-embed client plugin', () => {
 
   beforeEach(() => {
     parentMessages = []
+    contexts = []
     originalLocation = window.location
     setLocationSearch('')
 
@@ -115,7 +118,8 @@ describe('ui-embed client plugin', () => {
     })
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await Promise.all(contexts.map(ctx => ctx.fiber.dispose()))
     Object.defineProperty(window, 'location', {
       value: originalLocation,
       writable: true,
@@ -125,11 +129,17 @@ describe('ui-embed client plugin', () => {
     document.documentElement.removeAttribute('data-gaia-full')
     document.getElementById(GAIA_EMBED_STYLE_ID)?.remove()
     document.getElementById(GAIA_SKIN_STYLE_ID)?.remove()
+    document.querySelector('[data-gaia-favicon]')?.remove()
     vi.restoreAllMocks()
   })
 
   function createMockContext() {
     const ctx = new Context()
+    contexts.push(ctx)
+    const locale = new LocaleRuntime(ctx)
+    locale.register('settings.account', 'en', { backToHarness: 'Back to DeepSeek Harness' })
+    locale.register('settings.account', 'zh', { backToHarness: '返回 DeepSeek Harness' })
+    ctx.provide('locale', locale)
 
     let connectionState: 'connected' | 'connecting' | 'disconnected' = 'connected'
     const connectionListeners = new Set<() => void>()
@@ -248,11 +258,19 @@ describe('ui-embed client plugin', () => {
     }
     ctx.provide('theme', theme)
 
-    const slotRegistrations: { name: string; id: string; priority?: number }[] = []
+    const slotRegistrations: { name: string; id?: string; priority?: number }[] = []
+    const slotComponents: Array<{ name: string; component: unknown }> = []
     const slots = {
-      inject: vi.fn((_name: string, factory: () => () => void) => factory()),
-      register: vi.fn((options: { name: string; id: string; priority?: number }) => {
+      inject: vi.fn((_name: string, factory: () => unknown) => {
+        const result = factory()
+        if (result !== null && typeof result === 'object' && Symbol.iterator in result) {
+          Array.from(result as Iterable<unknown>)
+        }
+        return result
+      }),
+      register: vi.fn((options: { name: string; id?: string; priority?: number }, component?: unknown) => {
         slotRegistrations.push(options)
+        slotComponents.push({ name: options.name, component })
         return () => {}
       }),
     }
@@ -276,7 +294,9 @@ describe('ui-embed client plugin', () => {
 
     return {
       ctx,
+      locale,
       slotRegistrations,
+      slotComponents,
       sessionCtx,
       layout,
       uiWorkspace,
@@ -359,7 +379,14 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.selectPanel).not.toHaveBeenCalled()
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
-    expect(mock.slotRegistrations.map(({ id }) => id)).toEqual(['open-document'])
+    expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
+      'settings.action', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'conversation.hero.brand.mark',
+    ])
+    expect(mock.slotComponents.find(({ name }) => name === 'sidebar.brand.mark')?.component)
+      .toBe((await import('../src/client/brand.ts')).GaiaMark)
+    expect(mock.slotComponents.find(({ name }) => name === 'sidebar.brand.name')?.component)
+      .toBe((await import('../src/client/brand.ts')).GaiaBrandName)
     const blockedKey = new KeyboardEvent('keydown', { code: 'KeyB', metaKey: true, cancelable: true })
     window.dispatchEvent(blockedKey)
     expect(blockedKey.defaultPrevented).toBe(false)
@@ -380,6 +407,53 @@ describe('ui-embed client plugin', () => {
     }))
     await dispose?.()
     expect(document.documentElement.hasAttribute('data-gaia-full')).toBe(false)
+  })
+
+  it.each(['full', 'embed'] as const)('sets the Gaia title, favicon and brand slots in %s mode', async (mode) => {
+    setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed')
+    const previousTitle = document.title
+    const previousIcons = [...document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')]
+    const priorIcon = document.createElement('link')
+    priorIcon.rel = 'icon'
+    priorIcon.href = '/original.ico'
+    document.head.append(priorIcon)
+
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+
+    expect(document.title).toBe('Gaia Harness')
+    const gaiaIcon = document.querySelector<HTMLLinkElement>('link[data-gaia-favicon]')
+    expect(gaiaIcon?.href).toContain('data:image/svg+xml,')
+    expect(decodeURIComponent(gaiaIcon?.href.split(',')[1] ?? '')).toContain('#ea580c')
+    expect(mock.slotRegistrations.map(({ name }) => name)).toContain('sidebar.brand.mark')
+    expect(mock.slotRegistrations.map(({ name }) => name)).toContain('sidebar.brand.name')
+    expect(mock.slotRegistrations.map(({ name }) => name)).toContain('conversation.hero.brand.mark')
+
+    document.title = 'Session title — DeepSeek Harness'
+    await Promise.resolve()
+    expect(document.title).toBe('Session title · Gaia Harness')
+
+    await dispose?.()
+    expect(document.title).toBe(previousTitle)
+    expect(document.querySelector('[data-gaia-favicon]')).toBeNull()
+    expect(document.querySelector('link[href="/original.ico"]')).toBe(priorIcon)
+    priorIcon.remove()
+    for (const link of previousIcons) document.head.append(link)
+  })
+
+  it('overrides an existing product locale in English and Chinese', async () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+    const t = mock.locale.bind('settings.account' as string)
+
+    mock.locale.setLocale('en')
+    expect(t('backToHarness')).toBe('Back to Gaia Harness')
+    mock.locale.setLocale('zh')
+    expect(t('backToHarness')).toBe('返回 Gaia Harness')
+
+    await dispose?.()
+    expect(t('backToHarness')).toBe('返回 DeepSeek Harness')
   })
 
   it('expands a collapsed full-mode sidebar once at a 900px viewport', () => {
@@ -922,6 +996,7 @@ describe('embed integration of the palette and header entries', () => {
   it('applies a received palette as one override layer and shadows Open in Files', async () => {
     Object.defineProperty(window, 'location', { value: new URL('http://localhost:3000/?gaia=embed&session=s-test-123'), writable: true, configurable: true })
     const ctx = new Context()
+    ctx.provide('locale', new LocaleRuntime(ctx))
     const overrideTokens = vi.fn(() => () => {})
     const registrations: { name: string; id: string; priority?: number }[] = []
     ctx.provide('layout', { selectPanel: vi.fn(), closeRightbar: vi.fn(), toggleSidebar: vi.fn(), openRightbar: vi.fn() })

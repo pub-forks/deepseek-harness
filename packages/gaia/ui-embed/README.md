@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This private client plugin supports two Gaia iframe modes. Both receive Gaia's theme, palette and visual skin through the validated postMessage bridge. Embed mode additionally presents one session as a drawer chat and hides shell chrome; full mode keeps the complete DSH shell, including its navigation and settings.
+This private client plugin supports two Gaia iframe modes. Both receive Gaia's theme, palette and visual skin through the validated postMessage bridge, and both use the Gaia mark and **Gaia Harness** name in the sidebar, hero, document title, favicon and product-name locale copy. Embed mode additionally presents one session as a drawer chat and hides shell chrome; full mode keeps the complete DSH shell, including its navigation and settings.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ This private client plugin supports two Gaia iframe modes. Both receive Gaia's t
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount the plugin in the Gaia web profile patch overlay. It activates inside an iframe for `gaia=embed` (with a valid `session` to enable chat behavior) or `gaia=full` (the complete shell). Outside an iframe it does nothing. Both modes post `ready` once and accept same-origin, validated theme messages; only embed mode opens and enforces a session, removes navigation chrome and enables drawer-specific commands and controls.
+Mount the plugin in the Gaia web profile patch overlay. It activates inside an iframe for `gaia=embed` (with a valid `session` to enable chat behavior) or `gaia=full` (the complete shell). Outside an iframe it does nothing. Both modes post `ready` once, accept same-origin validated theme messages, and apply Gaia branding. The plugin restores the prior title and icon links when disposed. Only embed mode opens and enforces a session, removes navigation chrome and enables drawer-specific commands and controls.
 
 -----
 

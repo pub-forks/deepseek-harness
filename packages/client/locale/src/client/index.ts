@@ -82,7 +82,7 @@ export interface LocaleSnapshot {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    locale: LocaleRuntime
+    locale: LocaleService
   }
   interface Events {
     /**
@@ -164,6 +164,9 @@ function syncDocumentLanguage(snapshot: LocaleSnapshot): void {
  */
 export class LocaleRuntime {
   private dicts = new Map<string, Map<string, LocaleDict>>()
+  // GAIA: locale-name overrides layer over package-owned dictionaries without
+  // weakening register()'s single-owner rule.
+  private overrides = new Map<string, Map<string, Map<symbol, Partial<LocaleDict>>>>()
   private bound = new Map<string, Translate>()
   private catalog = new Map<string, LocaleDefinition>()
   private fallbackChains = new Map<string, readonly LocaleId[]>()
@@ -437,6 +440,43 @@ export class LocaleRuntime {
   }
 
   /**
+   * GAIA: Layer a partial dictionary over an existing package dictionary.
+   * Normal package registration remains single-occupant through register().
+   * @param ns - registered locale namespace.
+   * @param locale - locale tag to override.
+   * @param dict - key-level replacements; missing keys retain the package value.
+   * @returns idempotent disposer that reveals the previous layer or package copy.
+   */
+  override(ns: string, locale: string, dict: Partial<LocaleDict>): () => void {
+    if (!LOCALE_ID_PATTERN.test(locale)) {
+      throw new Error(`locale id "${locale}" is not a BCP 47-style tag`)
+    }
+    let locales = this.overrides.get(ns)
+    if (locales === undefined) {
+      locales = new Map()
+      this.overrides.set(ns, locales)
+    }
+    const localeKeyValue = localeKey(locale)
+    let layers = locales.get(localeKeyValue)
+    if (layers === undefined) {
+      layers = new Map()
+      locales.set(localeKeyValue, layers)
+    }
+    const token = Symbol(ns)
+    layers.set(token, dict)
+    this.publish(this.snapshot.active, false)
+    return () => {
+      const currentLocales = this.overrides.get(ns)
+      const currentLayers = currentLocales?.get(localeKeyValue)
+      if (currentLayers?.delete(token)) {
+        if (currentLayers.size === 0) currentLocales?.delete(localeKeyValue)
+        if (currentLocales?.size === 0) this.overrides.delete(ns)
+        this.publish(this.snapshot.active, false)
+      }
+    }
+  }
+
+  /**
    * Bind a declared namespace to a translate function typed to its
    * dictionary key union (plus the shared common vocabulary) — the same key
    * domain the framework-injected `t` seat carries. The returned reference
@@ -476,6 +516,13 @@ export class LocaleRuntime {
   private lookup(ns: string, key: string, chain: readonly LocaleId[]): string | undefined {
     const locales = this.dicts.get(ns)
     for (const locale of chain) {
+      const layers = this.overrides.get(ns)?.get(localeKey(locale))
+      if (layers !== undefined) {
+        for (const override of [...layers.values()].reverse()) {
+          const value = override[key]
+          if (value !== undefined) return value
+        }
+      }
       const value = locales?.get(localeKey(locale))?.[key]
       if (value !== undefined) return value
     }
@@ -510,6 +557,13 @@ export class LocaleRuntime {
       }
     }
   }
+}
+
+/** Public locale service shape; `override` is optional for compatible mocks/providers. */
+export interface LocaleService extends Pick<LocaleRuntime,
+  'getLocale' | 'resolveText' | 'getSnapshot' | 'subscribe' | 'setLocale' | 'addLanguage' | 'register' | 'bind'> {
+  /** Gaia-only overlay seam; omitted by legacy locale providers and test doubles. */
+  override?: (ns: string, locale: string, dict: Partial<LocaleDict>) => () => void
 }
 
 /**

@@ -3,6 +3,7 @@
  * Activates single-session embed presentation when ?gaia=embed&session=<id> is present.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
@@ -13,6 +14,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-general/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
 import type { SessionInput, TokenSpan } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
@@ -23,8 +25,9 @@ import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.
 import { lineParam, resolveFileAddress } from './open-file.ts'
 import { GaiaDocumentAction } from './document-action.ts'
 import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
-import { GaiaMark } from './brand.ts'
+import { GaiaBrandName, GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
+import { registerGaiaLocaleOverrides } from './branding-locales.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -63,7 +66,51 @@ function HiddenEntry(): null { return null }
 const EMBED_BLOCKED_KEYS = new Set(['KeyB', 'KeyN', 'KeyO', 'KeyK'])
 
 /** Services required for embed mode. */
-export const inject = ['layout', 'uiWorkspace', 'sessions', 'connection', 'uiSession', 'theme', 'slots'] as const
+export const inject = ['layout', 'uiWorkspace', 'sessions', 'connection', 'uiSession', 'theme', 'slots', 'locale'] as const
+
+const GAIA_TITLE = 'Gaia Harness'
+const GAIA_FAVICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30"><path fill="#ea580c" d="M14.217 19.707l-1.112 2.547c-.427.979-1.782.979-2.21 0l-1.112-2.547c-.99-2.267-2.771-4.071-4.993-5.057L1.73 13.292c-.973-.432-.973-1.848 0-2.28l2.965-1.316C6.974 8.684 8.787 6.813 9.76 4.47l1.126-2.714c.418-1.007 1.81-1.007 2.228 0L14.24 4.47c.973 2.344 2.786 4.215 5.065 5.226l2.965 1.316c.973.432.973 1.848 0 2.28l-3.061 1.359c-2.221.986-4.003 2.79-4.992 5.056zM24.481 27.796l-.339.777c-.248.569-1.036.569-1.284 0l-.339-.777c-.604-1.385-1.693-2.488-3.051-3.092l-1.044-.464c-.565-.251-.565-1.072 0-1.323l.986-.438c1.393-.619 2.501-1.763 3.095-3.195l.348-.84c.243-.585 1.052-.585 1.294 0l.348.84c.594 1.432 1.702 2.576 3.095 3.195l.986.438c.565.251.565 1.072 0 1.323l-1.044.464c-1.358.604-2.447 1.707-3.051 3.092z"/></svg>'
+
+/** Set Gaia's browser title while retaining DSH session titles as a prefix. */
+export function setGaiaDocumentTitle(): () => void {
+  const originalTitle = document.title
+  const applyTitle = (): void => {
+    const current = document.title.trim()
+    const prefix = current
+      .replace(/\s*[—·|]\s*(?:DeepSeek Harness|DSH|Gaia Harness)\s*$/i, '')
+      .replace(/^(?:DeepSeek Harness|DSH|Gaia Harness)$/i, '')
+      .trim()
+    const next = prefix ? `${prefix} · ${GAIA_TITLE}` : GAIA_TITLE
+    if (document.title !== next) document.title = next
+  }
+  applyTitle()
+  const titleObserver = new MutationObserver(applyTitle)
+  titleObserver.observe(document.head, { subtree: true, childList: true, characterData: true })
+  return () => {
+    titleObserver.disconnect()
+    document.title = originalTitle
+  }
+}
+
+/** Replace page icon links with the fixed-color Gaia mark and restore on dispose. */
+export function setGaiaFavicon(): () => void {
+  const previous = [...document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')]
+    .map(link => ({ link, nextSibling: link.nextSibling }))
+  for (const { link } of previous) link.remove()
+  const icon = document.createElement('link')
+  icon.rel = 'icon'
+  icon.type = 'image/svg+xml'
+  icon.href = `data:image/svg+xml,${encodeURIComponent(GAIA_FAVICON_SVG)}`
+  icon.dataset.gaiaFavicon = ''
+  document.head.append(icon)
+  return () => {
+    icon.remove()
+    for (const { link, nextSibling } of previous) {
+      if (nextSibling?.parentNode) nextSibling.parentNode.insertBefore(link, nextSibling)
+      else document.head.append(link)
+    }
+  }
+}
 
 /**
  * Mount the Gaia embed plugin into the client context.
@@ -80,10 +127,26 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const inGaiaFrame = (mode === 'embed' || mode === 'full') && window.parent !== window
   if (!inGaiaFrame) return
 
+  const disposeLocaleOverrides = registerGaiaLocaleOverrides(ctx.locale)
+
   // Both Gaia frames use Gaia's editor for the profile document action.
   ctx.slots.inject('settings.action', () => ctx.slots.register({
     name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
   }, GaiaDocumentAction))
+
+  // Declare the mark first, then register both sidebar brand slots together,
+  // matching the ordering used by ui-brand-official.
+  ctx.slots.inject('sidebar.brand.mark', () =>
+    ctx.slots.inject('sidebar.brand.name', function* () {
+      yield ctx.slots.register({ name: 'sidebar.brand.mark' }, GaiaMark)
+      yield ctx.slots.register({ name: 'sidebar.brand.name' }, GaiaBrandName)
+    }))
+  ctx.slots.inject('conversation.hero.brand.mark', () => ctx.slots.register({
+    name: 'conversation.hero.brand.mark',
+  }, GaiaMark))
+
+  const restoreTitle = setGaiaDocumentTitle()
+  const restoreFavicon = setGaiaFavicon()
 
   const root = document.documentElement
   const rootAttribute = mode === 'full' ? 'data-gaia-full' : 'data-gaia-embed'
@@ -126,6 +189,9 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const commonDisposer = ctx.effect(() => () => {
     root.removeAttribute(rootAttribute)
     removeSkin()
+    restoreTitle()
+    restoreFavicon()
+    disposeLocaleOverrides()
     window.removeEventListener('message', onThemeMessage)
     disposePalette?.()
     disposeDarkTheme()
@@ -183,11 +249,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities', id: 'open-in-app', order: -10, priority: -1,
   }, HiddenEntry))
-
-  // The empty-session hero shows Gaia's mark instead of DSH's whale.
-  ctx.slots.inject('conversation.hero.brand.mark', () => ctx.slots.register({
-    name: 'conversation.hero.brand.mark',
-  }, GaiaMark))
 
   // Track title, existence, and session opening.
   let openedSession = false

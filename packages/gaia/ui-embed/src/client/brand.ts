@@ -1,6 +1,5 @@
 /**
- * Gaia's sparkle mark for the empty-session hero, replacing DSH's whale in a
- * drawer tab. The glyph is filled with the link alias token, which the Gaia
+ * Gaia's sparkle mark for Harness branding. The glyph is filled with the link alias token, which the Gaia
  * palette sets to the host accent, so it follows Gaia's light/dark theme and
  * accent variants.
  */
@@ -13,7 +12,7 @@ const GAIA_MARK_PATHS = [
 ] as const
 
 /**
- * Hero brand mark filling `conversation.hero.brand.mark`.
+ * Brand mark filling the sidebar and conversation hero brand slots.
  * @param props.size - requested square edge in pixels.
  * @returns a decorative svg element.
  */
@@ -23,4 +22,9 @@ export function GaiaMark({ size }: { size: number; className?: string | undefine
     { width: size, height: size, viewBox: '0 0 30 30', 'aria-hidden': true, 'data-gaia-mark': '' },
     ...GAIA_MARK_PATHS.map(d => createElement('path', { key: d.slice(0, 16), d, fill: 'var(--dsw-alias-link, #ea580c)' })),
   )
+}
+
+/** Sidebar brand name shared by the full shell and drawer embed. */
+export function GaiaBrandName(): ReactElement {
+  return createElement('span', null, 'Gaia Harness')
 }

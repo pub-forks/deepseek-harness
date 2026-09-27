@@ -97,6 +97,44 @@ describe('LocaleRuntime', () => {
     expect(t('k')).toBe('v2')
   })
 
+  it('lets an override layer replace an existing locale key without reopening registration', () => {
+    const { svc } = make()
+    svc.register('ns', 'en', { product: 'DeepSeek Harness', other: 'Keep this' })
+    const dispose = svc.override('ns', 'en', { product: 'Gaia Harness' })
+    const t = svc.bind('ns')
+    svc.setLocale('en')
+    expect(t('product')).toBe('Gaia Harness')
+    expect(t('other')).toBe('Keep this')
+    expect(() => svc.register('ns', 'en', { product: 'Another owner' })).toThrow('already has locale')
+    dispose()
+  })
+
+  it('restores the registered value when an override disposer runs, only once', () => {
+    const { svc } = make()
+    svc.register('ns', 'en', { product: 'DeepSeek Harness' })
+    const t = svc.bind('ns')
+    svc.setLocale('en')
+    const before = svc.getSnapshot().revision
+    const dispose = svc.override('ns', 'en', { product: 'Gaia Harness' })
+    expect(t('product')).toBe('Gaia Harness')
+    expect(svc.getSnapshot().revision).toBe(before + 1)
+    dispose()
+    expect(t('product')).toBe('DeepSeek Harness')
+    expect(svc.getSnapshot().revision).toBe(before + 2)
+    dispose()
+    expect(svc.getSnapshot().revision).toBe(before + 2)
+  })
+
+  it('falls through from a partial override to the registered value for missing keys', () => {
+    const { svc } = make()
+    svc.register('ns', 'en', { brand: 'DeepSeek Harness', detail: 'Original detail' })
+    svc.override('ns', 'en', { brand: 'Gaia Harness' })
+    const t = svc.bind('ns')
+    svc.setLocale('en')
+    expect(t('brand')).toBe('Gaia Harness')
+    expect(t('detail')).toBe('Original detail')
+  })
+
   it('serves the LocaleFace: snapshot revision moves on switch and registration, subscribers fire, unsubscribe stops them', () => {
     const { svc } = make()
     const seen: number[] = []

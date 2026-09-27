@@ -4,6 +4,7 @@
   "include": ["src"],
   "references": [
     { "path": "../../../vendor/cordis" },
+    { "path": "../../client/locale/tsconfig.client.json" },
     { "path": "../../util/brand" },
     { "path": "../../core/session" },
     { "path": "../../client/connection/tsconfig.client.json" },
@@ -14,6 +15,7 @@
     { "path": "../../client/ui-conversation/tsconfig.client.json" },
     { "path": "../../api/session-controller/tsconfig.client.json" },
     { "path": "../../client/ui-renderer" },
+    { "path": "../../client/ui-sidebar" },
     { "path": "../../client/ui-open-in-app" },
     { "path": "../../client/ui-commands" },
     { "path": "../../client/ui-primitives" },
