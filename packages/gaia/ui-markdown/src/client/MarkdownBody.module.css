@@ -65,6 +65,7 @@
 /* Tags: inline-block bg-muted text-xs rounded-md px-1.5 py-0.5 mx-0.5 font-mono */
 .tag { display: inline-block; margin: 0 2px; padding: 2px 6px; border-radius: 6px; background: var(--md-muted); color: var(--dsw-alias-label-primary); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; line-height: 16px; }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--md-muted) 60%, transparent); font-size: 12px; line-height: 16px; }
 
 /* Wikilinks: accent, dotted underline, offset 2 */
 .inlineLink { display: inline; padding: 0; border: 0; background: transparent; color: var(--md-accent); font: inherit; text-align: left; text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; }
@@ -92,24 +93,29 @@
 .prism :global(.token.number), .prism :global(.token.boolean), .prism :global(.token.tag) { color: #ea580c; }
 .prism :global(.token.function) { color: #2563eb; }
 
-/* Callouts: my-4 border-l-4 rounded-r px-4 py-2; header flex gap-2 font-semibold; body mt-1 */
-.callout { --callout: var(--md-accent); margin: 16px 0; padding: 8px 16px; border-left: 4px solid var(--callout); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--callout) 10%, transparent); font-style: normal; }
-.calloutTitle { display: flex; align-items: center; gap: 8px; color: var(--callout); font-weight: 600; }
+/* Callouts (Gaia CALLOUT_TYPES): border-l-4 in the 500 shade; title in 600,
+   400 on dark; background 10%, 20% on dark. DSH marks dark with
+   body[data-ds-dark-theme]. */
+.callout { --callout: #3b82f6; --callout-text: #2563eb; --callout-text-dark: #60a5fa; margin: 16px 0; padding: 8px 16px; border-left: 4px solid var(--callout); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--callout) 10%, transparent); font-style: normal; }
+:global(body[data-ds-dark-theme]) .callout { background: color-mix(in srgb, var(--callout) 20%, transparent); }
+.calloutTitle { display: flex; align-items: center; gap: 8px; color: var(--callout-text); font-weight: 600; }
+:global(body[data-ds-dark-theme]) .calloutTitle { color: var(--callout-text-dark); }
 .calloutBody { margin-top: 4px; color: var(--dsw-alias-label-primary); }
 .calloutBody > :first-child { margin-top: 0; }
 .calloutBody > :last-child { margin-bottom: 0; }
 .calloutSummary { cursor: pointer; list-style: none; }
 .calloutSummary::-webkit-details-marker { display: none; }
-.callout[data-callout=note] { --callout: #3b82f6; }
-.callout[data-callout=abstract] { --callout: #06b6d4; }
-.callout[data-callout=info], .callout[data-callout=todo] { --callout: #0ea5e9; }
-.callout[data-callout=tip] { --callout: #14b8a6; }
-.callout[data-callout=success] { --callout: #10b981; }
-.callout[data-callout=question] { --callout: #f59e0b; }
-.callout[data-callout=warning] { --callout: #f97316; }
-.callout[data-callout=failure], .callout[data-callout=danger], .callout[data-callout=bug] { --callout: #ef4444; }
-.callout[data-callout=example] { --callout: #8b5cf6; }
-.callout[data-callout=quote] { --callout: #737373; }
+.callout[data-callout=abstract] { --callout: #06b6d4; --callout-text: #0891b2; --callout-text-dark: #22d3ee; }
+.callout[data-callout=info], .callout[data-callout=todo] { --callout: #0ea5e9; --callout-text: #0284c7; --callout-text-dark: #38bdf8; }
+.callout[data-callout=tip] { --callout: #14b8a6; --callout-text: #0d9488; --callout-text-dark: #2dd4bf; }
+.callout[data-callout=success] { --callout: #10b981; --callout-text: #059669; --callout-text-dark: #34d399; }
+.callout[data-callout=question] { --callout: #f59e0b; --callout-text: #d97706; --callout-text-dark: #fbbf24; }
+.callout[data-callout=warning] { --callout: #f97316; --callout-text: #ea580c; --callout-text-dark: #fb923c; }
+.callout[data-callout=failure], .callout[data-callout=danger], .callout[data-callout=bug] { --callout: #ef4444; --callout-text: #dc2626; --callout-text-dark: #f87171; }
+.callout[data-callout=example] { --callout: #8b5cf6; --callout-text: #7c3aed; --callout-text-dark: #a78bfa; }
+/* quote: border-muted-foreground/40, text-muted-foreground, bg-muted/40 (30% on dark) */
+.callout[data-callout=quote] { --callout: color-mix(in srgb, var(--md-muted-fg) 40%, transparent); --callout-text: var(--md-muted-fg); --callout-text-dark: var(--md-muted-fg); background: color-mix(in srgb, var(--md-muted) 40%, transparent); }
+:global(body[data-ds-dark-theme]) .callout[data-callout=quote] { background: color-mix(in srgb, var(--md-muted) 30%, transparent); }
 
 .mermaid { overflow-x: auto; margin: 16px 0; padding: 16px; border-radius: 8px; background: var(--md-muted); text-align: center; }
 .mermaid :global(svg) { max-width: 100%; height: auto; }

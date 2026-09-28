@@ -144,3 +144,14 @@ describe('in-note navigation', () => {
     expect(zh.label).toBe('Obsidian')
   })
 })
+
+describe('frontmatter tags', () => {
+  it('renders each tag as its own chip instead of one text run', () => {
+    render(<MarkdownBody {...props('---\ntags: [gaia, harness]\n---\n\nBody')} />)
+    const gaia = screen.getByText('#gaia')
+    const harness = screen.getByText('#harness')
+    expect(gaia).not.toBe(harness)
+    expect(gaia.tagName).toBe('SPAN')
+    expect(gaia.className).not.toBe('')
+  })
+})

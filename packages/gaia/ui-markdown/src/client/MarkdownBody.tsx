@@ -6,7 +6,7 @@ import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import { AlertTriangle, Bug, Calendar, CalendarClock, CheckCircle2, CheckSquare, CircleHelp, CircleX, ClipboardList, Copy, FileText, Flame, Hash, Info, List, ListChecks, Square, Tag, Type, Zap } from 'lucide-react'
+import { AlertTriangle, Bug, Calendar, CalendarClock, CheckCircle2, CheckSquare, CircleHelp, CircleX, ClipboardList, Copy, Pencil, Quote, Flame, Hash, Info, List, ListChecks, Square, Tag, Type, Zap } from 'lucide-react'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { absoluteFileAddress, isAbsoluteWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
@@ -86,11 +86,12 @@ function Properties({ entries, dir, open, t }: PropertiesProps): ReactNode {
           <div className={css.key}><Icon size={14} aria-hidden="true" /> {key}</div>
           <div className={css.value}>
             {Array.isArray(value)
-              ? <span className={css.tags}>{value.map((entry, index) => (
-                <span key={`${key}:${index}`}>
-                  {key.toLowerCase() === 'tags' ? `#${String(entry).replace(/^#/u, '')}` : scalar(entry, dir, open)}
-                </span>
-              ))}</span>
+              ? <span className={css.tags}>
+                {value.map((entry, index) => key.toLowerCase() === 'tags'
+                  ? <span key={`${key}:${index}`} className={css.tag}>#{String(entry).replace(/^#/u, '')}</span>
+                  : <span key={`${key}:${index}`} className={css.chip}>{scalar(entry, dir, open)}</span>)}
+                {value.length === 0 && <span className={css.empty}>{t('empty')}</span>}
+              </span>
               : scalar(value, dir, open)}
           </div>
         </div>
@@ -100,10 +101,10 @@ function Properties({ entries, dir, open, t }: PropertiesProps): ReactNode {
 }
 
 const CALLOUTS = {
-  note: [FileText, 'Note'], abstract: [ClipboardList, 'Abstract'], info: [Info, 'Info'], todo: [CheckSquare, 'Todo'],
+  note: [Pencil, 'Note'], abstract: [ClipboardList, 'Abstract'], info: [Info, 'Info'], todo: [CheckSquare, 'Todo'],
   tip: [Flame, 'Tip'], success: [CheckCircle2, 'Success'], question: [CircleHelp, 'Question'],
   warning: [AlertTriangle, 'Warning'], failure: [CircleX, 'Failure'], danger: [Zap, 'Danger'], bug: [Bug, 'Bug'],
-  example: [List, 'Example'], quote: [FileText, 'Quote'],
+  example: [List, 'Example'], quote: [Quote, 'Quote'],
 } as const
 
 const CALLOUT_ALIASES: Record<string, keyof typeof CALLOUTS> = {
