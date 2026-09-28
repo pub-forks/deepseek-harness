@@ -1,6 +1,6 @@
 /** Read-only Gaia Markdown body for the DSH document preview slot. */
 import { Children, isValidElement, useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -39,6 +39,7 @@ function textOf(value: ReactNode): string {
   if (value === null || value === undefined || typeof value === 'boolean') return ''
   if (typeof value === 'string' || typeof value === 'number') return String(value)
   if (Array.isArray(value)) return value.map(textOf).join('')
+  if (isValidElement<{ children?: ReactNode }>(value)) return textOf(value.props.children)
   return ''
 }
 
@@ -111,6 +112,31 @@ const CALLOUT_ALIASES: Record<string, keyof typeof CALLOUTS> = {
   error: 'danger', cite: 'quote',
 }
 
+/** Gaia's heading slug (web/src/lib/markdown/headings.ts), so TOC anchors match. */
+export function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^\w\s-]/gu, '').trim().replace(/\s+/gu, '-').replace(/-+/gu, '-').replace(/^-+|-+$/gu, '')
+}
+
+/** Scroll to an in-note anchor inside this viewer; false when the target is absent. */
+function scrollToAnchor(from: Element, targetId: string): boolean {
+  const root = from.closest<HTMLElement>('[data-gaia-markdown]')
+  const target = [...(root?.querySelectorAll<HTMLElement>('[id]') ?? [])].find(element => element.id === targetId)
+  if (!target) return false
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  return true
+}
+
+/** Click handler keeping in-note anchors inside the viewer's own scroll area. */
+function anchorClick(targetId: string): (event: MouseEvent<HTMLAnchorElement>) => void {
+  return (event) => {
+    if (scrollToAnchor(event.currentTarget, targetId)) event.preventDefault()
+  }
+}
+
+function decodeAnchor(value: string): string {
+  try { return decodeURIComponent(value) } catch { return value }
+}
+
 function openTarget(target: string, dir: string | null, open: (path: string) => void): void {
   const path = resolveWikiTarget(dir, target)
   if (path) open(path)
@@ -128,17 +154,26 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
     if (isAbsoluteWorkspacePath(path)) tab.actions.openResource(absoluteFileAddress(path))
   }
   const components = useMemo<Components>(() => ({
-    a: ({ href, children, ...props }) => {
-      if (!href) return <a {...props}>{children}</a>
+    a: ({ href, children, title }) => {
+      if (!href) return <a title={title}>{children}</a>
       if (href.startsWith('obsidian://wiki/')) {
         let target = ''
         try { target = decodeURIComponent(href.slice('obsidian://wiki/'.length)) } catch { return <span>{children}</span> }
+        const hashAt = target.indexOf('#')
+        if (hashAt === 0) {
+          const hash = target.slice(1)
+          const targetId = hash.startsWith('^') ? `block-${hash.slice(1)}` : slugify(hash)
+          return <a href={`#${targetId}`} onClick={anchorClick(targetId)}>{children}</a>
+        }
         return <button type="button" className={css.inlineLink} onClick={() => { openTarget(target, dir, open) }}>{children}</button>
       }
       if (href.startsWith('obsidian://tag/')) return <span className={css.tag}>{children}</span>
-      if (/^https?:\/\//iu.test(href)) return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
-      if (href.startsWith('#')) return <a href={href} {...props}>{children}</a>
-      if (/^(?:mailto:|tel:)/iu.test(href)) return <a href={href} {...props}>{children}</a>
+      if (/^https?:\/\//iu.test(href)) return <a href={href} title={title} target="_blank" rel="noopener noreferrer">{children}</a>
+      if (href.startsWith('#')) {
+        const targetId = decodeAnchor(href.slice(1))
+        return <a href={href} title={title} onClick={anchorClick(targetId)}>{children}</a>
+      }
+      if (/^(?:mailto:|tel:)/iu.test(href)) return <a href={href} title={title}>{children}</a>
       return <button type="button" className={css.inlineLink} onClick={() => {
         if (!dir) return
         const target = href.split(/[?#]/u)[0] ?? href
@@ -187,14 +222,14 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
         return (
           <details className={css.callout} data-callout={calloutKind} open={fold === 'expanded'}>
             <summary className={css.calloutSummary}>{heading}</summary>
-            {all}
+            {all.length > 0 && <div className={css.calloutBody}>{all}</div>}
           </details>
         )
       }
       return (
         <aside className={css.callout} data-callout={calloutKind}>
           {heading}
-          {all}
+          {all.length > 0 && <div className={css.calloutBody}>{all}</div>}
         </aside>
       )
     },
@@ -227,6 +262,12 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
         </div>
       )
     },
+    h1: ({ children }) => <h1 id={slugify(textOf(children))}>{children}</h1>,
+    h2: ({ children }) => <h2 id={slugify(textOf(children))}>{children}</h2>,
+    h3: ({ children }) => <h3 id={slugify(textOf(children))}>{children}</h3>,
+    h4: ({ children }) => <h4 id={slugify(textOf(children))}>{children}</h4>,
+    h5: ({ children }) => <h5 id={slugify(textOf(children))}>{children}</h5>,
+    h6: ({ children }) => <h6 id={slugify(textOf(children))}>{children}</h6>,
     table: ({ children }) => <div className={css.tableWrap}><table>{children}</table></div>,
     pre: ({ children }) => <>{children}</>,
     mark: ({ children }) => <mark className={css.mark}>{children}</mark>,

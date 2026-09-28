@@ -112,6 +112,35 @@ describe('plugin activation', () => {
         return key === 'effect' ? target.effect : services[key]
       },
     })
-    expect(() => apply(ctx as never)).not.toThrow()
+    expect(() => { apply(ctx as never) }).not.toThrow()
+  })
+})
+
+describe('in-note navigation', () => {
+  it('gives headings Gaia slugs and scrolls table-of-contents links inside the viewer', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    render(<MarkdownBody {...props('## Table of contents\n\n- [Code block](#code-block)\n\n## Code **block**\n')} />)
+    const heading = document.querySelector('h2#code-block')
+    expect(heading).not.toBeNull()
+    const link = screen.getByRole('link', { name: 'Code block' })
+    expect(link.hasAttribute('node')).toBe(false)
+    fireEvent.click(link)
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(scroll.mock.contexts[0]).toBe(heading)
+  })
+
+  it('scrolls same-note wikilinks [[#Heading]]', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    render(<MarkdownBody {...props('[[#Setup steps]]\n\n## Setup steps\n')} />)
+    fireEvent.click(screen.getByRole('link', { name: '#Setup steps' }))
+    expect(scroll.mock.contexts[0]).toBe(document.querySelector('h2#setup-steps'))
+  })
+
+  it('is labelled Obsidian in the viewer menu', async () => {
+    const { en, zh } = await import('../src/client/locales.ts')
+    expect(en.label).toBe('Obsidian')
+    expect(zh.label).toBe('Obsidian')
   })
 })
