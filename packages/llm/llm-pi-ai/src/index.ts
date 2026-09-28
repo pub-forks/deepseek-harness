@@ -279,6 +279,8 @@ export function apply(ctx: Context, config: Config): void {
   ctx.llm.registerModelDiscovery(settingsNs, (request, signal) => discoverModels(
     { ...request, ...signal === undefined ? {} : { signal } },
     () => storedDiscoveryProfile(request.provider),
+    // GAIA: account aliases import their inherited catalog instead of failing as uncataloged.
+    provider => profiles().get(provider)?.catalogProvider ?? provider,
   ))
   // Route effects bind to this apply fiber via the stable `ctx` reference,
   // even when a swap runs inside the scoped settings callback below. A bare

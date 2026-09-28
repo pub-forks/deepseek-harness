@@ -66,10 +66,10 @@ async function listingServer(behavior: {
 }
 
 /** A bare dormant mount: discovery is offered whether or not a route exists. */
-async function harness(): Promise<Context> {
+async function harness(config: Record<string, unknown> = {}): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(LlmRuntime)
-  await ctx.plugin(LlmPiAi, {})
+  await ctx.plugin(LlmPiAi, config)
   return ctx
 }
 
@@ -85,6 +85,15 @@ describe('catalog-route model discovery', () => {
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider })
 
     expect(models.find(candidate => candidate.id === model)?.contextWindow).toBe(872_000)
+  })
+
+  it('imports an OAuth account alias from the catalog it inherits', async () => {
+    const ctx = await harness({ providers: { 'codex-02': { displayName: 'Codex-02', catalogProvider: 'openai-codex' } } })
+
+    const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'codex-02' })
+
+    expect(models.map(model => model.id).sort()).toEqual(getBuiltinModels('openai-codex').map(model => model.id).sort())
+    expect(models.find(candidate => candidate.id === 'gpt-6-luna')?.contextWindow).toBe(872_000)
   })
 
   it('includes the installed model input types for vision models', async () => {

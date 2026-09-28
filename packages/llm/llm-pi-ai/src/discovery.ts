@@ -265,6 +265,7 @@ export interface StoredModelDiscoveryProfile {
  * @param storedProfile - Host-owned headers and lazy credential resolution for
  *   the named route. It is read only on the path that reaches the network; the
  *   credential is resolved only when the draft carries none.
+ * @param catalogOf - installed catalog a named route inherits; defaults to the route itself.
  * @returns installed catalog models, or endpoint models in listing order.
  * @throws LlmError when the protocol has no readable listing, the endpoint
  *   refuses or fails the request, or the reply is not a model listing.
@@ -272,11 +273,13 @@ export interface StoredModelDiscoveryProfile {
 export async function discoverModels(
   request: LlmModelDiscoveryOperation,
   storedProfile?: () => StoredModelDiscoveryProfile | undefined,
+  catalogOf: (provider: string) => string = provider => provider,
 ): Promise<readonly LlmDiscoveredModel[]> {
   // A catalog route already has its answer, and a better one: the installed
   // entries carry context windows and output caps no listing endpoint reports.
   if (request.provider !== undefined) {
-    const installed = catalogModels(request.provider)
+    // GAIA: an OAuth account alias answers from the catalog it inherits.
+    const installed = catalogModels(catalogOf(request.provider))
     if (installed.size > 0) {
       return [...installed.values()].map(model => ({
         id: model.id,
