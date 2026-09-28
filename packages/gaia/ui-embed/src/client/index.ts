@@ -278,6 +278,18 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   // Intercept keyboard shortcuts that would open navigation or new sessions.
   const onKeyDown = (e: KeyboardEvent): void => {
+    // Only these closed drawer intents cross the bridge; never forward key data.
+    // Requiring exactly one platform modifier also excludes AltGr and accidental
+    // Ctrl+Cmd combinations. This listener exists only in the embed branch.
+    const platformModifier = e.ctrlKey !== e.metaKey
+    if (!e.repeat && !e.shiftKey && e.altKey && platformModifier
+      && !e.getModifierState('AltGraph') && (e.code === 'KeyH' || e.code === 'KeyM')) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'drawerShortcut', action: e.code === 'KeyH' ? 'toggle' : 'maximize' })
+      return
+    }
     if ((e.metaKey || e.ctrlKey) && EMBED_BLOCKED_KEYS.has(e.code)) {
       e.preventDefault()
       e.stopPropagation()

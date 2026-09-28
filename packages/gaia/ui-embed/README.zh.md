@@ -27,6 +27,8 @@ kind: "package-reference"
 
 在嵌入模式中，文档预览操作会使用解析后的绝对文件路径，请 Gaia 在自己的编辑器中打开文件，或在 Gaia Explorer 中显示该文件。此替换仅适用于嵌入模式；完整 Harness 外框仍保留原有行为。
 
+当焦点位于嵌入视图内时，`Ctrl/Cmd+Alt+H` 可切换 Gaia Harness 抽屉，`Ctrl/Cmd+Alt+M` 可切换其最大化状态。嵌入视图只捕获这些精确且非重复的快捷键，并通过同源桥接发送固定的抽屉操作；完整外框不会转发这些按键。
+
 -----
 
 <a id="dev-note"></a>

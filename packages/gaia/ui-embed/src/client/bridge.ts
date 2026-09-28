@@ -11,7 +11,9 @@ export const GAIA_BRIDGE_SOURCE = 'gaia-dsh' as const
 /** Maximum byte length for insertText messages (8 KB). */
 export const MAX_INSERT_TEXT_BYTES = 8192
 
-/** Outgoing messages sent from the embedded DSH iframe to the Gaia parent frame. */
+/** Outgoing messages sent from the embedded DSH iframe to the Gaia parent frame.
+ * Drawer shortcuts are closed intents; key data is never forwarded.
+ */
 export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'ready' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'status'; connected: boolean; reconnecting: boolean }
@@ -23,6 +25,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openFile'; path: string; action?: 'open' | 'reveal'; line?: number }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openConfigEditor' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'workspacesChanged' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
 
 /** Keys of the Gaia palette a theme message may carry. */
 export const GAIA_PALETTE_KEYS = ['background', 'surface', 'border', 'foreground', 'mutedForeground', 'accent'] as const

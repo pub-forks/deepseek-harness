@@ -575,6 +575,43 @@ describe('ui-embed client plugin', () => {
     expect(prevented).toBe(true)
   })
 
+  it('forwards only the exact non-repeating drawer chords in embed mode', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+
+    const h = new KeyboardEvent('keydown', { code: 'KeyH', ctrlKey: true, altKey: true, cancelable: true })
+    const m = new KeyboardEvent('keydown', { code: 'KeyM', metaKey: true, altKey: true, cancelable: true })
+    window.dispatchEvent(h)
+    window.dispatchEvent(m)
+    expect(h.defaultPrevented).toBe(true)
+    expect(m.defaultPrevented).toBe(true)
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'drawerShortcut', action: 'toggle' })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'drawerShortcut', action: 'maximize' })
+
+    parentMessages = []
+    const rejected = [
+      new KeyboardEvent('keydown', { code: 'KeyH', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyM', ctrlKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyH', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyM', ctrlKey: true, metaKey: true, altKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyQ', ctrlKey: true, altKey: true, cancelable: true }),
+    ]
+    rejected.forEach(event => window.dispatchEvent(event))
+    expect(rejected.every(event => !event.defaultPrevented)).toBe(true)
+    expect(parentMessages).toEqual([])
+  })
+
+  it('does not forward drawer chords from full-shell mode', () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    const event = new KeyboardEvent('keydown', { code: 'KeyH', ctrlKey: true, altKey: true, cancelable: true })
+    window.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    expect(parentMessages).not.toContainEqual(expect.objectContaining({ type: 'drawerShortcut' }))
+  })
+
   it('posts ready, status, and turn events', () => {
     setLocationSearch('?gaia=embed&session=s-test-123')
     const mock = createMockContext()

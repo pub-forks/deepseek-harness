@@ -27,6 +27,8 @@ Mount the plugin in the Gaia web profile patch overlay. It activates inside an i
 
 In embed mode, document preview actions use the resolved absolute file path to ask Gaia to open the file in its editor or reveal it in Gaia Explorer. This replaces the preview's native desktop actions only inside the embed; the full Harness shell keeps its normal behavior.
 
+While focus is inside the embed, `Ctrl/Cmd+Alt+H` toggles Gaia's Harness drawer and `Ctrl/Cmd+Alt+M` toggles its maximize state. The embed captures only those exact, non-repeating chords and sends a closed drawer intent through the same-origin bridge; the full shell does not forward them.
+
 -----
 
 <a id="dev-note"></a>
