@@ -5,6 +5,8 @@ apps/desktop/.env.macos
 apps/desktop/*.p12
 node_modules/
 lib/
+# GAIA: ui-markdown keeps sources under src/lib/; the build-output rule above must not hide them.
+!packages/gaia/ui-markdown/src/lib/
 *.tsbuildinfo
 pnpm-debug.log
 .pnpm-store/
