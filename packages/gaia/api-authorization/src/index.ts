@@ -19,10 +19,26 @@ interface Attempt { key: FlowView['key']; controller: AbortController; prompts: 
  * provider exchange (status, OAuth error code), not credential values.
  */
 export function failureDetail(error: unknown): string {
-  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
   const code = error instanceof AuthorizationError ? error.code : undefined
-  const text = message.replace(/\s+/g, ' ').trim()
+  const text = describeThrown(error)
   return (code && !text.includes(code) ? `${code}: ${text}` : text).slice(0, 300)
+}
+
+/** @returns readable text for any thrown value, never empty. */
+function describeThrown(error: unknown): string {
+  let text: string
+  if (error instanceof Error) text = `${error.name === 'Error' ? '' : `${error.name}: `}${error.message}`
+  else if (typeof error === 'string') text = error
+  else if (error !== null && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') text = (error as { message: string }).message
+  else text = safeJson(error)
+  text = text.replace(/\s+/g, ' ').trim()
+  return text.length > 0 ? text : `unexpected ${error === null ? 'null' : typeof error} failure`
+}
+
+function safeJson(value: unknown): string {
+  // JSON.stringify returns undefined (despite its typing) for these, and throws for bigint/cycles.
+  if (value === undefined || typeof value === 'function' || typeof value === 'symbol') return String(value)
+  try { return JSON.stringify(value) } catch { return `unserializable ${typeof value}` }
 }
 
 /** One stream per attempt, with answer and cancellation calls addressed by random ids. */
@@ -93,10 +109,10 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     const attemptId = brandString<AttemptId>(randomUUID())
     const entry = this.ctx.authorization.list().find(flow => flow.key === request.key)
     if (entry === undefined || entry.key !== request.key) {
-      yield { attemptId, type: 'error', message: 'Unknown sign-in flow.' }; return
+      yield { attemptId, type: 'error', message: 'Sign-in failed.', detail: `Unknown sign-in flow ${request.key}.` }; return
     }
     if (!entry.methods.some(method => method.id === request.method)) {
-      yield { attemptId, type: 'error', message: 'Unknown sign-in method.' }; return
+      yield { attemptId, type: 'error', message: 'Sign-in failed.', detail: `Unknown sign-in method ${request.method}.` }; return
     }
     if (entry.inFlight || [...this.attempts.values()].some(item => item.key === request.key)) {
       yield { attemptId, type: 'error', message: 'busy' }; return

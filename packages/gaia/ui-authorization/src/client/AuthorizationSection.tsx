@@ -20,8 +20,14 @@ export type AuthorizationSectionProps = PropsRuntime<'settings.section'> & Props
 /** Prefer a declared device method; pi-ai's Codex method picker is handled below. */
 /** @returns a one-line reason from a thrown value, bounded for display. */
 export function errorDetail(error: unknown): string {
-  const text = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
-  return text.replace(/\s+/g, ' ').trim().slice(0, 300)
+  let text: string
+  if (error instanceof Error) text = `${error.name === 'Error' ? '' : `${error.name}: `}${error.message}`
+  else if (typeof error === 'string') text = error
+  else if (error !== null && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') text = (error as { message: string }).message
+  else if (error === undefined || typeof error === 'function' || typeof error === 'symbol') text = String(error)
+  else { try { text = JSON.stringify(error) } catch { text = `unserializable ${typeof error}` } }
+  text = text.replace(/\s+/g, ' ').trim()
+  return (text.length > 0 ? text : `unexpected ${error === null ? 'null' : typeof error} failure`).slice(0, 300)
 }
 
 function withDetail(message: string, detail: string | undefined): string {
@@ -134,7 +140,7 @@ export function AuthorizationSection({
     </form>}
     {terminal?.type === 'done' && <p>{t(terminal.outcome === 'authorized' ? 'authorized' : 'cancelled')}</p>}
     {localCancelled && <p>{t('cancelled')}</p>}
-    {terminal?.type === 'error' && <p role="alert">{terminal.message === 'busy' ? t('busy') : withDetail(t('error'), terminal.detail)}</p>}
+    {terminal?.type === 'error' && <p role="alert">{terminal.message === 'busy' ? t('busy') : withDetail(t('error'), terminal.detail ?? (terminal.message === 'Sign-in failed.' ? undefined : terminal.message))}</p>}
     {terminal?.type === 'done' && terminal.outcome === 'authorized' && <p>{t('modelsHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>}
     {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch((error: unknown) => { setActionError(errorDetail(error)) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
   </div>

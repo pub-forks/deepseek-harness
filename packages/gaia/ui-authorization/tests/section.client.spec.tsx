@@ -54,6 +54,18 @@ it('shows the failure reason from the attempt and from a failed stream', async (
   expect(await screen.findByText(`${en.error} transport failure: HTTP 403`)).toBeTruthy()
 })
 
+it('never shows a bare failure for plain-object throws or legacy error frames', async () => {
+  mount([], [flow], async function* () { throw { code: 'gateway/internal' } })
+  await screen.findByText('Codex', { selector: 'strong' })
+  fireEvent.click(screen.getByRole('button', { name: en.signIn }))
+  expect(await screen.findByText(`${en.error} {"code":"gateway/internal"}`)).toBeTruthy()
+  cleanup()
+  mount([{ attemptId: brandString<AttemptId>('one'), type: 'error', message: 'Unknown sign-in method.' }])
+  await screen.findByText('Codex', { selector: 'strong' })
+  fireEvent.click(screen.getByRole('button', { name: en.signIn }))
+  expect(await screen.findByText(`${en.error} Unknown sign-in method.`)).toBeTruthy()
+})
+
 it('lists the OAuth method without a method picker', async () => {
   const operations = mount()
   expect(await screen.findByText('Codex', { selector: 'strong' })).toBeTruthy()

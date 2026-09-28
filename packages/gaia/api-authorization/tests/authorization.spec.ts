@@ -94,6 +94,14 @@ it('reports the underlying reason when a flow fails', async () => {
   expect(await next(iterator)).toMatchObject({ type: 'error', message: 'Sign-in failed.', detail: 'token exchange failed: 400 invalid_grant' })
 })
 
+it('names the reason for early refusals and non-Error failures', async () => {
+  const { controller } = await fixture(async () => { throw { status: 500 } as unknown as Error })
+  const unknownMethod = controller.start({ key, method: 'nope' }, new AbortController().signal)[Symbol.asyncIterator]()
+  expect(await next(unknownMethod)).toMatchObject({ type: 'error', message: 'Sign-in failed.', detail: 'Unknown sign-in method nope.' })
+  const plain = controller.start({ key, method: 'oauth' }, new AbortController().signal)[Symbol.asyncIterator]()
+  expect(await next(plain)).toMatchObject({ type: 'error', message: 'Sign-in failed.', detail: '{"status":500}' })
+})
+
 it('returns busy on a second attempt and refuses an unknown sign-out key', async () => {
   const { controller } = await fixture(async (session) => { await session.prompt({ kind: 'text', message: 'Wait' }) })
   const lifetime = new AbortController()
