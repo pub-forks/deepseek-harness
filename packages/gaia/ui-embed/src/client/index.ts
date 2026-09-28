@@ -200,6 +200,22 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   window.addEventListener('message', onThemeMessage)
   postToParent({ source: 'gaia-dsh', v: 1, type: 'ready' })
 
+  // Both frame modes report the connection, so Gaia's drawer and embeds
+  // show a live status dot.
+  const connection = ctx.get('connection')
+  const emitStatus = (): void => {
+    const state = connection?.state.getSnapshot()
+    postToParent({
+      source: 'gaia-dsh',
+      v: 1,
+      type: 'status',
+      connected: state === 'connected',
+      reconnecting: state === 'connecting',
+    })
+  }
+  emitStatus()
+  const unsubConnection = connection?.state.subscribe(emitStatus)
+
   // Narrow layouts auto-collapse; toggle only at activation, so later user
   // choices remain authoritative for the lifetime of this page.
   if (mode === 'full') {
@@ -210,6 +226,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
 
   const commonDisposer = ctx.effect(() => () => {
+    unsubConnection?.()
     root.removeAttribute(rootAttribute)
     removeSkin()
     restoreTitle()
@@ -300,21 +317,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   // Attempt initial session opening.
   attemptOpenSession()
-
-  // Track connection status.
-  const connection = ctx.get('connection')
-  const emitStatus = (): void => {
-    const state = connection?.state.getSnapshot()
-    postToParent({
-      source: 'gaia-dsh',
-      v: 1,
-      type: 'status',
-      connected: state === 'connected',
-      reconnecting: state === 'connecting',
-    })
-  }
-  emitStatus()
-  const unsubConnection = connection?.state.subscribe(emitStatus)
 
   // Track turn running status.
   let lastRunning: boolean | undefined
@@ -530,7 +532,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       ctx.layout.openRightbar = originalOpenRightbar
       window.removeEventListener('keydown', onKeyDown, { capture: true })
       window.removeEventListener('message', onMessage)
-      unsubConnection?.()
       unsubSessionStatus()
       unsubList()
       sessionObserver.disconnect()

@@ -591,6 +591,21 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'status', connected: false, reconnecting: true })
   })
 
+  it('reports connection status in full mode and stops after dispose', async () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'status', connected: true, reconnecting: false })
+    mock.setConnectionState('connecting')
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'status', connected: false, reconnecting: true })
+
+    await dispose?.()
+    const count = parentMessages.length
+    mock.setConnectionState('connected')
+    expect(parentMessages).toHaveLength(count)
+  })
+
   it('posts title when session becomes available in sessions.list', () => {
     setLocationSearch('?gaia=embed&session=s-test-123')
     const mock = createMockContext()
