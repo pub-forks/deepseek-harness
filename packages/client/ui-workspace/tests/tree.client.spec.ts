@@ -9,7 +9,7 @@ import type { SessionProjectionSnapshot } from '@deepseek-ai/dsh-api-session-con
 import {
   type ArchivedFilter,
   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
-  pinCurrentBlank, reconcileManualOrder, sessionMemberIds, visibleSessionIds, workspaceLabel, UNGROUPED_KEY,
+  orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds, visibleSessionIds, workspaceLabel, UNGROUPED_KEY,
 } from '../src/client/tree.ts'
 import { createWorkspaceViewStore } from '../src/client/stores.ts'
 
@@ -100,6 +100,28 @@ describe('Session ordering', () => {
       [sid('unknown'), sid('tie-b'), sid('older'), sid('tie-a')],
       summaries,
     )).toEqual([sid('tie-a'), sid('tie-b'), sid('older')])
+  })
+
+  it('sorts real groups by resolved title with numeric, case-insensitive comparison and stable identity ties', () => {
+    const input = [
+      workspace('z', ['z'], 'Project 10'),
+      workspace('tie-b', ['b'], 'alpha'),
+      workspace('project-2', ['two'], 'Project 2'),
+      workspace('tie-a', ['a'], 'Alpha'),
+    ]
+    expect(orderWorkspacesByName(input).map(item => item.workspaceId))
+      .toEqual([wid('tie-a'), wid('tie-b'), wid('project-2'), wid('z')])
+    expect(input.map(item => item.workspaceId)).toEqual([wid('z'), wid('tie-b'), wid('project-2'), wid('tie-a')])
+  })
+
+  it('keeps Ungrouped last when name-sorted workspaces are projected into grouped and tree derivation', () => {
+    const sessions = list(summary('loose', 1), summary('z-session', 1), summary('a-session', 1))
+    const sorted = orderWorkspacesByName([
+      workspace('z', ['z-session'], 'Zulu'), workspace('a', ['a-session'], 'Alpha'),
+    ])
+    const groups = deriveGroups(sessions, sorted, noRows, noAttention, view(['a', 'z', UNGROUPED_KEY]))
+    expect(groups.map(group => group.key)).toEqual(['a', 'z', UNGROUPED_KEY])
+    expect(groups.at(-1)?.workspaceId).toBeUndefined()
   })
 
   it('orders each partition strictly by Session recency, independent of pin-array order', () => {
@@ -759,13 +781,16 @@ describe('createWorkspaceViewStore', () => {
     const store = createWorkspaceViewStore().create()
     expect(store.getSnapshot().groupBy).toBe('workspace')
     expect(store.getSnapshot().orderBy).toBe('updated')
+    expect(store.getSnapshot().workspaceOrderBy).toBe('manual')
     store.actions.setGroupBy('flat')
+    store.actions.setWorkspaceOrderBy('name')
     store.actions.setOrderBy('updated', {})
     store.actions.setGroupExpanded('alpha', true)
     store.actions.setSessionOrder('alpha', ['one', 'two'], {})
     expect(store.getSnapshot().groupBy).toBe('flat')
     expect(store.getSnapshot()).toMatchObject({
       orderBy: 'manual',
+      workspaceOrderBy: 'name',
       groupExpansion: { alpha: true },
       sessionOrderByAccount: { alpha: ['one', 'two'] },
     })

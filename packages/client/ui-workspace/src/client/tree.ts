@@ -83,6 +83,24 @@ export interface GroupNode {
   sessions: readonly SessionNode[]
 }
 
+const workspaceTitleCollator = new Intl.Collator('en', { sensitivity: 'base', numeric: true })
+
+/**
+ * Project real Workspace groups into stable name order without changing their
+ * Host-owned order. The browser applies this only to a rendered view; the
+ * Ungrouped bucket is derived separately and therefore keeps its trailing
+ * semantics.
+ * @param workspaces - Workspaces with their resolved display titles.
+ * @returns a new array ordered by title, then Workspace identity.
+ */
+// GAIA: this client-only projection leaves Workspace Controller order untouched.
+export function orderWorkspacesByName(workspaces: readonly WorkspaceView[]): WorkspaceView[] {
+  return [...workspaces].sort((left, right) =>
+    workspaceTitleCollator.compare(left.title, right.title)
+      || (left.workspaceId < right.workspaceId ? -1 : left.workspaceId > right.workspaceId ? 1 : 0),
+  )
+}
+
 /** One flat search row combining list metadata with an optional content match. */
 export interface SearchResultNode {
   id: SessionId

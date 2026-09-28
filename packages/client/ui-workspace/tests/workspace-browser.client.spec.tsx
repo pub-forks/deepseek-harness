@@ -459,9 +459,10 @@ describe('WorkspaceBrowser', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
     expect(screen.getByText('分组方式')).toBeTruthy() // the menu heading label
-    expect(screen.getAllByRole('separator')).toHaveLength(2)
+    expect(screen.getAllByRole('separator')).toHaveLength(3)
     expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
-      '按工作区', '按工作区树', '单列表', '手动排序', '最近更新', '隐藏已归档', '全部对话（显示已归档）', '仅显示已归档',
+      '按工作区', '按工作区树', '单列表', '手动排序', '最近更新', '手动工作区顺序', '按名称',
+      '隐藏已归档', '全部对话（显示已归档）', '仅显示已归档',
     ])
     expect(screen.getByRole('menuitem', { name: '按工作区' }).querySelector('svg')).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: '手动排序' }).querySelector('svg')).toBeTruthy()
@@ -485,6 +486,56 @@ describe('WorkspaceBrowser', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
     expect(b.store.getSnapshot().groupBy).toBe('workspace')
+  })
+
+  it('defaults old snapshots to Manual and sorts Workspace groups as a draggable-free view projection', () => {
+    const key = 'dsh.workspace.view.v5'
+    localStorage.setItem(key, JSON.stringify({
+      groupBy: 'workspace', orderBy: 'manual', groupExpansion: {}, sessionOrderByAccount: {},
+    }))
+    const rows = [workspace('ten', [], 'Project 10'), workspace('two', [], 'Project 2'), workspace('alpha', [], 'alpha')]
+    const insertWorkspaceBefore = vi.fn(async () => {})
+    const b = mount({ useWorkspaces: hook(workspaceState(rows)), insertWorkspaceBefore })
+    const workspaceRows = () => screen.getAllByRole('treeitem')
+      .filter(row => row.getAttribute('data-row-key')?.startsWith('workspace:'))
+    expect(workspaceRows().map(row => row.getAttribute('data-row-key')))
+      .toEqual(['workspace:ten', 'workspace:two', 'workspace:alpha'])
+    expect(b.store.getSnapshot().workspaceOrderBy).toBeUndefined()
+
+    const pick = (label: string) => {
+      fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: label }))
+    }
+    pick('按名称')
+    expect(b.store.getSnapshot().workspaceOrderBy).toBe('name')
+    expect(JSON.parse(localStorage.getItem(key) ?? '{}')).toHaveProperty('workspaceOrderBy', 'name')
+    expect(workspaceRows().map(row => row.getAttribute('data-row-key')))
+      .toEqual(['workspace:alpha', 'workspace:two', 'workspace:ten'])
+    expect(workspaceRows().every(row => row.getAttribute('draggable') === 'false')).toBe(true)
+    expect(insertWorkspaceBefore).not.toHaveBeenCalled()
+
+    pick('手动工作区顺序')
+    expect(b.store.getSnapshot().workspaceOrderBy).toBe('manual')
+    expect(workspaceRows().map(row => row.getAttribute('data-row-key')))
+      .toEqual(['workspace:ten', 'workspace:two', 'workspace:alpha'])
+    expect(workspaceRows().every(row => row.getAttribute('draggable') === 'true')).toBe(true)
+    expect(insertWorkspaceBefore).not.toHaveBeenCalled()
+  })
+
+  it('applies name order to tree siblings while retaining the Ungrouped bucket', () => {
+    const b = mount({
+      useSessions: hook(sessionState([summary('loose', 1)])),
+      useWorkspaces: hook(workspaceState([
+        workspace('parent-z', [], 'Zulu'),
+        workspace('parent-a', [], 'Alpha'),
+      ])),
+    })
+    act(() => {
+      b.store.actions.setGroupBy('workspace-tree')
+      b.store.actions.setWorkspaceOrderBy('name')
+    })
+    expect(screen.getAllByRole('treeitem').map(row => row.getAttribute('data-row-key')))
+      .toEqual(['workspace:parent-a', 'workspace:parent-z', 'workspace:'])
   })
 
   it('picking 全部对话（显示已归档） keeps existing rows and reveals archived ones in place', () => {
