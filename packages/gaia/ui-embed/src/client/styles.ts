@@ -76,6 +76,16 @@ ${GAIA_FRAME} [data-composer-primary]:hover:not(:disabled) {
   color: var(--dsw-alias-bg-base) !important;
   box-shadow: none !important;
 }
+/* Chat and builtin Markdown tables: column titles in Gaia's accent, and the
+   header rule in the same app border as the rows (DSH draws it in a neutral
+   gray). The Obsidian viewer keeps Gaia's file-viewer table style. */
+${GAIA_FRAME} table:not([data-gaia-markdown] table) th {
+  color: var(--dsw-alias-link);
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+${GAIA_FRAME} table:not([data-gaia-markdown] table) td {
+  border-bottom-width: 1px;
+}
 `
 
 /** Chrome removal and compact-viewport treatment unique to single-session embed mode. */

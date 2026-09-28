@@ -1078,3 +1078,15 @@ describe('embed send button', () => {
     expect(tokens['--dsw-alias-scrollbar-hover-l2']?.light).toBe('color-mix(in srgb, #e8590c 70%, transparent)')
   })
 })
+
+describe('embed table styles', () => {
+  it('colors chat table column titles with the accent and rules the header in the app border', async () => {
+    const { GAIA_SKIN_CSS } = await import('../src/client/styles.ts')
+    const selector = ':is(html[data-gaia-embed], html[data-gaia-full]) table:not([data-gaia-markdown] table) th {'
+    const start = GAIA_SKIN_CSS.indexOf(selector)
+    expect(start).toBeGreaterThan(-1)
+    const rule = [undefined, GAIA_SKIN_CSS.slice(start, GAIA_SKIN_CSS.indexOf('}', start))]
+    expect(rule[1]).toContain('color: var(--dsw-alias-link);')
+    expect(rule[1]).toContain('border-bottom: 1px solid var(--dsw-alias-border-l2);')
+  })
+})
