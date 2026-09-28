@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { SessionInput, TokenSpan } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
@@ -24,6 +25,7 @@ import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
 import { GaiaDocumentAction } from './document-action.ts'
+import { GaiaFileActions } from './file-actions.ts'
 import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
 import { GaiaBrandName, GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
@@ -291,6 +293,15 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities', id: 'open-in-app', order: -10, priority: -1,
   }, HiddenEntry))
+
+  // The document preview actions normally call the Host's native desktop
+  // routes. In an embedded browser, replace both path-action slots with Gaia
+  // actions that send their already-resolved absolute path to the parent.
+  for (const name of ['sidebar.right.tab.document.actions', 'sidebar.right.tab.document.unpreviewable'] as const) {
+    ctx.slots.inject(name, () => ctx.slots.register({
+      name, id: 'open-in-app', order: -10, priority: -1, locale: 'open-in-app',
+    }, GaiaFileActions))
+  }
 
   // Track title, existence, and session opening.
   let openedSession = false

@@ -1037,7 +1037,7 @@ describe('Gaia palette', () => {
 })
 
 describe('embed integration of the palette and header entries', () => {
-  it('applies a received palette as one override layer and shadows Open in Files', async () => {
+  it('applies a received palette and replaces desktop file actions in embed mode', async () => {
     Object.defineProperty(window, 'location', { value: new URL('http://localhost:3000/?gaia=embed&session=s-test-123'), writable: true, configurable: true })
     const ctx = new Context()
     ctx.provide('locale', new LocaleRuntime(ctx))
@@ -1052,6 +1052,8 @@ describe('embed integration of the palette and header entries', () => {
     ctx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string; priority?: number }) => { registrations.push(o); return () => {} } })
     apply(ctx)
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'conversation.session.header.utilities', id: 'open-in-app', priority: -1 }))
+    expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.actions', id: 'open-in-app', priority: -1 }))
+    expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.unpreviewable', id: 'open-in-app', priority: -1 }))
     window.dispatchEvent(new MessageEvent('message', {
       data: { source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)', foreground: 'hsl(0 0% 90%)' } },
       origin: window.location.origin, source: window.parent,
