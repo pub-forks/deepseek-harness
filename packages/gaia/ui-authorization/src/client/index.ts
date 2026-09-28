@@ -43,6 +43,14 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         const result = await actx.remote.gaiaAuthorization.signOut({ key })
         if (!result.ok) throw result.error
       },
+      async createAccount(source, accountId, label) {
+        const result = await actx.remote.gaiaAuthorization.createAccount({ source, accountId, label })
+        if (!result.ok) throw result.error
+      },
+      async removeAccount(key) {
+        const result = await actx.remote.gaiaAuthorization.removeAccount({ key })
+        if (!result.ok) throw result.error
+      },
     }
     actx.slots.inject('settings.section', () => actx.slots.register({
       name: 'settings.section', id: 'gaia-authorization', order: 5,

@@ -19,6 +19,21 @@ const configWith = (model: Record<string, unknown>): (() => unknown) =>
   routeWith({ models: [{ id: 'm', ...model }] })
 
 describe('reasoning schema boundary', () => {
+  it('inherits an OAuth catalog under a distinct alias route identity', () => {
+    const profile = resolveProfiles({ 'codex-work': { catalogProvider: 'openai-codex', displayName: 'Work Codex' } }).get('codex-work')
+    expect(profile?.displayName).toBe('Work Codex')
+    expect(profile?.piProvider?.id).toBe('codex-work')
+    expect(profile?.piProvider?.getModels().length).toBeGreaterThan(0)
+    expect(profile?.piProvider?.getModels().every(model => model.provider === 'codex-work')).toBe(true)
+  })
+
+  it('rejects unknown OAuth catalog sources and endpoint or credential overrides', () => {
+    expect(() => resolveProfiles({ alias: { catalogProvider: 'unknown' } })).toThrow(/unknown catalogProvider/)
+    expect(() => resolveProfiles({ alias: { catalogProvider: 'openai-codex', baseURL: 'https://x.test' } })).toThrow(/cannot override/)
+    expect(() => resolveProfiles({ alias: { catalogProvider: 'openai-codex', apiKeyEnv: 'API_KEY' } })).toThrow(/cannot override/)
+    expect(() => resolveProfiles({ alias: { catalogProvider: 'alias' } })).toThrow(/cannot inherit itself/)
+  })
+
   it('accepts an empty provider section and propagates unexpected catalog failures', () => {
     expect(() => { assertServiceable({}) }).not.toThrow()
     const failure = new TypeError('model metadata lookup failed')

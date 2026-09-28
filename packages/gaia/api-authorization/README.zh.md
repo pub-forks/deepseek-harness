@@ -11,6 +11,8 @@ kind: "package-reference"
 
 这个私有 Host 插件通过已有 Cookie 保护的 API Gateway 暴露 `ctx.authorization` 流程。`listFlows` 只返回名称、方法、进行中状态和凭据记录是否存在；不会读取凭据载荷或记录答案。
 
+对于 `llm-pi-ai`，`createAccount` 接收已安装的 OAuth 源、用户可读名称和经过校验的唯一路由标识，然后通过设置服务只写入 `{ displayName, catalogProvider }`。`removeAccount` 会拒绝删除正在运行的别名，删除其自身凭据记录，并且只移除此提供方 profile。普通 `signOut` 仍只删除凭据并保留路由。浏览器不会提交提供方 URL 或凭据。
+
 ## 目录
 
 - [使用本包](#use-this-package)

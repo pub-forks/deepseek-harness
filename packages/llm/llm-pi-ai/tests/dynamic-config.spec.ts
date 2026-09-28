@@ -65,6 +65,25 @@ describe('login flows in a real composition', () => {
     expect(codex?.methods.map(method => method.id)).toEqual(['oauth'])
   })
 
+  it('adds and disposes alias sign-in flows as settings reload without replacing the source flow', async () => {
+    const ctx = await boot(await home(), {}, { authorization: true })
+    const source = LlmPiAi.recordKeyFor('openai-codex')
+    const alias = LlmPiAi.recordKeyFor('codex-work')
+    expect(ctx.authorization.describe(source)).toBeDefined()
+    expect(ctx.authorization.describe(alias)).toBeUndefined()
+
+    await configurations.get(ctx)!.update({ providers: {
+      'codex-work': { displayName: 'Work Codex', catalogProvider: 'openai-codex' },
+    } })
+    expect(ctx.authorization.describe(alias)?.label).toBe('Work Codex')
+    expect(ctx.llm.listProviders()).toContainEqual({ id: 'codex-work', name: 'Work Codex' })
+    expect((await ctx.llm.listModels('codex-work')).every(model => model.provider === 'codex-work')).toBe(true)
+
+    await configurations.get(ctx)!.replace({ providers: {} })
+    expect(ctx.authorization.describe(alias)).toBeUndefined()
+    expect(ctx.authorization.describe(source)).toBeDefined()
+  })
+
   it('mounts without the seam, and simply offers no sign-in', async () => {
     const ctx = await boot(await home(), {})
 

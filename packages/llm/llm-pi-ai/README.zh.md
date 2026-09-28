@@ -37,6 +37,8 @@ kind: "package-reference"
 
 每个 profile 都可以设置 `retryPolicy`；省略时使用 normal mode、最多重试五次。`apiKeyEnv` 是按请求经 harness 凭据 seam 解析的凭据引用，因此配置文件绝不包含密钥；解析为空的引用会让请求以 `MISSING_CREDENTIAL` 失败。省略它会让路由保持已配置但无密钥（configured-but-keyless）状态，对已安装目录路由而言即交由 pi-ai 提供方原生的环境发现。
 
+OAuth 账户别名通过 `catalogProvider` 指向已安装且支持 OAuth 的提供方，并用独立路由键和 `displayName` 标识。别名继承源目录的模型、端点、协议、兼容行为和登录实现；模型命名空间及 OAuth 凭据记录仍使用别名路由键。例如，`codex-work: { catalogProvider: openai-codex, displayName: Work Codex }` 可与 `openai-codex` 分别选择。别名不能覆盖继承的提供方信息，也不能继承另一个别名。Gaia 的“登录”页面负责创建和删除账户。
+
 ```yaml
 - name: '@deepseek-ai/dsh-llm-pi-ai'
   config:

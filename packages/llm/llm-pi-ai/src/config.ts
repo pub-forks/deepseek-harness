@@ -16,7 +16,7 @@ import type { Volatile } from '@deepseek-ai/cordis'
 
 import type { CacheRetention, ChatTemplateKwargValue, ModelThinkingLevel, Provider, ThinkingBudgets, Transport } from '@earendil-works/pi-ai'
 import z from '@deepseek-ai/schemastery'
-import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import { credentialRef, isCredentialKeySegment } from '@deepseek-ai/dsh-credentials'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { resolveRetryPolicy, RetryPolicySchema } from '@deepseek-ai/dsh-llm'
@@ -28,6 +28,8 @@ import {
   MAX_TOKENS_FIELDS,
   MODALITIES,
   PiAiCatalogError,
+  catalogProvider,
+  catalogProviderIds,
   resolveRouteModels,
   SUPPORTED_THINKING_FORMATS,
   THINKING_LEVELS,
@@ -90,6 +92,9 @@ export type {
 
 /** Configuration for one pi-ai provider route; the `providers` dict key IS the route. */
 export interface PiAiProviderProfile {
+  // GAIA: explicit installed-catalog inheritance gives independent OAuth routes stable credential identities.
+  /** Installed provider catalog and native auth implementation inherited by this uniquely named route. */
+  catalogProvider?: string
   /** Credential reference (environment-variable name) resolved per request through `ctx.credentials`. */
   apiKeyEnv?: string
   /** Name shown by configuration surfaces; defaults to the route key. */
@@ -324,6 +329,7 @@ const modelProfile: z<PiAiModelProfile> = z.object({
 const modelOverride: z<PiAiModelOverride> = z.object(modelFields)
 
 const profile = z.object({
+  catalogProvider: z.string(),
   apiKeyEnv: z.string().role('credential-ref'),
   displayName: z.string(),
   api: z.union(supportedProtocols()),
@@ -419,6 +425,33 @@ export function resolveProfiles(
   for (const [provider, source] of entries) {
     rejectRemovedFields(provider, source)
     if (provider.length === 0) throw new Error('llm-pi-ai: provider names must be non-empty')
+    if (source.catalogProvider !== undefined) {
+      if (source.catalogProvider === provider) {
+        throw new Error(`llm-pi-ai: provider "${provider}" cannot inherit itself`)
+      }
+      const sourceProvider = catalogProvider(source.catalogProvider)
+      if (sourceProvider === undefined) {
+        throw new Error(`llm-pi-ai: provider "${provider}" names unknown catalogProvider "${source.catalogProvider}"`)
+      }
+      if (!isCredentialKeySegment(provider) || catalogProviderIds().includes(provider)) {
+        throw new Error(`llm-pi-ai: provider alias route "${provider}" must be a safe non-catalog credential id`)
+      }
+      if (sourceProvider.auth.oauth === undefined) {
+        throw new Error(`llm-pi-ai: provider "${provider}" catalogProvider "${source.catalogProvider}" does not support OAuth`)
+      }
+      const overridden = [
+        source.api === undefined ? undefined : 'api',
+        source.baseURL === undefined ? undefined : 'baseURL',
+        (source.models?.length ?? 0) === 0 ? undefined : 'models',
+        Object.keys(source.modelOverrides ?? {}).length === 0 ? undefined : 'modelOverrides',
+        source.apiKeyEnv === undefined ? undefined : 'apiKeyEnv',
+      ].filter((field): field is string => field !== undefined)
+      if (overridden.length > 0) {
+        throw new Error(
+          `llm-pi-ai: provider "${provider}" catalog aliases cannot override ${overridden.join(', ')}`,
+        )
+      }
+    }
     if (source.baseURL !== undefined && source.baseURL.length === 0) {
       throw new Error(`llm-pi-ai: provider "${provider}" has an empty baseURL`)
     }
@@ -465,11 +498,15 @@ export function resolveProfiles(
     try {
       catalog = resolveRouteModels({
         provider,
+        ...source.catalogProvider === undefined ? {} : { catalogProvider: source.catalogProvider },
         ...source.api === undefined ? {} : { api: source.api },
         ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
         ...source.models === undefined ? {} : { models: source.models },
         ...source.modelOverrides === undefined ? {} : { modelOverrides: source.modelOverrides },
-        ...source.compat === undefined ? {} : { compat: source.compat },
+        // A catalog alias inherits each model's compatibility from its source;
+        // the profile schema materializes a default compat object even when
+        // the alias did not author one.
+        ...source.catalogProvider !== undefined || source.compat === undefined ? {} : { compat: source.compat },
         defaultInput,
         defaultContextWindow: source.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
         defaultMaxTokens: source.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
@@ -477,6 +514,7 @@ export function resolveProfiles(
       catalogError = catalog.modelErrors.values().next().value
       piProvider = buildProvider({
         provider,
+        ...source.catalogProvider === undefined ? {} : { catalogProvider: source.catalogProvider },
         displayName,
         ...source.api === undefined ? {} : { api: source.api },
         ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },

@@ -21,6 +21,7 @@ vi.mock('../src/models.ts', async importOriginal => ({
 
 const { credentialStoreFrom, authContextFrom, recordKeyFor } = await import('../src/auth.ts')
 const { registerPiAiFlows } = await import('../src/login.ts')
+const { resolveProfiles } = await import('../src/config.ts')
 
 const CODEX = recordKeyFor('openai-codex')
 const dirs: string[] = []
@@ -106,6 +107,38 @@ describe('pi-ai login flows', () => {
 
     await attempt(ctx, () => Promise.resolve(), { key: recordKeyFor('anthropic'), method: 'api-key' })
     expect(login).toHaveBeenLastCalledWith('anthropic', 'api_key', expect.anything())
+  })
+
+  it('reconciles account aliases and commits each login under its own route key', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-alias-login-'))
+    dirs.push(dir)
+    const ctx = new Context()
+    await ctx.plugin(LocalCredentialProvider, { path: join(dir, '.credentials.yaml'), watch: false })
+    await ctx.plugin(AuthorizationService)
+    const alias = resolveProfiles({
+      'codex-work': { catalogProvider: 'openai-codex', displayName: 'Work' },
+      'codex-personal': { catalogProvider: 'openai-codex', displayName: 'Personal' },
+    })
+    const reconcile = registerPiAiFlows(
+      ctx,
+      { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) },
+      new Map(),
+    )
+    reconcile.update(alias)
+    expect(ctx.authorization.list().map(flow => flow.key)).toContain(recordKeyFor('codex-work'))
+    for (const route of ['codex-work', 'codex-personal']) {
+      login.mockImplementation(async (providerId: string) => {
+        await credentialStoreFrom(ctx).modify(providerId, () => Promise.resolve({ type: 'oauth', access: `access-${providerId}`, refresh: `refresh-${providerId}`, expires: 1 }))
+        return { type: 'oauth', access: `access-${providerId}`, refresh: `refresh-${providerId}`, expires: 1 }
+      })
+      await ctx.authorization.begin({ key: recordKeyFor(route), method: 'oauth', interaction: surface() })
+      await expect(ctx.credentials.readRecord(recordKeyFor(route))).resolves.toMatchObject({ kind: 'grant', payload: { access: `access-${route}` } })
+    }
+    expect(login).toHaveBeenLastCalledWith('codex-personal', 'oauth', expect.anything())
+    reconcile.update(new Map())
+    expect(ctx.authorization.list().some(flow => flow.key === recordKeyFor('codex-work'))).toBe(false)
+    expect(ctx.authorization.list().some(flow => flow.key === CODEX)).toBe(true)
+    reconcile()
   })
 
   it('commits what the login produced, where the adapter reads it back', async () => {

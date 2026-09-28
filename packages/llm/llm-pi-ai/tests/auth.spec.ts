@@ -64,6 +64,22 @@ describe('pi-ai credential store over harness records', () => {
     await expect(ctx.credentials.readRecord(CODEX)).resolves.toEqual({ kind: 'grant', payload: granted })
   })
 
+  it('refreshes one account alias without mutating the base or another account record', async () => {
+    const ctx = await stored()
+    const store = credentialStoreFrom(ctx)
+    await store.modify('openai-codex', () => Promise.resolve({ type: 'oauth', access: 'base-token', refresh: 'base-refresh', expires: 1 }))
+    await store.modify('codex-work', () => Promise.resolve({ type: 'oauth', access: 'work-token', refresh: 'work-refresh', expires: 1 }))
+    await store.modify('codex-personal', () => Promise.resolve({ type: 'oauth', access: 'personal-token', refresh: 'personal-refresh', expires: 1 }))
+
+    await store.modify('codex-work', current => Promise.resolve(current?.type === 'oauth'
+      ? { ...current, access: 'work-refreshed', refresh: 'work-refresh-next' }
+      : undefined))
+
+    await expect(store.read('codex-work')).resolves.toMatchObject({ access: 'work-refreshed', refresh: 'work-refresh-next' })
+    await expect(store.read('codex-personal')).resolves.toMatchObject({ access: 'personal-token', refresh: 'personal-refresh' })
+    await expect(store.read('openai-codex')).resolves.toMatchObject({ access: 'base-token', refresh: 'base-refresh' })
+  })
+
   it('stores the JSON image of a grant, dropping explicitly-undefined members', async () => {
     const ctx = await stored()
     const store = credentialStoreFrom(ctx)

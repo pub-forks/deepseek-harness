@@ -15,6 +15,7 @@ import { catalogProvider, catalogProviderIds } from './catalog.ts'
 import { recordKeyFor } from './auth.ts'
 import type { PiAiAuthInjection } from './adapter.ts'
 import { createModels } from './models.ts'
+import type { ResolvedPiAiProviderProfile } from './config.ts'
 
 /**
  * The login methods one catalog provider offers.
@@ -109,53 +110,95 @@ function restate(prompt: AuthPrompt): AuthorizationPrompt {
 }
 
 /**
- * Register one authorization flow per installed provider that ships a login.
+ * Register installed provider flows and configured catalog aliases, each keyed
+ * by its own route so OAuth grants and refreshes remain account-isolated.
  *
- * Registration is unconditional on configuration: a provider has to be signed
+ * Base registration is unconditional on configuration: a provider has to be signed
  * into before a route for it is worth adding, so the flow exists from the
  * moment the plugin mounts rather than appearing once a profile does.
  * @param ctx - the plugin context carrying `ctx.authorization`.
  * @param auth - the injectables every collection here is built with.
+ * @param profiles - current routes, including explicit catalog aliases.
  */
-export function registerPiAiFlows(ctx: Context, auth: PiAiAuthInjection): void {
-  for (const providerId of catalogProviderIds()) {
-    const provider = catalogProvider(providerId)
-    const [first, ...rest] = loginMethods(provider)
-    /* v8 ignore next 3 -- every id here names an installed provider and every
+export function registerPiAiFlows(
+  ctx: Context,
+  auth: PiAiAuthInjection,
+  profiles: ReadonlyMap<string, ResolvedPiAiProviderProfile> = new Map(),
+): (() => void) & { update(next: ReadonlyMap<string, ResolvedPiAiProviderProfile>): void } {
+  const active = new Map<string, { fact: string; dispose: () => void }>()
+  // GAIA: keep provider-native authorization registrations reconciled with account alias settings.
+  const reconcile = (nextProfiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>): void => {
+    const routes = new Map<string, string>()
+    for (const providerId of catalogProviderIds()) routes.set(providerId, providerId)
+    for (const [route, profile] of nextProfiles) {
+      if (profile.catalogProvider !== undefined) routes.set(route, profile.catalogProvider)
+    }
+    const wanted = new Set(routes.keys())
+    for (const [route, registration] of active) {
+      const profile = nextProfiles.get(route)
+      const source = profile?.catalogProvider ?? route
+      const label = profile?.displayName ?? catalogProvider(source)?.name ?? route
+      const fact = `${source}\n${label}`
+      if (!wanted.has(route) || registration.fact !== fact) {
+        registration.dispose()
+        active.delete(route)
+      }
+    }
+    for (const [route, sourceId] of routes) {
+      const profile = nextProfiles.get(route)
+      const label = profile?.displayName
+      const fact = `${sourceId}\n${label ?? catalogProvider(sourceId)?.name ?? route}`
+      if (active.has(route)) continue
+      const sourceProvider = catalogProvider(sourceId)
+      const provider = sourceId === route || sourceProvider === undefined
+        ? sourceProvider
+        : { ...sourceProvider, id: route, name: label ?? route }
+      const [first, ...rest] = loginMethods(provider)
+      /* v8 ignore next 3 -- every id here names an installed provider and every
        installed provider ships a login, so no entry is skipped; the guard
        is what keeps that from becoming a crash if either stops being true. */
-    if (provider === undefined || first === undefined) continue
-    /* v8 ignore next 7 -- every installed catalog id is a lowercase
+      if (provider === undefined || first === undefined) continue
+      /* v8 ignore next 7 -- every installed catalog id is a lowercase
        hyphenated identifier; the guard keeps a future upstream id outside the
        record grammar (dotted or uppercase, as vendor ids elsewhere already
        are) from throwing in `recordKeyFor` and failing the whole mount. */
-    if (!isCredentialKeySegment(providerId)) {
-      ctx.logger.warn(
-        'llm-pi-ai: catalog provider "%s" cannot address a credential record; its sign-in is not offered',
-        providerId)
-      continue
+      if (!isCredentialKeySegment(route)) {
+        ctx.logger.warn(
+          'llm-pi-ai: provider route "%s" cannot address a credential record; its sign-in is not offered',
+          route,
+        )
+        continue
+      }
+      const dispose = ctx.authorization.registerFlow({
+        key: recordKeyFor(route),
+        label: label ?? provider.name,
+        methods: [first, ...rest],
+        async run(session) {
+          // A collection of its own holds only the provider being signed into.
+          // Its login writes into the shared store under this route key.
+          const models = createModels(auth)
+          models.setProvider(provider)
+          // Total over the two ids declared above, and the seam only ever hands
+          // back one a flow declared.
+          const type: AuthType = session.method === 'oauth' ? 'oauth' : 'api_key'
+          // pi-ai persists what the login returns through that same store, which
+          // is what makes it the single writer of this record.
+          await models.login(route, type, {
+            signal: session.signal,
+            notify: (event) => { relay(event, session) },
+            prompt: prompt => session.prompt(restate(prompt)),
+          })
+        },
+      })
+      active.set(route, { fact, dispose })
     }
-    ctx.authorization.registerFlow({
-      key: recordKeyFor(providerId),
-      label: provider.name,
-      methods: [first, ...rest],
-      async run(session) {
-        // A collection of its own, holding only the provider being signed
-        // into: login is not serving requests, and the credential it produces
-        // lands in the shared store either way.
-        const models = createModels(auth)
-        models.setProvider(provider)
-        // Total over the two ids declared above, and the seam only ever hands
-        // back one a flow declared.
-        const type: AuthType = session.method === 'oauth' ? 'oauth' : 'api_key'
-        // pi-ai persists what the login returns through that same store, which
-        // is what makes it the single writer of this record.
-        await models.login(providerId, type, {
-          signal: session.signal,
-          notify: (event) => { relay(event, session) },
-          prompt: prompt => session.prompt(restate(prompt)),
-        })
-      },
-    })
   }
+  reconcile(profiles)
+  const update = (nextProfiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>): void => {
+    reconcile(nextProfiles)
+  }
+  return Object.assign(() => {
+    for (const entry of active.values()) entry.dispose()
+    active.clear()
+  }, { update })
 }

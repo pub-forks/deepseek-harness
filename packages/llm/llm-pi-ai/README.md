@@ -37,6 +37,8 @@ Choose this adapter when the same composition serves several providers, when a r
 
 Each profile may set a `retryPolicy`; omission uses normal mode with five retries. `apiKeyEnv` is a credential reference resolved per request through the harness credential seam, so no secret enters the configuration file; a reference that resolves to nothing fails the request with `MISSING_CREDENTIAL`. Omitting it leaves the route configured-but-keyless, which for an installed catalog route defers to pi-ai's provider-native ambient discovery.
 
+An OAuth account alias sets `catalogProvider` to an installed OAuth provider and gives the route its own key and `displayName`. It inherits the source catalog's models, endpoint, protocol, compatibility behavior, and login implementation; its model namespace and OAuth credential record remain keyed by the alias route. For example, `codex-work: { catalogProvider: openai-codex, displayName: Work Codex }` can be selected independently from `openai-codex`. Aliases cannot override inherited provider details or inherit from another alias. Gaia's Sign-in page manages account creation and deletion.
+
 ```yaml
 - name: '@deepseek-ai/dsh-llm-pi-ai'
   config:

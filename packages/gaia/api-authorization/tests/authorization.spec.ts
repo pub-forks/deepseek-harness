@@ -16,13 +16,30 @@ async function next(iterator: AsyncIterator<AttemptItem>): Promise<AttemptItem> 
   return result.value
 }
 afterEach(async () => { await Promise.all(roots.splice(0).map(ctx => ctx.fiber.dispose())) })
-async function fixture(run: (session: AuthorizationSession, ctx: Context) => Promise<void>) {
+async function fixture(run: (session: AuthorizationSession, ctx: Context) => Promise<void>, providers: Record<string, unknown> = {}) {
   const ctx = new Context()
   roots.push(ctx)
   await ctx.plugin(MemoryCredentials)
   await ctx.plugin(AuthorizationService)
   ctx.authorization.registerFlow({ key, label: 'Codex', methods: [{ id: 'oauth', label: 'OAuth' }], run: session => run(session, ctx) })
-  return new GaiaAuthorizationController(ctx)
+  let revision = 1
+  const settings = {
+    describe: () => [{ ns: 'llm-pi-ai', revision, value: { providers: structuredClone(providers) } }],
+    mutate: async (_ns: string, ops: Array<{ op: string; path: string[]; value?: unknown }>) => {
+      for (const op of ops) {
+        if (op.path[0] !== 'providers' || !op.path[1]) continue
+        if (op.op === 'set') providers[op.path[1]] = op.value
+        else Reflect.deleteProperty(providers, op.path[1])
+      }
+      revision += 1
+    },
+  }
+  Object.defineProperty(ctx, 'settings', { value: settings, configurable: true })
+  Object.defineProperty(ctx, 'llm', {
+    value: { listConfigurableProviders: () => [{ provider: 'openai-codex', declared: false }] },
+    configurable: true,
+  })
+  return { controller: new GaiaAuthorizationController(ctx), ctx, providers }
 }
 
 it('projects only allowlisted fields even if input objects contain tokens', () => {
@@ -32,7 +49,7 @@ it('projects only allowlisted fields even if input objects contain tokens', () =
 })
 
 it('streams notice and prompt, accepts an answer, then reports authorized', async () => {
-  const controller = await fixture(async (session, ctx) => {
+  const { controller } = await fixture(async (session, ctx) => {
     session.notify({ message: 'Open the page', url: 'https://example.test', code: 'ABCD' })
     if (await session.prompt({ kind: 'text', message: 'Paste callback' }) !== 'answer') throw new Error('wrong answer')
     await ctx.credentials.modifyRecord(key, async () => ({ kind: 'grant', payload: { accessToken: 'never-on-wire' } }))
@@ -50,7 +67,7 @@ it('streams notice and prompt, accepts an answer, then reports authorized', asyn
 })
 
 it('cancels an attempt waiting at a prompt', async () => {
-  const controller = await fixture(async (session) => { await session.prompt({ kind: 'secret', message: 'Secret' }) })
+  const { controller } = await fixture(async (session) => { await session.prompt({ kind: 'secret', message: 'Secret' }) })
   const iterator = controller.start({ key, method: 'oauth' }, new AbortController().signal)[Symbol.asyncIterator]()
   const prompt = (await next(iterator))
   expect(controller.cancel({ attemptId: prompt.attemptId })).toBe(true)
@@ -58,7 +75,7 @@ it('cancels an attempt waiting at a prompt', async () => {
 })
 
 it('reports prompt withdrawal while the flow continues', async () => {
-  const controller = await fixture(async (session, ctx) => {
+  const { controller } = await fixture(async (session, ctx) => {
     const withdrawn = new AbortController()
     const pending = session.prompt({ kind: 'text', message: 'Pasted code', signal: withdrawn.signal }).catch(() => '')
     withdrawn.abort()
@@ -72,7 +89,7 @@ it('reports prompt withdrawal while the flow continues', async () => {
 })
 
 it('returns busy on a second attempt and refuses an unknown sign-out key', async () => {
-  const controller = await fixture(async (session) => { await session.prompt({ kind: 'text', message: 'Wait' }) })
+  const { controller } = await fixture(async (session) => { await session.prompt({ kind: 'text', message: 'Wait' }) })
   const lifetime = new AbortController()
   const first = controller.start({ key, method: 'oauth' }, lifetime.signal)[Symbol.asyncIterator]()
   const prompt = (await next(first))
@@ -81,4 +98,62 @@ it('returns busy on a second attempt and refuses an unknown sign-out key', async
   await expect(controller.signOut({ key: credentialKey('missing', 'key') })).rejects.toThrow('Unknown')
   expect(controller.cancel({ attemptId: prompt.attemptId })).toBe(true)
   await first.next()
+})
+
+it('validates account creation at the Host boundary and persists alias metadata only', async () => {
+  const { controller, ctx, providers } = await fixture(async () => {})
+  await expect(controller.createAccount({ source: 'openai-codex', accountId: '../bad', label: 'Bad' })).rejects.toThrow(/Account id/)
+  await expect(controller.createAccount({ source: 'missing', accountId: 'codex-work', label: 'Work' })).rejects.toThrow(/Unknown OAuth source/)
+  await controller.createAccount({ source: 'openai-codex', accountId: 'codex-work', label: 'Work' })
+  expect(providers['codex-work']).toEqual({ displayName: 'Work', catalogProvider: 'openai-codex' })
+  ctx.authorization.registerFlow({
+    key: credentialKey('llm-pi-ai', 'uninstalled'), label: 'Uninstalled',
+    methods: [{ id: 'oauth', label: 'OAuth' }], run: async () => {},
+  })
+  await expect(controller.createAccount({ source: 'uninstalled', accountId: 'codex-other', label: 'Other' }))
+    .rejects.toThrow(/installed OAuth provider/)
+  Object.defineProperty(ctx, 'llm', {
+    value: { listConfigurableProviders: () => [
+      { provider: 'openai-codex', declared: false }, { provider: 'codex-other', declared: true },
+    ] },
+    configurable: true,
+  })
+  await expect(controller.createAccount({ source: 'openai-codex', accountId: 'codex-other', label: 'Other' }))
+    .rejects.toThrow(/already in use/)
+})
+
+it('removes an alias and only that route credential, refusing active deletion', async () => {
+  const aliasKey = credentialKey('llm-pi-ai', 'codex-work')
+  const providers: Record<string, unknown> = { 'codex-work': { displayName: 'Work', catalogProvider: 'openai-codex' } }
+  const { controller, ctx } = await fixture(async (_session, context) => {
+    await context.credentials.modifyRecord(aliasKey, async () => ({ kind: 'grant', payload: { accessToken: 'fixture-token' } }))
+  }, providers)
+  ctx.authorization.registerFlow({ key: aliasKey, label: 'Work', methods: [{ id: 'oauth', label: 'OAuth' }], run: async () => {} })
+  await ctx.credentials.modifyRecord(key, async () => ({ kind: 'grant', payload: { accessToken: 'other-fixture' } }))
+  await controller.signOut({ key: aliasKey })
+  expect(providers['codex-work']).toBeDefined()
+  await ctx.credentials.modifyRecord(aliasKey, async () => ({ kind: 'grant', payload: { accessToken: 'fixture-token' } }))
+  await controller.removeAccount({ key: aliasKey })
+  expect(providers['codex-work']).toBeUndefined()
+  await expect(ctx.credentials.readRecord(aliasKey)).resolves.toBeUndefined()
+  await expect(ctx.credentials.readRecord(key)).resolves.toMatchObject({ kind: 'grant' })
+})
+
+it('refuses alias deletion while its authorization flow is active', async () => {
+  const aliasKey = credentialKey('llm-pi-ai', 'codex-work')
+  const { controller, ctx } = await fixture(async () => {}, { 'codex-work': { catalogProvider: 'openai-codex' } })
+  ctx.authorization.registerFlow({
+    key: aliasKey, label: 'Work', methods: [{ id: 'oauth', label: 'OAuth' }],
+    run: session => new Promise<void>((resolve) => {
+      session.signal.addEventListener('abort', () => { resolve() }, { once: true })
+    }),
+  })
+  const lifetime = new AbortController()
+  const stream = controller.start({ key: aliasKey, method: 'oauth' }, lifetime.signal)[Symbol.asyncIterator]()
+  const nextItem = stream.next()
+  await new Promise(resolve => setTimeout(resolve, 0))
+  await expect(controller.removeAccount({ key: aliasKey })).rejects.toThrow(/in progress/)
+  lifetime.abort()
+  await nextItem
+  await stream.return?.()
 })

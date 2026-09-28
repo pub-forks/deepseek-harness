@@ -4,17 +4,19 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { AuthorizationDeclinedError, AuthorizationError } from '@deepseek-ai/dsh-authorization'
+import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-llm'
 import type { AuthorizationPrompt } from '@deepseek-ai/dsh-authorization/types'
 import { projectFlow } from './projection.ts'
-import type { AnswerRequest, AttemptId, AttemptItem, AttemptPayload, CancelRequest, FlowView, PromptId, SignOutRequest, StartRequest } from './types.ts'
-export type { AnswerRequest, AttemptId, AttemptItem, AttemptPayload, CancelRequest, FlowView, PromptId, SignOutRequest, StartRequest } from './types.ts'
+import type { AnswerRequest, AttemptId, AttemptItem, AttemptPayload, CancelRequest, CreateAccountRequest, FlowView, PromptId, RemoveAccountRequest, SignOutRequest, StartRequest } from './types.ts'
+export type { AnswerRequest, AttemptId, AttemptItem, AttemptPayload, CancelRequest, CreateAccountRequest, FlowView, PromptId, RemoveAccountRequest, SignOutRequest, StartRequest } from './types.ts'
 
 interface PendingPrompt { resolve(value: string): void; reject(reason: Error): void }
 interface Attempt { key: FlowView['key']; controller: AbortController; prompts: Map<PromptId, PendingPrompt> }
 
 /** One stream per attempt, with answer and cancellation calls addressed by random ids. */
 export class GaiaAuthorizationController extends TypertRemoteService {
-  static inject = ['authorization', 'credentials']
+  static inject = ['authorization', 'credentials', 'settings', 'llm']
   private readonly attempts = new Map<AttemptId, Attempt>()
   /** @param ctx - Host with the authorization and credential services. */
   constructor(ctx: Context) { super(ctx, 'gaiaAuthorizationController', { namespace: 'gaiaAuthorization' }) }
@@ -22,8 +24,52 @@ export class GaiaAuthorizationController extends TypertRemoteService {
   /** @returns Public flow and stored-record presence facts. */
   @Remote
   async listFlows(): Promise<FlowView[]> {
-    return Promise.all(this.ctx.authorization.list().map(async entry =>
-      projectFlow(entry, await this.ctx.credentials.describeRecord(entry.key))))
+    const profile = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')?.value as { providers?: Record<string, { catalogProvider?: string }> } | undefined
+    return Promise.all(this.ctx.authorization.list().map(async (entry) => {
+      const projected = projectFlow(entry, await this.ctx.credentials.describeRecord(entry.key))
+      const id = entry.key.startsWith('llm-pi-ai/') ? entry.key.slice('llm-pi-ai/'.length) : ''
+      return { ...projected, ...(profile?.providers?.[id]?.catalogProvider ? { accountAlias: true } : {}) }
+    }))
+  }
+
+  /** Create an independently keyed OAuth route alias in the live settings profile. */
+  @Remote
+  async createAccount(request: CreateAccountRequest): Promise<void> {
+    const accountId = request.accountId.trim()
+    const label = request.label.trim()
+    const source = request.source.trim()
+    if (!/^[a-z][a-z0-9-]{1,47}$/.test(accountId)) throw new Error('Account id must use 2–48 lowercase letters, digits, or hyphens and start with a letter.')
+    if (label.length < 1 || label.length > 80) throw new Error('Account label must contain 1–80 characters.')
+    const key = `llm-pi-ai/${source}`
+    const sourceFlow = this.ctx.authorization.list().find(flow => flow.key === key)
+    if (sourceFlow === undefined || !sourceFlow.methods.some(method => method.id === 'oauth')) throw new Error('Unknown OAuth source provider.')
+    const descriptor = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')
+    if (descriptor === undefined) throw new Error('Harness Models settings are unavailable.')
+    const value = descriptor.value as { providers?: Record<string, unknown> }
+    const providers = value.providers ?? {}
+    const sourceProfile = providers[source] as { catalogProvider?: unknown } | undefined
+    if (sourceProfile?.catalogProvider !== undefined) throw new Error('Choose an installed OAuth provider, not another account alias.')
+    const directory = this.ctx.llm.listConfigurableProviders()
+    if (!directory.some(provider => provider.provider === source && provider.declared === false)) {
+      throw new Error('Choose an installed OAuth provider.')
+    }
+    if (directory.some(provider => provider.provider === accountId)) throw new Error('Account id is already in use.')
+    if (Object.hasOwn(providers, accountId) || this.ctx.authorization.list().some(flow => flow.key === `llm-pi-ai/${accountId}`)) throw new Error('Account id is already in use.')
+    await this.ctx.settings.mutate('llm-pi-ai', [{ op: 'set', path: ['providers', accountId], value: { displayName: label, catalogProvider: source } }], descriptor.revision)
+  }
+
+  /** Delete one account alias and its independent credential. */
+  @Remote
+  async removeAccount(request: RemoveAccountRequest): Promise<void> {
+    const entry = this.ctx.authorization.list().find(flow => flow.key === request.key)
+    if (entry === undefined || !entry.key.startsWith('llm-pi-ai/')) throw new Error('Unknown account alias.')
+    if (entry.inFlight || [...this.attempts.values()].some(item => item.key === request.key)) throw new Error('Sign-in is in progress.')
+    const id = entry.key.slice('llm-pi-ai/'.length)
+    const descriptor = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')
+    const providers = (descriptor?.value as { providers?: Record<string, { catalogProvider?: string }> } | undefined)?.providers
+    if (descriptor === undefined || providers?.[id]?.catalogProvider === undefined) throw new Error('This provider is not a removable account alias.')
+    await this.ctx.credentials.deleteRecord(entry.key)
+    await this.ctx.settings.mutate('llm-pi-ai', [{ op: 'unset', path: ['providers', id] }], descriptor.revision)
   }
 
   /**

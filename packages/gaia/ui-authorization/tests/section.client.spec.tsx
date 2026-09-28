@@ -11,13 +11,15 @@ import type { AttemptId, AttemptItem, FlowView, PromptId } from '../../api-autho
 
 afterEach(cleanup)
 const flow: FlowView = { key: credentialKey('llm-pi-ai', 'openai-codex'), label: 'Codex', methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'device', label: 'Device code' }], inFlight: false, signedIn: true }
-function mount(items: AttemptItem[] = []) {
+function mount(items: AttemptItem[] = [], listedFlows: FlowView[] = [flow]) {
   const operations: AuthorizationSectionInjected = {
-    listFlows: vi.fn(async () => [flow]),
+    listFlows: vi.fn(async () => listedFlows),
     start: vi.fn(async function* () { for (const item of items) yield item }),
     answer: vi.fn(async () => true),
     cancel: vi.fn(async () => {}),
     signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}),
+    removeAccount: vi.fn(async () => {}),
   }
   const globals = {} as GlobalStandardProps
   render(<AuthorizationSection {...globals} {...operations}
@@ -25,6 +27,20 @@ function mount(items: AttemptItem[] = []) {
     close={() => {}} openSection={() => {}} />)
   return operations
 }
+
+it('creates and removes independently named OAuth aliases from the localized controls', async () => {
+  const alias: FlowView = { key: credentialKey('llm-pi-ai', 'codex-work'), label: 'Work Codex', methods: [{ id: 'oauth', label: 'OAuth' }], inFlight: false, signedIn: true, accountAlias: true }
+  const operations = mount([], [flow, alias])
+  await screen.findByText('Work Codex')
+  fireEvent.change(screen.getByLabelText(en.accountLabel), { target: { value: 'Office' } })
+  fireEvent.change(screen.getByLabelText(en.accountId), { target: { value: 'codex-office' } })
+  fireEvent.click(screen.getByRole('button', { name: en.addAccount }))
+  await waitFor(() => { expect(operations.createAccount).toHaveBeenCalledWith('openai-codex', 'codex-office', 'Office') })
+  fireEvent.click(screen.getByRole('button', { name: en.removeAccount }))
+  const removeButtons = screen.getAllByRole('button', { name: en.removeAccount })
+  fireEvent.click(removeButtons[removeButtons.length - 1]!)
+  await waitFor(() => { expect(operations.removeAccount).toHaveBeenCalledWith(alias.key) })
+})
 
 it('lists the OAuth method without a method picker', async () => {
   const operations = mount()

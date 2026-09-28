@@ -7,6 +7,8 @@
     { "path": "../../credentials/authorization" },
     { "path": "../../util/brand" },
     { "path": "../../credentials/credentials" },
-    { "path": "../../typert/protocol" }
+    { "path": "../../llm/llm" },
+    { "path": "../../typert/protocol" },
+    { "path": "../../settings/settings" }
   ]
 }

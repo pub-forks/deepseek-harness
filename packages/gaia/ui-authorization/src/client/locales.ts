@@ -9,6 +9,9 @@ export const en = {
   busy: 'A sign-in is already in progress.', authorized: 'Signed in successfully.', cancelled: 'Sign-in cancelled.', error: 'Sign-in failed.',
   modelsHint: 'Choose a model for this provider in Models settings.', models: 'Models settings',
   confirmTitle: 'Sign out?', confirmDescription: 'Remove the stored sign-in for this provider?', close: 'Close',
+  accountLabel: 'Account label', accountId: 'Account id', addAccount: 'Add OAuth account', removeAccount: 'Remove account',
+  accountSource: 'OAuth provider',
+  removeTitle: 'Remove account?', removeDescription: 'Remove this account route and its stored sign-in?',
 } as const
 export const zh: Record<AuthorizationKey, string> = {
   nav: '登录', title: '登录', intro: '连接服务提供方以使用其模型。',
@@ -19,4 +22,7 @@ export const zh: Record<AuthorizationKey, string> = {
   busy: '已有登录流程正在进行。', authorized: '登录成功。', cancelled: '登录已取消。', error: '登录失败。',
   modelsHint: '前往模型设置选择此提供方的模型。', models: '模型设置',
   confirmTitle: '退出登录？', confirmDescription: '删除此提供方保存的登录信息？', close: '关闭',
+  accountLabel: '账户名称', accountId: '账户标识', addAccount: '添加 OAuth 账户', removeAccount: '删除账户',
+  accountSource: 'OAuth 服务提供方',
+  removeTitle: '删除账户？', removeDescription: '删除此账户路由及其保存的登录信息？',
 }

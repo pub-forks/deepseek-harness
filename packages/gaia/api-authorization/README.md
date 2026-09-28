@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 This private host plugin exposes registered `ctx.authorization` flows through the normal cookie-protected API Gateway. `listFlows` returns labels, methods, in-flight state, and credential-record presence. Credential payloads and answers never enter the list response or logs.
 
+For `llm-pi-ai`, `createAccount` accepts an installed OAuth source, a human label, and a validated unique route id, then writes only `{ displayName, catalogProvider }` through the settings service. `removeAccount` refuses an active alias, deletes its own credential record, and removes only its provider profile. Ordinary `signOut` continues to delete credentials while preserving the route. The browser never submits provider URLs or credentials.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)
