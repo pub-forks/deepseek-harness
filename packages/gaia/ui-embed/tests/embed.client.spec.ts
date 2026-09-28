@@ -1073,6 +1073,18 @@ describe('embed composer styles', () => {
   })
 })
 
+describe('Gaia hero styles', () => {
+  it('hides the stock headline in both frames while keeping workspace chrome embed-only', async () => {
+    const { GAIA_SKIN_CSS, GAIA_EMBED_CHROME_CSS } = await import('../src/client/styles.ts')
+    const headlineSelector = ':is(html[data-gaia-embed], html[data-gaia-full]) [data-hero-headline] {'
+    const start = GAIA_SKIN_CSS.indexOf(headlineSelector)
+    expect(start).toBeGreaterThan(-1)
+    expect(GAIA_SKIN_CSS.slice(start, GAIA_SKIN_CSS.indexOf('}', start))).toContain('display: none !important;')
+    expect(GAIA_EMBED_CHROME_CSS).toContain('html[data-gaia-embed] [data-hero-workspace] {')
+    expect(GAIA_EMBED_CHROME_CSS).not.toContain('[data-hero-headline]')
+  })
+})
+
 describe('embed send button', () => {
   it('shows an accent outline at rest and an accent fill on hover, never DSH blue', async () => {
     const { GAIA_SKIN_CSS } = await import('../src/client/styles.ts')

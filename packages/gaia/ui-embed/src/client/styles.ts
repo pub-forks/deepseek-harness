@@ -18,6 +18,10 @@ ${GAIA_FRAME} [data-app-frame] {
   color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-bg-base);
 }
+/* Hide the stock hero headline in both Gaia frames. */
+${GAIA_FRAME} [data-hero-headline] {
+  display: none !important;
+}
 ${GAIA_FRAME} [data-composer-card] {
   position: relative;
   background: var(--dsw-alias-bg-base) !important;
@@ -112,8 +116,7 @@ html[data-gaia-embed] [data-model-menu] {
   max-height: var(--model-menu-room, calc(100vh - 24px)) !important;
 }
 /* The drawer belongs to one project; its hero cannot change workspace. */
-html[data-gaia-embed] [data-hero-workspace],
-html[data-gaia-embed] [data-hero-headline] {
+html[data-gaia-embed] [data-hero-workspace] {
   display: none !important;
 }
 /* Resume popup rows are widened and flattened for the compact drawer. */
