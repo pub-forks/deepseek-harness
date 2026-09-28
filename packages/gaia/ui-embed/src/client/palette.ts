@@ -73,6 +73,14 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
     flat['--dsw-alias-button-info-fill'] = accent
     // DSH's info-button hover is its own blue; keep hovers on Gaia's accent.
     flat['--dsw-alias-button-info-hover'] = `color-mix(in oklch, ${accent}, black 12%)`
+    // Gaia's scrollbars are the accent at 40% (70% on hover); every DSH
+    // scrolling surface reads these four tokens through ui-theme's scrollbar skin.
+    const thumb = `color-mix(in srgb, ${accent} 40%, transparent)`
+    const thumbHover = `color-mix(in srgb, ${accent} 70%, transparent)`
+    flat['--dsw-alias-scrollbar-bg-l1'] = thumb
+    flat['--dsw-alias-scrollbar-bg-l2'] = thumb
+    flat['--dsw-alias-scrollbar-hover-l1'] = thumbHover
+    flat['--dsw-alias-scrollbar-hover-l2'] = thumbHover
   }
   return Object.fromEntries(Object.entries(flat).map(([name, value]) => [name, { light: value, dark: value }]))
 }
