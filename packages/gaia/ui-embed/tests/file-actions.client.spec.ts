@@ -14,7 +14,7 @@ describe('Gaia Harness file actions', () => {
     const postMessage = vi.fn()
     Object.defineProperty(window, 'parent', { value: { postMessage }, configurable: true })
     const path = '/home/u/project/file with spaces.ts'
-    const t = (key: 'path.open' | 'path.reveal'): string => key === 'path.open' ? 'Open' : 'Show file location'
+    const t = (key: string): string => key === 'path.open' ? 'Open' : 'Show file location'
     const view = render(createElement(GaiaFileActions, { absolutePath: path, t }))
 
     fireEvent.click(view.getByRole('button', { name: 'Open' }))

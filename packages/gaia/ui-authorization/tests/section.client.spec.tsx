@@ -31,7 +31,7 @@ function mount(items: AttemptItem[] = [], listedFlows: FlowView[] = [flow]) {
 it('creates and removes independently named OAuth aliases from the localized controls', async () => {
   const alias: FlowView = { key: credentialKey('llm-pi-ai', 'codex-work'), label: 'Work Codex', methods: [{ id: 'oauth', label: 'OAuth' }], inFlight: false, signedIn: true, accountAlias: true }
   const operations = mount([], [flow, alias])
-  await screen.findByText('Work Codex')
+  await screen.findByText('Work Codex', { selector: 'strong' })
   fireEvent.change(screen.getByLabelText(en.accountLabel), { target: { value: 'Office' } })
   fireEvent.change(screen.getByLabelText(en.accountId), { target: { value: 'codex-office' } })
   fireEvent.click(screen.getByRole('button', { name: en.addAccount }))
@@ -44,7 +44,7 @@ it('creates and removes independently named OAuth aliases from the localized con
 
 it('lists the OAuth method without a method picker', async () => {
   const operations = mount()
-  expect(await screen.findByText('Codex')).toBeTruthy()
+  expect(await screen.findByText('Codex', { selector: 'strong' })).toBeTruthy()
   expect(preferredMethod(flow)).toBe('device')
   expect(screen.queryByLabelText(en.method)).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: en.signIn }))
@@ -58,7 +58,7 @@ it('shows device code and prompt, answers it, and removes withdrawn prompts', as
     { attemptId: brandString<AttemptId>('one'), type: 'withdrawn', promptId: brandString<PromptId>('p1') },
     { attemptId: brandString<AttemptId>('one'), type: 'prompt', promptId: brandString<PromptId>('p2'), kind: 'secret', message: 'Password' },
   ])
-  await screen.findByText('Codex')
+  await screen.findByText('Codex', { selector: 'strong' })
   fireEvent.click(screen.getByRole('button', { name: en.signIn }))
   expect(await screen.findByText('ABCD')).toBeTruthy()
   const open = screen.getByRole('link', { name: en.open })
@@ -83,10 +83,11 @@ it('preselects device code in the OpenAI OAuth prompt', async () => {
       }
     }),
     answer: vi.fn(async () => true), cancel: vi.fn(async () => {}), signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}), removeAccount: vi.fn(async () => {}),
   }
   render(<AuthorizationSection {...({} as GlobalStandardProps)} {...operations}
     t={key => key in en ? en[key as keyof typeof en] : key} close={() => {}} openSection={() => {}} />)
-  expect(await screen.findByText('Codex')).toBeTruthy()
+  expect(await screen.findByText('Codex', { selector: 'strong' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: en.signIn }))
   const choice = await screen.findByLabelText('Choose sign-in') as HTMLSelectElement
   expect(choice.value).toBe('device')
@@ -94,7 +95,7 @@ it('preselects device code in the OpenAI OAuth prompt', async () => {
 
 it('confirms sign-out through the shared modal', async () => {
   const operations = mount()
-  await screen.findByText('Codex')
+  await screen.findByText('Codex', { selector: 'strong' })
   fireEvent.click(screen.getByRole('button', { name: en.signOut }))
   expect(await screen.findByText(en.confirmDescription)).toBeTruthy()
   fireEvent.click(screen.getAllByRole('button', { name: en.signOut }).at(-1) as HTMLElement)
@@ -107,12 +108,13 @@ it('opens Models settings after authorization', async () => {
     listFlows: vi.fn(async () => [flow]),
     start: vi.fn(async function* () { yield { attemptId: brandString<AttemptId>('one'), type: 'done' as const, outcome: 'authorized' as const } }),
     answer: vi.fn(async () => true), cancel: vi.fn(async () => {}), signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}), removeAccount: vi.fn(async () => {}),
   }
   const globals = {} as GlobalStandardProps
   render(<AuthorizationSection {...globals} {...operations}
     t={key => key in en ? en[key as keyof typeof en] : key}
     close={() => {}} openSection={openSection} />)
-  await screen.findByText('Codex')
+  await screen.findByText('Codex', { selector: 'strong' })
   fireEvent.click(screen.getByRole('button', { name: en.signIn }))
   fireEvent.click(await screen.findByRole('link', { name: en.models }))
   expect(openSection).toHaveBeenCalledWith('models')
@@ -124,10 +126,11 @@ it('opens Models settings from the API-key note', async () => {
     listFlows: vi.fn(async () => [flow]),
     start: vi.fn(async function* () {}),
     answer: vi.fn(async () => true), cancel: vi.fn(async () => {}), signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}), removeAccount: vi.fn(async () => {}),
   } satisfies AuthorizationSectionInjected
   render(<AuthorizationSection {...({} as GlobalStandardProps)} {...operations}
     t={key => key in en ? en[key as keyof typeof en] : key} close={() => {}} openSection={openSection} />)
-  expect(await screen.findByText('Codex')).toBeTruthy()
+  expect(await screen.findByText('Codex', { selector: 'strong' })).toBeTruthy()
   fireEvent.click(screen.getByRole('link', { name: en.models }))
   expect(openSection).toHaveBeenCalledWith('models')
 })
@@ -144,11 +147,12 @@ it('hides API-key-only flows and keeps only OAuth on mixed flows', async () => {
     answer: vi.fn(async () => true),
     cancel: vi.fn(async () => {}),
     signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}), removeAccount: vi.fn(async () => {}),
   }
   render(<AuthorizationSection {...({} as GlobalStandardProps)} {...operations}
     t={key => key in en ? en[key as keyof typeof en] : key} close={() => {}} openSection={() => {}} />)
-  expect(await screen.findByText('Mixed Provider')).toBeTruthy()
-  expect(screen.queryByText('Key Only')).toBeNull()
+  expect(await screen.findByText('Mixed Provider', { selector: 'strong' })).toBeTruthy()
+  expect(screen.queryByText('Key Only', { selector: 'strong' })).toBeNull()
   const cards = screen.getAllByRole('listitem')
   expect(cards).toHaveLength(1)
   expect(within(cards[0] as HTMLElement).queryByLabelText(en.method)).toBeNull()
@@ -166,10 +170,11 @@ it('lists OpenAI Codex first and preserves the remaining OAuth order', async () 
     listFlows: vi.fn(async () => [first, openai, last]),
     start: vi.fn(async function* () {}), answer: vi.fn(async () => true),
     cancel: vi.fn(async () => {}), signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}), removeAccount: vi.fn(async () => {}),
   }
   render(<AuthorizationSection {...({} as GlobalStandardProps)} {...operations}
     t={key => key in en ? en[key as keyof typeof en] : key} close={() => {}} openSection={() => {}} />)
-  await screen.findByText('OpenAI Codex')
+  await screen.findByText('OpenAI Codex', { selector: 'strong' })
   expect(screen.getAllByRole('listitem').map(item => item.textContent)).toEqual([
     expect.stringContaining('OpenAI Codex'), expect.stringContaining('First Provider'), expect.stringContaining('Last Provider'),
   ])
@@ -180,6 +185,7 @@ it('shows the OAuth empty state when there are no OAuth flows', async () => {
     listFlows: vi.fn(async () => [{ key: credentialKey('llm-pi-ai', 'key-only'), label: 'API Provider', methods: [{ id: 'api-key', label: 'API key' }], inFlight: false, signedIn: false }]),
     start: vi.fn(async function* () {}), answer: vi.fn(async () => true),
     cancel: vi.fn(async () => {}), signOut: vi.fn(async () => {}),
+    createAccount: vi.fn(async () => {}), removeAccount: vi.fn(async () => {}),
   }
   render(<AuthorizationSection {...({} as GlobalStandardProps)} {...operations}
     t={key => key in en ? en[key as keyof typeof en] : key} close={() => {}} openSection={() => {}} />)
