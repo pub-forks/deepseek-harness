@@ -95,3 +95,23 @@ describe('Mermaid diagrams', () => {
     expect(await screen.findByText('graph TD; A-->B')).toBeTruthy()
   })
 })
+
+describe('plugin activation', () => {
+  it('reads only services it declares in inject, as Cordis enforces', async () => {
+    const { apply, inject } = await import('../src/client/index.ts')
+    const services: Record<string, unknown> = {
+      locale: { bind: () => (key: string) => key, register: () => () => {} },
+      slots: { inject: () => () => {}, register: () => () => {} },
+      documentPreviews: { register: () => () => {} },
+    }
+    const allowed = new Set<string>([...inject, 'effect'])
+    const ctx = new Proxy({ effect: (run: () => unknown) => run() }, {
+      get(target, key) {
+        if (typeof key !== 'string') return undefined
+        if (!allowed.has(key)) throw new Error(`undeclared service ctx.${key}`)
+        return key === 'effect' ? target.effect : services[key]
+      },
+    })
+    expect(() => apply(ctx as never)).not.toThrow()
+  })
+})

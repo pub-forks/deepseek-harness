@@ -11,7 +11,7 @@ import { markdownDefinition } from './markdown-definition.ts'
 import { MarkdownBody } from './MarkdownBody.tsx'
 
 export const name = 'gaia-ui-markdown'
-export const inject = ['locale', 'slots'] as const
+export const inject = ['locale', 'slots', 'documentPreviews'] as const
 
 /** Register a higher-priority document definition and its keyed renderer body. */
 export function apply(ctx: Context): void {
