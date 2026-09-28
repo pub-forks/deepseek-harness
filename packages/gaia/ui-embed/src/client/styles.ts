@@ -86,6 +86,10 @@ ${GAIA_FRAME} table:not([data-gaia-markdown] table) th {
 ${GAIA_FRAME} table:not([data-gaia-markdown] table) td {
   border-bottom-width: 1px;
 }
+/* The selected session row exposes its title as the second direct span. */
+${GAIA_FRAME} [data-row-key^="session:"][role="treeitem"][aria-selected="true"] > span:nth-child(2) {
+  color: var(--dsw-alias-link);
+}
 `
 
 /** Chrome removal and compact-viewport treatment unique to single-session embed mode. */

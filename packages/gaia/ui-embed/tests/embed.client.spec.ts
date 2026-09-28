@@ -1090,3 +1090,14 @@ describe('embed table styles', () => {
     expect(rule[1]).toContain('border-bottom: 1px solid var(--dsw-alias-border-l2);')
   })
 })
+
+describe('active session title style', () => {
+  it('colors only the selected session row title with Gaia accent', async () => {
+    const { GAIA_SKIN_CSS } = await import('../src/client/styles.ts')
+    const selector = ':is(html[data-gaia-embed], html[data-gaia-full]) [data-row-key^="session:"][role="treeitem"][aria-selected="true"] > span:nth-child(2) {'
+    const start = GAIA_SKIN_CSS.indexOf(selector)
+    expect(start).toBeGreaterThan(-1)
+    const rule = GAIA_SKIN_CSS.slice(start, GAIA_SKIN_CSS.indexOf('}', start))
+    expect(rule).toContain('color: var(--dsw-alias-link);')
+  })
+})
