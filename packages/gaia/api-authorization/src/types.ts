@@ -24,7 +24,8 @@ export type AttemptPayload = (
   | { type: 'prompt'; promptId: PromptId; kind: 'text' | 'secret' | 'select'; message: string; placeholder?: string; options?: readonly { id: string; label: string; description?: string }[] }
   | { type: 'withdrawn'; promptId: PromptId }
   | { type: 'done'; outcome: 'authorized' | 'cancelled' }
-  | { type: 'error'; message: string }
+  /** `detail` is the underlying failure, one line and bounded; never a credential. */
+  | { type: 'error'; message: string; detail?: string }
 )
 export type AttemptItem = { attemptId: AttemptId } & AttemptPayload
 export interface StartRequest { key: CredentialKey; method: string }

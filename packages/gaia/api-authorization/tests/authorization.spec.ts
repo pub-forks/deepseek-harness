@@ -88,6 +88,12 @@ it('reports prompt withdrawal while the flow continues', async () => {
   expect((await next(iterator))).toMatchObject({ type: 'done', outcome: 'authorized' })
 })
 
+it('reports the underlying reason when a flow fails', async () => {
+  const { controller } = await fixture(async () => { throw new Error('token exchange failed:\n  400 invalid_grant') })
+  const iterator = controller.start({ key, method: 'oauth' }, new AbortController().signal)[Symbol.asyncIterator]()
+  expect(await next(iterator)).toMatchObject({ type: 'error', message: 'Sign-in failed.', detail: 'token exchange failed: 400 invalid_grant' })
+})
+
 it('returns busy on a second attempt and refuses an unknown sign-out key', async () => {
   const { controller } = await fixture(async (session) => { await session.prompt({ kind: 'text', message: 'Wait' }) })
   const lifetime = new AbortController()

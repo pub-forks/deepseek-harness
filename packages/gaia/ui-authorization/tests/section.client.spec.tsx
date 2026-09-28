@@ -11,10 +11,10 @@ import type { AttemptId, AttemptItem, FlowView, PromptId } from '../../api-autho
 
 afterEach(cleanup)
 const flow: FlowView = { key: credentialKey('llm-pi-ai', 'openai-codex'), label: 'Codex', methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'device', label: 'Device code' }], inFlight: false, signedIn: true }
-function mount(items: AttemptItem[] = [], listedFlows: FlowView[] = [flow]) {
+function mount(items: AttemptItem[] = [], listedFlows: FlowView[] = [flow], start?: AuthorizationSectionInjected['start']) {
   const operations: AuthorizationSectionInjected = {
     listFlows: vi.fn(async () => listedFlows),
-    start: vi.fn(async function* () { for (const item of items) yield item }),
+    start: start ?? vi.fn(async function* () { for (const item of items) yield item }),
     answer: vi.fn(async () => true),
     cancel: vi.fn(async () => {}),
     signOut: vi.fn(async () => {}),
@@ -40,6 +40,18 @@ it('creates and removes independently named OAuth aliases from the localized con
   const removeButtons = screen.getAllByRole('button', { name: en.removeAccount })
   fireEvent.click(removeButtons[removeButtons.length - 1]!)
   await waitFor(() => { expect(operations.removeAccount).toHaveBeenCalledWith(alias.key) })
+})
+
+it('shows the failure reason from the attempt and from a failed stream', async () => {
+  mount([{ attemptId: brandString<AttemptId>('one'), type: 'error', message: 'Sign-in failed.', detail: 'NOT_COMMITTED: no record' }])
+  await screen.findByText('Codex', { selector: 'strong' })
+  fireEvent.click(screen.getByRole('button', { name: en.signIn }))
+  expect(await screen.findByText(`${en.error} NOT_COMMITTED: no record`)).toBeTruthy()
+  cleanup()
+  mount([], [flow], async function* () { throw new Error('transport failure: HTTP 403') })
+  await screen.findByText('Codex', { selector: 'strong' })
+  fireEvent.click(screen.getByRole('button', { name: en.signIn }))
+  expect(await screen.findByText(`${en.error} transport failure: HTTP 403`)).toBeTruthy()
 })
 
 it('lists the OAuth method without a method picker', async () => {

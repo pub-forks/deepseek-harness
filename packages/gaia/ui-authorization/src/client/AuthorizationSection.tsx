@@ -18,6 +18,16 @@ export interface AuthorizationSectionInjected {
 export type AuthorizationSectionProps = PropsRuntime<'settings.section'> & PropsLocale<'settings.gaiaAuthorization'> & InjectFace<AuthorizationSectionInjected>
 
 /** Prefer a declared device method; pi-ai's Codex method picker is handled below. */
+/** @returns a one-line reason from a thrown value, bounded for display. */
+export function errorDetail(error: unknown): string {
+  const text = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+  return text.replace(/\s+/g, ' ').trim().slice(0, 300)
+}
+
+function withDetail(message: string, detail: string | undefined): string {
+  return detail ? `${message} ${detail}` : message
+}
+
 export function preferredMethod(flow: FlowView): string {
   return flow.methods.find(method => /device/i.test(`${method.id} ${method.label}`))?.id ?? flow.methods[0]?.id ?? ''
 }
@@ -29,7 +39,8 @@ export function AuthorizationSection({
   const [flows, setFlows] = useState<FlowView[]>([])
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
-  const [actionError, setActionError] = useState(false)
+  // false = no error; otherwise the reason (possibly empty) shown after the generic copy.
+  const [actionError, setActionError] = useState<false | string>(false)
   const [localCancelled, setLocalCancelled] = useState(false)
   const [selected, setSelected] = useState<FlowView>()
   const [method, setMethod] = useState('')
@@ -57,7 +68,7 @@ export function AuthorizationSection({
         if (item.type === 'withdrawn' || item.type === 'done' || item.type === 'error') setPromptValue('')
         setItems(previous => item.type === 'withdrawn' ? [...previous.filter(row => row.type !== 'prompt' || row.promptId !== item.promptId), item] : [...previous, item])
       }
-    } catch { if (!controller.signal.aborted) setActionError(true) }
+    } catch (error: unknown) { if (!controller.signal.aborted) setActionError(errorDetail(error)) }
     finally { setBusy(false); void load() }
   }
   const activePrompt = [...items].reverse().find(item => item.type === 'prompt')
@@ -74,8 +85,8 @@ export function AuthorizationSection({
     try {
       await createAccount(accountSource, accountId, accountLabel)
       await load()
-    } catch {
-      setActionError(true)
+    } catch (error: unknown) {
+      setActionError(errorDetail(error))
     } finally {
       setBusy(false)
     }
@@ -87,8 +98,8 @@ export function AuthorizationSection({
     try {
       await removeAccount(key)
       await load()
-    } catch {
-      setActionError(true)
+    } catch (error: unknown) {
+      setActionError(errorDetail(error))
     }
   }
   const submit = async () => {
@@ -99,9 +110,9 @@ export function AuthorizationSection({
       if (!await answer(prompt.attemptId, prompt.promptId, value)) throw new Error('prompt was withdrawn')
       setItems(previous => previous.filter(item => item !== prompt))
       setPromptValue('')
-    } catch {
+    } catch (error: unknown) {
       setItems(previous => previous.filter(item => item !== prompt))
-      setActionError(true)
+      setActionError(errorDetail(error))
     }
   }
   // The attempt panel renders inside the card of the flow being signed into:
@@ -123,9 +134,9 @@ export function AuthorizationSection({
     </form>}
     {terminal?.type === 'done' && <p>{t(terminal.outcome === 'authorized' ? 'authorized' : 'cancelled')}</p>}
     {localCancelled && <p>{t('cancelled')}</p>}
-    {terminal?.type === 'error' && <p role="alert">{t(terminal.message === 'busy' ? 'busy' : 'error')}</p>}
+    {terminal?.type === 'error' && <p role="alert">{terminal.message === 'busy' ? t('busy') : withDetail(t('error'), terminal.detail)}</p>}
     {terminal?.type === 'done' && terminal.outcome === 'authorized' && <p>{t('modelsHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>}
-    {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch(() => { setActionError(true) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
+    {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch((error: unknown) => { setActionError(errorDetail(error)) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
   </div>
   // Keep catalog order except that OpenAI Codex is the first OAuth sign-in.
   const oauthFlows = flows
@@ -160,8 +171,8 @@ export function AuthorizationSection({
         </div>
         {selected?.key === flow.key && (busy || items.length > 0 || localCancelled) && panel}
       </li>)}</ul>}
-    {actionError && <p role="alert">{t('error')}</p>}
-    <Modal open={confirmKey !== undefined} onClose={() => { setConfirmKey(undefined) }} title={t('confirmTitle')} description={t('confirmDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setConfirmKey(undefined) }}>{t('cancel')}</Button><Button variant="primary" onClick={() => { const key = confirmKey; setConfirmKey(undefined); if (key) void signOut(key).then(load).catch(() => { setActionError(true) }) }}>{t('signOut')}</Button></>} />
+    {actionError !== false && <p role="alert">{withDetail(t('error'), actionError)}</p>}
+    <Modal open={confirmKey !== undefined} onClose={() => { setConfirmKey(undefined) }} title={t('confirmTitle')} description={t('confirmDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setConfirmKey(undefined) }}>{t('cancel')}</Button><Button variant="primary" onClick={() => { const key = confirmKey; setConfirmKey(undefined); if (key) void signOut(key).then(load).catch((error: unknown) => { setActionError(errorDetail(error)) }) }}>{t('signOut')}</Button></>} />
     <Modal open={removeKey !== undefined} onClose={() => { setRemoveKey(undefined) }} title={t('removeTitle')} description={t('removeDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setRemoveKey(undefined) }}>{t('cancel')}</Button><Button variant="primary" onClick={() => { void confirmRemove() }}>{t('removeAccount')}</Button></>} />
   </section>
 }

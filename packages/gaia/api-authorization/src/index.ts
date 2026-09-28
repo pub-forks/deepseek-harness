@@ -14,6 +14,17 @@ export type { AnswerRequest, AttemptId, AttemptItem, AttemptPayload, CancelReque
 interface PendingPrompt { resolve(value: string): void; reject(reason: Error): void }
 interface Attempt { key: FlowView['key']; controller: AbortController; prompts: Map<PromptId, PendingPrompt> }
 
+/**
+ * One-line, bounded reason for a failed attempt. Flow errors describe the
+ * provider exchange (status, OAuth error code), not credential values.
+ */
+export function failureDetail(error: unknown): string {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+  const code = error instanceof AuthorizationError ? error.code : undefined
+  const text = message.replace(/\s+/g, ' ').trim()
+  return (code && !text.includes(code) ? `${code}: ${text}` : text).slice(0, 300)
+}
+
 /** One stream per attempt, with answer and cancellation calls addressed by random ids. */
 export class GaiaAuthorizationController extends TypertRemoteService {
   static inject = ['authorization', 'credentials', 'settings', 'llm']
@@ -107,7 +118,10 @@ export class GaiaAuthorizationController extends TypertRemoteService {
         prompt: prompt => this.ask(attempt, prompt, push),
       },
     }).then((outcome) => { push({ type: 'done', outcome: outcome.status }) }, (error: unknown) => {
-      push({ type: 'error', message: error instanceof AuthorizationError && error.code === 'ALREADY_IN_FLIGHT' ? 'busy' : 'Sign-in failed.' })
+      if (error instanceof AuthorizationError && error.code === 'ALREADY_IN_FLIGHT') { push({ type: 'error', message: 'busy' }); return }
+      console.error(`gaia-authorization: sign-in for ${entry.key} failed`, error)
+      const detail = failureDetail(error)
+      push({ type: 'error', message: 'Sign-in failed.', ...detail ? { detail } : {} })
     }).finally(() => {
       state.finished = true
       for (const pending of attempt.prompts.values()) pending.reject(new AuthorizationDeclinedError())
