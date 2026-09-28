@@ -257,12 +257,15 @@ export interface StoredModelDiscoveryProfile {
 }
 
 /**
- * Interrogate one draft provider endpoint for the models it advertises.
+ * Discover models for one draft provider. Installed provider catalogs are
+ * authoritative for known routes, including each model's supported maximum
+ * context capacity; custom endpoint listings retain the capacity each row
+ * advertises and receive no shared fallback here.
  * @param request - the endpoint, protocol, and one-shot credential to use.
  * @param storedProfile - Host-owned headers and lazy credential resolution for
  *   the named route. It is read only on the path that reaches the network; the
  *   credential is resolved only when the draft carries none.
- * @returns the advertised models in endpoint order.
+ * @returns installed catalog models, or endpoint models in listing order.
  * @throws LlmError when the protocol has no readable listing, the endpoint
  *   refuses or fails the request, or the reply is not a model listing.
  */

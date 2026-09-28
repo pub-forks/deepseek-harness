@@ -10,7 +10,7 @@ overrides:
   '@deepseek-ai/schemastery': link:vendor/schemastery
 
 patchedDependencies:
-  '@earendil-works/pi-ai@0.85.1': d1aa3fdbaab201c281fb881f9706712851fa04a0b57f80a94d07ed0818611425
+  '@earendil-works/pi-ai@0.85.1': d658d548e548d0ae799cb3a111607a9f9d41754547c5dcffab315b5778e7e197
   '@electron/osx-sign@1.3.3': 280e7b2816caf01423097d24e79107a66afeb563a348630ce9928ae8499a5861
   '@fortune-sheet/core@1.0.4': 8791a230763dbf853fd65d627c68c31de37209992851377855e16cf08ea70532
   '@fortune-sheet/react@1.0.4': 2932e52e79afcd4ced08cfa123b5eded786c85043da32f622f3e80af6fc96c37

@@ -74,6 +74,19 @@ async function harness(): Promise<Context> {
 }
 
 describe('catalog-route model discovery', () => {
+  it.each([
+    { provider: 'openai', model: 'gpt-6-sol' },
+    { provider: 'openai', model: 'gpt-6-luna' },
+    { provider: 'openai-codex', model: 'gpt-6-sol' },
+    { provider: 'openai-codex', model: 'gpt-6-luna' },
+  ])('reports the supported maximum capacity for $provider/$model', async ({ provider, model }) => {
+    const ctx = await harness()
+
+    const models = await ctx.llm.discoverModels('llm-pi-ai', { provider })
+
+    expect(models.find(candidate => candidate.id === model)?.contextWindow).toBe(872_000)
+  })
+
   it('includes the installed model input types for vision models', async () => {
     const ctx = await harness()
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'openai' })
@@ -170,6 +183,23 @@ describe('draft-provider model discovery', () => {
       },
       { id: 'bare-route', name: 'bare-route' },
       { id: 'nested-id', name: 'Nested fallback' },
+    ])
+  })
+
+  it('keeps distinct capacities from each enriched custom-provider row', async () => {
+    const server = await listingServer({
+      body: JSON.stringify({
+        models: {
+          'small-route': { name: 'Small', limit: { context: 24_000, output: 2048 } },
+          'large-route': { name: 'Large', limit: { context: 96_000, output: 8192 } },
+        },
+      }),
+    })
+    const ctx = await harness()
+
+    expect(await ctx.llm.discoverModels('llm-pi-ai', { baseURL: server.url })).toEqual([
+      { id: 'small-route', name: 'Small', contextWindow: 24_000, maxTokens: 2048 },
+      { id: 'large-route', name: 'Large', contextWindow: 96_000, maxTokens: 8192 },
     ])
   })
 
