@@ -24,12 +24,21 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-modal]')
   })
 
-  it('includes Button styles for primary, outline, size sm, and danger', () => {
+  it('includes Button styles for primary, outline, ghost, size sm, and danger with sm sizing', () => {
     expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-button="primary"]')
     expect(GAIA_CONTROLS_CSS).toContain('var(--dsw-alias-button-primary-fill)')
     expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-button="outline"]')
+    expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-button="ghost"]')
     expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-size="sm"]')
     expect(GAIA_CONTROLS_CSS).toContain('var(--dsw-alias-state-error-primary)')
+    expect(GAIA_CONTROLS_CSS).toContain('height: 32px')
+    expect(GAIA_CONTROLS_CSS).toContain('padding: 0 12px')
+    expect(GAIA_CONTROLS_CSS).toContain('font-size: 12px')
+    expect(GAIA_CONTROLS_CSS).toContain('line-height: 18px')
+    expect(GAIA_CONTROLS_CSS).not.toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*height:\s*36px/)
+    expect(GAIA_CONTROLS_CSS).not.toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*padding:\s*0 16px/)
+    expect(GAIA_CONTROLS_CSS).not.toMatch(/data-dsh-button="outline"[^}]*height:\s*36px/)
+    expect(GAIA_CONTROLS_CSS).not.toMatch(/data-dsh-button="ghost"[^}]*height:\s*36px/)
   })
 
   it('includes close button styles with destructive hover', () => {
@@ -38,15 +47,17 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('#fafafa')
   })
 
-  it('includes select trigger styles for outline dropdown presentation', () => {
+  it('includes select trigger styles for outline dropdown presentation with 36px height unchanged', () => {
     expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-select-trigger]')
     expect(GAIA_CONTROLS_CSS).toContain('height: 36px')
     expect(GAIA_CONTROLS_CSS).toContain('border: 1px solid var(--dsw-alias-border-l2)')
+    expect(GAIA_CONTROLS_CSS).toMatch(/\[data-dsh-select-trigger\]\s*\{[^}]*height:\s*36px/)
   })
 
-  it('includes input and textarea styles', () => {
+  it('includes input and textarea styles with 36px height unchanged', () => {
     expect(GAIA_CONTROLS_CSS).toContain('span:has(> [data-dsh-input])')
     expect(GAIA_CONTROLS_CSS).toContain('textarea')
+    expect(GAIA_CONTROLS_CSS).toMatch(/input:not\([^}]*height:\s*36px/)
   })
 
   it('includes focus ring styling with link token and excludes automatic focus', () => {
@@ -67,11 +78,12 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('#451a03')
   })
 
-  it('styles settings nav active tab with accent link token at rest, hover, and combines ring on keyboard focus', () => {
+  it('styles settings nav active tab with accent link token at rest and focus ring without left accent bar', () => {
     expect(GAIA_SETTINGS_CSS).toContain('nav button[aria-current="true"]')
     expect(GAIA_SETTINGS_CSS).toContain('color: var(--dsw-alias-link)')
     expect(GAIA_SETTINGS_CSS).toContain('nav button[aria-current="true"]:hover')
-    expect(GAIA_SETTINGS_CSS).toContain('box-shadow: inset 2px 0 0 var(--dsw-alias-link), 0 0 0 1px var(--dsw-alias-link)')
+    expect(GAIA_SETTINGS_CSS).toContain('box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);')
+    expect(GAIA_SETTINGS_CSS).not.toContain('inset 2px 0 0')
   })
 
   it('is included in GAIA_SKIN_CSS and injected by injectGaiaSkin', () => {

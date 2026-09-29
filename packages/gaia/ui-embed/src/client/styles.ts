@@ -47,14 +47,14 @@ ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button:hover {
 ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"] {
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-link);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 2px 0 0 var(--dsw-alias-link);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
 }
 ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"]:hover {
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-link);
 }
 ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"]:focus-visible:not([data-dsh-automatic-focus]) {
-  box-shadow: inset 2px 0 0 var(--dsw-alias-link), 0 0 0 1px var(--dsw-alias-link);
+  box-shadow: 0 0 0 1px var(--dsw-alias-link);
 }
 ${GAIA_FRAME} [data-shortcut-modal="settings"] :is(button, input, select, textarea):focus-visible:not([data-dsh-automatic-focus]) {
   outline: none;
@@ -127,16 +127,18 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-button] {
   box-sizing: border-box;
   border-radius: 6px;
   font-weight: 500;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 18px;
   transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 /* Button default: primary buttons */
 ${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"] {
   box-sizing: border-box;
-  height: 36px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 18px;
   background: var(--dsw-alias-button-primary-fill);
   color: var(--dsw-alias-label-primary-foreground);
   border: 1px solid transparent;
@@ -149,8 +151,10 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"]:hover:not(:disabled) {
 /* Button outline: outline and toolbar buttons */
 ${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="outline"], [data-dsh-button="toolbar"]) {
   box-sizing: border-box;
-  height: 36px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 18px;
   border: 1px solid var(--dsw-alias-border-l2);
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
@@ -163,8 +167,10 @@ ${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="outline"], [data-dsh-button="toolba
 /* Button ghost */
 ${GAIA_CONTROLS_SCOPE} [data-dsh-button="ghost"]:not([data-dsh-modal-close]) {
   box-sizing: border-box;
-  height: 36px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 18px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--dsw-alias-label-primary);
@@ -186,6 +192,12 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-size="sm"] {
 /* Button destructive / danger */
 ${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="danger"], button[class*="_danger"]:not([data-dsh-modal-close]), button[class*="_deleteConfirm"]) {
   box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 6px;
+  font-weight: 500;
   background: var(--dsw-alias-state-error-primary);
   color: #fafafa;
   border: 1px solid transparent;

@@ -1213,6 +1213,7 @@ describe('Gaia settings modal skin and maximize styles', () => {
     expect(GAIA_SETTINGS_CSS).toContain('--dsw-radius-md: 6px')
     expect(GAIA_SETTINGS_CSS).toContain('--dsw-radius-sm: 6px')
     expect(GAIA_SETTINGS_CSS).toContain('box-shadow: 0 0 0 1px var(--dsw-alias-link)')
+    expect(GAIA_SETTINGS_CSS).not.toContain('inset 2px 0 0')
   })
 })
 
