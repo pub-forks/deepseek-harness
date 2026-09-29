@@ -14,8 +14,10 @@ export interface FlowView {
   signedIn: boolean
   expiresAt?: number
   account?: string
-  /** This route is a removable provider-native OAuth account alias. */
+  /** This route is a removable provider account alias. */
   accountAlias?: boolean
+  /** This account alias stores an API key rather than an OAuth grant. */
+  accountApiKey?: boolean
 }
 
 /** Every frame identifies its attempt so prompt answers can address it. */
@@ -33,6 +35,6 @@ export interface AnswerRequest { attemptId: AttemptId; promptId: PromptId; value
 export interface CancelRequest { attemptId: AttemptId }
 export interface SignOutRequest { key: CredentialKey }
 /** Create one independent alias of an installed OAuth route. */
-export interface CreateAccountRequest { source: string; accountId: string; label: string }
+export interface CreateAccountRequest { source: string; accountId: string; label: string; apiKey?: string }
 /** Remove an alias profile and only its own credential record. */
 export interface RemoveAccountRequest { key: CredentialKey }

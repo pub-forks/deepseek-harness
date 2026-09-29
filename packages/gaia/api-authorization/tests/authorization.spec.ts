@@ -21,7 +21,7 @@ async function fixture(run: (session: AuthorizationSession, ctx: Context) => Pro
   roots.push(ctx)
   await ctx.plugin(MemoryCredentials)
   await ctx.plugin(AuthorizationService)
-  ctx.authorization.registerFlow({ key, label: 'Codex', methods: [{ id: 'oauth', label: 'OAuth' }], run: session => run(session, ctx) })
+  ctx.authorization.registerFlow({ key, label: 'Codex', methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'api-key', label: 'API key' }], run: session => run(session, ctx) })
   let revision = 1
   const settings = {
     describe: () => [{ ns: 'llm-pi-ai', revision, value: { providers: structuredClone(providers) } }],
@@ -125,7 +125,7 @@ it('validates account creation at the Host boundary and persists alias metadata 
     methods: [{ id: 'oauth', label: 'OAuth' }], run: async () => {},
   })
   await expect(controller.createAccount({ source: 'uninstalled', accountId: 'codex-other', label: 'Other' }))
-    .rejects.toThrow(/installed OAuth provider/)
+    .rejects.toThrow(/installed provider/)
   Object.defineProperty(ctx, 'llm', {
     value: { listConfigurableProviders: () => [
       { provider: 'openai-codex', declared: false }, { provider: 'codex-other', declared: true },
@@ -134,6 +134,15 @@ it('validates account creation at the Host boundary and persists alias metadata 
   })
   await expect(controller.createAccount({ source: 'openai-codex', accountId: 'codex-other', label: 'Other' }))
     .rejects.toThrow(/already in use/)
+})
+
+it('stores an API-key account under its own alias record, separate from the source provider', async () => {
+  const { controller, ctx, providers } = await fixture(async () => {})
+  await controller.createAccount({ source: 'openai-codex', accountId: 'codex-key', label: 'Key account', apiKey: 'dummy-key' })
+  expect(providers['codex-key']).toEqual({ displayName: 'Key account', catalogProvider: 'openai-codex' })
+  await expect(ctx.credentials.readRecord(credentialKey('llm-pi-ai', 'codex-key'))).resolves.toEqual({ kind: 'api-key', key: 'dummy-key' })
+  await expect(ctx.credentials.readRecord(key)).resolves.toBeUndefined()
+  await expect(controller.createAccount({ source: 'openai-codex', accountId: 'bad-key', label: 'Bad', apiKey: 'bad key' })).rejects.toThrow('API key is invalid')
 })
 
 it('removes an alias and only that route credential, refusing active deletion', async () => {

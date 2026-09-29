@@ -436,14 +436,12 @@ export function resolveProfiles(
       if (!isCredentialKeySegment(provider) || catalogProviderIds().includes(provider)) {
         throw new Error(`llm-pi-ai: provider alias route "${provider}" must be a safe non-catalog credential id`)
       }
-      if (sourceProvider.auth.oauth === undefined) {
-        throw new Error(`llm-pi-ai: provider "${provider}" catalogProvider "${source.catalogProvider}" does not support OAuth`)
+      if (sourceProvider.auth.oauth === undefined && sourceProvider.auth.apiKey === undefined) {
+        throw new Error(`llm-pi-ai: provider "${provider}" catalogProvider "${source.catalogProvider}" does not support OAuth or API-key authentication`)
       }
       const overridden = [
         source.api === undefined ? undefined : 'api',
         source.baseURL === undefined ? undefined : 'baseURL',
-        (source.models?.length ?? 0) === 0 ? undefined : 'models',
-        Object.keys(source.modelOverrides ?? {}).length === 0 ? undefined : 'modelOverrides',
         source.apiKeyEnv === undefined ? undefined : 'apiKeyEnv',
       ].filter((field): field is string => field !== undefined)
       if (overridden.length > 0) {

@@ -47,6 +47,10 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         const result = await actx.remote.gaiaAuthorization.createAccount({ source, accountId, label })
         if (!result.ok) throw result.error
       },
+      async createApiKeyAccount(source, accountId, label, apiKey) {
+        const result = await actx.remote.gaiaAuthorization.createAccount({ source, accountId, label, apiKey })
+        if (!result.ok) throw result.error
+      },
       async removeAccount(key) {
         const result = await actx.remote.gaiaAuthorization.removeAccount({ key })
         if (!result.ok) throw result.error

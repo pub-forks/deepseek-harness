@@ -19,6 +19,7 @@ function mount(items: AttemptItem[] = [], listedFlows: FlowView[] = [flow], star
     cancel: vi.fn(async () => {}),
     signOut: vi.fn(async () => {}),
     createAccount: vi.fn(async () => {}),
+    createApiKeyAccount: vi.fn(async () => {}),
     removeAccount: vi.fn(async () => {}),
   }
   const globals = {} as GlobalStandardProps
@@ -40,6 +41,18 @@ it('creates and removes independently named OAuth aliases from the localized con
   const removeButtons = screen.getAllByRole('button', { name: en.removeAccount })
   fireEvent.click(removeButtons[removeButtons.length - 1]!)
   await waitFor(() => { expect(operations.removeAccount).toHaveBeenCalledWith(alias.key) })
+})
+
+it('submits API-key account credentials through the dedicated operation', async () => {
+  const apiSource: FlowView = { ...flow, methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'api-key', label: 'API key' }] }
+  const operations = mount([], [apiSource])
+  await screen.findByText('Codex', { selector: 'strong' })
+  fireEvent.change(screen.getByLabelText(en.accountKind), { target: { value: 'api-key' } })
+  fireEvent.change(screen.getByLabelText(en.accountLabel), { target: { value: 'OpenRouter Work' } })
+  fireEvent.change(screen.getByLabelText(en.accountId), { target: { value: 'openrouter-work' } })
+  fireEvent.change(screen.getByLabelText(en.apiKey), { target: { value: 'dummy-key' } })
+  fireEvent.click(screen.getByRole('button', { name: en.addAccount }))
+  await waitFor(() => { expect(operations.createApiKeyAccount).toHaveBeenCalledWith('openai-codex', 'openrouter-work', 'OpenRouter Work', 'dummy-key') })
 })
 
 it('shows the failure reason from the attempt and from a failed stream', async () => {

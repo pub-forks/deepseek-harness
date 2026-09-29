@@ -34,6 +34,14 @@ describe('reasoning schema boundary', () => {
     expect(() => resolveProfiles({ alias: { catalogProvider: 'alias' } })).toThrow(/cannot inherit itself/)
   })
 
+  it('accepts model lists and overrides on catalog aliases', () => {
+    const listed = resolveProfiles({ alias: { catalogProvider: 'openai-codex', models: [{ id: 'gpt-6-astra' }] } }).get('alias')
+    expect(listed?.piProvider?.getModels().map(model => model.id)).toEqual(['gpt-6-astra'])
+    const overridden = resolveProfiles({ alias: { catalogProvider: 'openai-codex', modelOverrides: { 'gpt-6-astra': { name: 'Astra Work' } } } }).get('alias')
+    expect(overridden?.piProvider?.getModels().find(model => model.id === 'gpt-6-astra')?.name).toBe('Astra Work')
+    expect(() => resolveProfiles({ alias: { catalogProvider: 'openai-codex', baseURL: 'https://x.test' } })).toThrow(/cannot override baseURL/)
+  })
+
   it('accepts an empty provider section and propagates unexpected catalog failures', () => {
     expect(() => { assertServiceable({}) }).not.toThrow()
     const failure = new TypeError('model metadata lookup failed')

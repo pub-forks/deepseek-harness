@@ -13,6 +13,7 @@ export interface AuthorizationSectionInjected {
   cancel: (attemptId: AttemptId) => Promise<void>
   signOut: (key: FlowView['key']) => Promise<void>
   createAccount: (source: string, accountId: string, label: string) => Promise<void>
+  createApiKeyAccount?: (source: string, accountId: string, label: string, apiKey: string) => Promise<void>
   removeAccount: (key: FlowView['key']) => Promise<void>
 }
 export type AuthorizationSectionProps = PropsRuntime<'settings.section'> & PropsLocale<'settings.gaiaAuthorization'> & InjectFace<AuthorizationSectionInjected>
@@ -40,7 +41,7 @@ export function preferredMethod(flow: FlowView): string {
 
 /** @param props - localized Remote operations. @returns the generic sign-in page. */
 export function AuthorizationSection({
-  t, listFlows, start, answer, cancel, signOut, createAccount, removeAccount, openSection,
+  t, listFlows, start, answer, cancel, signOut, createAccount, createApiKeyAccount, removeAccount, openSection,
 }: AuthorizationSectionProps) {
   const [flows, setFlows] = useState<FlowView[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +58,9 @@ export function AuthorizationSection({
   const [accountId, setAccountId] = useState('')
   const [accountLabel, setAccountLabel] = useState('')
   const [accountSource, setAccountSource] = useState('openai-codex')
+  const [accountKind, setAccountKind] = useState<'oauth' | 'api-key'>('oauth')
+  const [accountKey, setAccountKey] = useState('')
+  const [changeKeyFor, setChangeKeyFor] = useState<FlowView['key']>()
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const stream = useRef<AbortController | undefined>(undefined)
@@ -89,13 +93,30 @@ export function AuthorizationSection({
     setBusy(true)
     setActionError(false)
     try {
-      await createAccount(accountSource, accountId, accountLabel)
+      if (accountKind === 'api-key') {
+        if (createApiKeyAccount === undefined) throw new Error('API-key accounts are unavailable.')
+        await createApiKeyAccount(accountSource, accountId, accountLabel, accountKey)
+      }
+      else await createAccount(accountSource, accountId, accountLabel)
+      setAccountKey('')
       await load()
     } catch (error: unknown) {
       setActionError(errorDetail(error))
     } finally {
       setBusy(false)
     }
+  }
+  const saveChangedKey = async (): Promise<void> => {
+    const key = changeKeyFor
+    if (key === undefined || accountKey.length === 0) return
+    const id = key.slice('llm-pi-ai/'.length)
+    setBusy(true)
+    try {
+      if (createApiKeyAccount === undefined) throw new Error('API-key accounts are unavailable.')
+      await createApiKeyAccount('', id, '', accountKey); setAccountKey(''); setChangeKeyFor(undefined); await load()
+    }
+    catch (error: unknown) { setActionError(errorDetail(error)) }
+    finally { setBusy(false) }
   }
   const confirmRemove = async (): Promise<void> => {
     const key = removeKey
@@ -144,12 +165,12 @@ export function AuthorizationSection({
     {terminal?.type === 'done' && terminal.outcome === 'authorized' && <p>{t('modelsHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>}
     {busy && <Button variant="outline" onClick={() => { setPromptValue(''); if (attemptId) void cancel(attemptId).catch((error: unknown) => { setActionError(errorDetail(error)) }); else { stream.current?.abort(); setLocalCancelled(true) } }}>{t('cancel')}</Button>}
   </div>
-  // Keep catalog order except that OpenAI Codex is the first OAuth sign-in.
-  const oauthFlows = flows
-    .map(flow => ({ ...flow, methods: flow.methods.filter(method => method.id === 'oauth') }))
+  // Keep catalog order except that OpenAI Codex is the first sign-in option.
+  const ordered = flows
+    .map(flow => ({ ...flow, methods: flow.methods.filter(method => method.id === 'oauth' || (flow.accountApiKey === true && method.id === 'api-key')) }))
     .filter(flow => flow.methods.length > 0)
-  const ordered = [...oauthFlows].sort((a, b) => Number(b.key === 'llm-pi-ai/openai-codex') - Number(a.key === 'llm-pi-ai/openai-codex'))
-  const accountSources = ordered.filter(flow => !flow.accountAlias && flow.key.startsWith('llm-pi-ai/'))
+    .sort((a, b) => Number(b.key === 'llm-pi-ai/openai-codex') - Number(a.key === 'llm-pi-ai/openai-codex'))
+  const accountSources = flows.filter(flow => !flow.accountAlias && flow.key.startsWith('llm-pi-ai/') && flow.methods.some(method => method.id === accountKind))
   const sourceValue = accountSources.some(flow => flow.key === `llm-pi-ai/${accountSource}`)
     ? accountSource
     : accountSources[0]?.key.slice('llm-pi-ai/'.length) ?? ''
@@ -157,6 +178,7 @@ export function AuthorizationSection({
     <h2>{t('title')}</h2><p className={css.intro}>{t('intro')}</p>
     <p>{t('apiKeyHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>
     <form className={css.actions} onSubmit={(event) => { void submitAccount(event) }}>
+      <label>{t('accountKind')} <select data-dsh-select-trigger="" value={accountKind} onChange={(event) => { setAccountKind(event.target.value as 'oauth' | 'api-key') }}><option value="oauth">{t('oauthAccount')}</option><option value="api-key">{t('apiKeyAccount')}</option></select></label>
       <label>{t('accountSource')}
         <select data-dsh-select-trigger="" value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
           {accountSources.map(flow => <option key={flow.key} value={flow.key.slice('llm-pi-ai/'.length)}>{flow.label}</option>)}
@@ -164,6 +186,7 @@ export function AuthorizationSection({
       </label>
       <label>{t('accountLabel')} <input value={accountLabel} maxLength={80} onChange={(event) => { setAccountLabel(event.target.value) }} required /></label>
       <label>{t('accountId')} <input value={accountId} maxLength={48} pattern="[a-z][a-z0-9-]{1,47}" onChange={(event) => { setAccountId(event.target.value) }} required /></label>
+      {accountKind === 'api-key' && <label>{t('apiKey')} <input type="password" autoComplete="off" value={accountKey} maxLength={4096} onChange={(event) => { setAccountKey(event.target.value) }} required /></label>}
       <Button type="submit" variant="primary" disabled={busy || accountSources.length === 0}>{t('addAccount')}</Button>
     </form>
     {loading ? <p>{t('loading')}</p> : failed ? <p role="alert">{t('failed')}</p> : ordered.length === 0 ? <p>{t('empty')}</p> :
@@ -174,10 +197,12 @@ export function AuthorizationSection({
           <Button variant="primary" disabled={flow.inFlight || busy} onClick={() => { void begin(flow, selected?.key === flow.key && method ? method : preferredMethod(flow)) }}>{t('signIn')}</Button>
           {flow.signedIn && <Button variant="outline" data-dsh-button="danger" disabled={busy} onClick={() => { setConfirmKey(flow.key) }}>{t('signOut')}</Button>}
           {flow.accountAlias && <Button variant="outline" data-dsh-button="danger" disabled={flow.inFlight || busy} onClick={() => { setRemoveKey(flow.key) }}>{t('removeAccount')}</Button>}
+          {flow.accountApiKey && <Button variant="outline" disabled={busy} onClick={() => { setChangeKeyFor(flow.key); setAccountKey('') }}>{t('changeKey')}</Button>}
         </div>
         {selected?.key === flow.key && (busy || items.length > 0 || localCancelled) && panel}
       </li>)}</ul>}
     {actionError !== false && <p role="alert">{withDetail(t('error'), actionError)}</p>}
+    {changeKeyFor !== undefined && <form className={css.actions} onSubmit={(event) => { event.preventDefault(); void saveChangedKey() }}><label>{t('apiKey')} <input type="password" autoComplete="off" value={accountKey} maxLength={4096} onChange={(event) => { setAccountKey(event.target.value) }} required /></label><Button type="submit" variant="primary" disabled={busy}>{t('changeKey')}</Button></form>}
     <Modal open={confirmKey !== undefined} onClose={() => { setConfirmKey(undefined) }} title={t('confirmTitle')} description={t('confirmDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setConfirmKey(undefined) }}>{t('cancel')}</Button><Button variant="outline" data-dsh-button="danger" onClick={() => { const key = confirmKey; setConfirmKey(undefined); if (key) void signOut(key).then(load).catch((error: unknown) => { setActionError(errorDetail(error)) }) }}>{t('signOut')}</Button></>} />
     <Modal open={removeKey !== undefined} onClose={() => { setRemoveKey(undefined) }} title={t('removeTitle')} description={t('removeDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setRemoveKey(undefined) }}>{t('cancel')}</Button><Button variant="outline" data-dsh-button="danger" onClick={() => { void confirmRemove() }}>{t('removeAccount')}</Button></>} />
   </section>

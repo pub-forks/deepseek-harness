@@ -1,6 +1,7 @@
 /** Authenticated browser Remote for registered authorization flows. */
 import { randomUUID } from 'node:crypto'
 import { brandString } from '@deepseek-ai/dsh-brand'
+import { credentialKey } from '@deepseek-ai/dsh-credentials'
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { AuthorizationDeclinedError, AuthorizationError } from '@deepseek-ai/dsh-authorization'
@@ -53,9 +54,10 @@ export class GaiaAuthorizationController extends TypertRemoteService {
   async listFlows(): Promise<FlowView[]> {
     const profile = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')?.value as { providers?: Record<string, { catalogProvider?: string }> } | undefined
     return Promise.all(this.ctx.authorization.list().map(async (entry) => {
-      const projected = projectFlow(entry, await this.ctx.credentials.describeRecord(entry.key))
+      const record = await this.ctx.credentials.describeRecord(entry.key)
+      const projected = projectFlow(entry, record)
       const id = entry.key.startsWith('llm-pi-ai/') ? entry.key.slice('llm-pi-ai/'.length) : ''
-      return { ...projected, ...(profile?.providers?.[id]?.catalogProvider ? { accountAlias: true } : {}) }
+      return { ...projected, ...(profile?.providers?.[id]?.catalogProvider ? { accountAlias: true } : {}), ...(record.kind === 'api-key' ? { accountApiKey: true } : {}) }
     }))
   }
 
@@ -69,20 +71,44 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     if (label.length < 1 || label.length > 80) throw new Error('Account label must contain 1–80 characters.')
     const key = `llm-pi-ai/${source}`
     const sourceFlow = this.ctx.authorization.list().find(flow => flow.key === key)
-    if (sourceFlow === undefined || !sourceFlow.methods.some(method => method.id === 'oauth')) throw new Error('Unknown OAuth source provider.')
+    const apiKey = request.apiKey
+    const isApiKey = apiKey !== undefined
+    if (isApiKey) {
+      if (apiKey.length < 1 || apiKey.length > 4096 || /\s|[\x00-\x08\x0e-\x1f\x7f]/.test(apiKey)) throw new Error('API key is invalid.')
+    }
+    const existingProfile = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')?.value as { providers?: Record<string, { catalogProvider?: string }> } | undefined
+    const existingAlias = existingProfile?.providers?.[accountId]
+    if (existingAlias?.catalogProvider !== undefined && apiKey !== undefined) {
+      // Changing a key never replaces an OAuth account's stored sign-in.
+      const current = await this.ctx.credentials.describeRecord(credentialKey('llm-pi-ai', accountId))
+      if (current.kind !== 'api-key') throw new Error('This account does not use an API key.')
+      try { await this.ctx.credentials.modifyRecord(credentialKey('llm-pi-ai', accountId), () => Promise.resolve({ kind: 'api-key', key: apiKey })) }
+      catch { throw new Error('Could not save API key.') }
+      return
+    }
+    if (sourceFlow === undefined || !sourceFlow.methods.some(method => method.id === (isApiKey ? 'api-key' : 'oauth'))) throw new Error(isApiKey ? 'Unknown API-key source provider.' : 'Unknown OAuth source provider.')
     const descriptor = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')
     if (descriptor === undefined) throw new Error('Harness Models settings are unavailable.')
     const value = descriptor.value as { providers?: Record<string, unknown> }
     const providers = value.providers ?? {}
     const sourceProfile = providers[source] as { catalogProvider?: unknown } | undefined
-    if (sourceProfile?.catalogProvider !== undefined) throw new Error('Choose an installed OAuth provider, not another account alias.')
+    if (sourceProfile?.catalogProvider !== undefined) throw new Error('Choose an installed provider, not another account alias.')
     const directory = this.ctx.llm.listConfigurableProviders()
     if (!directory.some(provider => provider.provider === source && provider.declared === false)) {
-      throw new Error('Choose an installed OAuth provider.')
+      throw new Error('Choose an installed provider.')
     }
     if (directory.some(provider => provider.provider === accountId)) throw new Error('Account id is already in use.')
     if (Object.hasOwn(providers, accountId) || this.ctx.authorization.list().some(flow => flow.key === `llm-pi-ai/${accountId}`)) throw new Error('Account id is already in use.')
     await this.ctx.settings.mutate('llm-pi-ai', [{ op: 'set', path: ['providers', accountId], value: { displayName: label, catalogProvider: source } }], descriptor.revision)
+    if (apiKey !== undefined) {
+      try {
+        await this.ctx.credentials.modifyRecord(credentialKey('llm-pi-ai', accountId), () => Promise.resolve({ kind: 'api-key', key: apiKey }))
+      } catch {
+        const current = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')
+        if (current !== undefined) await this.ctx.settings.mutate('llm-pi-ai', [{ op: 'unset', path: ['providers', accountId] }], current.revision)
+        throw new Error('Could not save API key.')
+      }
+    }
   }
 
   /** Delete one account alias and its independent credential. */

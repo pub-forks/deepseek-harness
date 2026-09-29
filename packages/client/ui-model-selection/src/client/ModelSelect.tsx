@@ -425,7 +425,8 @@ export function ModelSelect(
     ? t('trigger.loading')
     : currentChoice?.model.name
       ?? (state.current === null ? t('trigger.fallback') : `${state.current.provider}/${state.current.model}`)
-  const triggerLabel = effortLabel === undefined ? modelLabel : `${modelLabel} · ${effortLabel}`
+  const providerLabel = state.current === null ? undefined : groups.find(group => group.id === state.current?.provider)?.name
+  const triggerLabel = `${modelLabel}${providerLabel === undefined ? '' : ` — ${providerLabel}`}${effortLabel === undefined ? '' : ` · ${effortLabel}`}`
   const triggerAria = waiting
     ? t('trigger.loading')
     : state.current === null
@@ -472,6 +473,7 @@ export function ModelSelect(
       >
         <IconDataOutlineRegular className={css.triggerIcon} size={16} />
         <span className={css.triggerLabel}>{modelLabel}</span>
+        {providerLabel !== undefined && <span className={css.triggerProvider}>· {providerLabel}</span>}
         {effortLabel !== undefined && <span className={css.triggerEffort}>{effortLabel}</span>}
         {busy
           ? <StateDot state="ongoing" />
