@@ -22,7 +22,13 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import { isAppShortcutCandidate, isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
+import {
+  isAppShortcutCandidate,
+  isGaiaIncomingMessage,
+  isValidSessionId,
+  postToParent,
+  sanitizeNotifyTitle,
+} from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
 import { GaiaDocumentAction } from './document-action.ts'
 import { GaiaFileActions } from './file-actions.ts'
@@ -118,6 +124,110 @@ export function setGaiaFavicon(): () => void {
       else document.head.append(link)
     }
   }
+}
+
+/**
+ * Watch turn completion and pending interactions on sessions, posting closed
+ * notification intents to the parent frame.
+ * @param ctx - Cordis client context with uiSession and sessions services.
+ * @param targetSessionId - explicit session to observe (embed mode), or undefined to observe all (full mode).
+ * @param getTitle - callback to resolve session title.
+ * @returns unsubscribe function.
+ */
+export function setupSessionNotifier(
+  ctx: Context,
+  targetSessionId?: SessionId,
+  getTitle?: (sessionId: SessionId) => string,
+): () => void {
+  const lastRunningBySession = new Map<SessionId, boolean>()
+  const seenInteractionKeys = new Set<string>()
+
+  const initialSnapshot = ctx.uiSession.sessionStatus.getSnapshot()
+  if (targetSessionId !== undefined) {
+    const status = initialSnapshot.get(targetSessionId)
+    if (status?.running !== undefined) {
+      lastRunningBySession.set(targetSessionId, status.running)
+    }
+    if (status?.pendingInteraction) {
+      seenInteractionKeys.add(status.pendingInteraction.key)
+    }
+  } else {
+    for (const [id, s] of initialSnapshot) {
+      if (s.running !== undefined) {
+        lastRunningBySession.set(id, s.running)
+      }
+      if (s.pendingInteraction) {
+        seenInteractionKeys.add(s.pendingInteraction.key)
+      }
+    }
+  }
+
+  const check = (): void => {
+    const snapshot = ctx.uiSession.sessionStatus.getSnapshot()
+    const sessionIds = targetSessionId !== undefined ? [targetSessionId] : [...snapshot.keys()]
+
+    for (const id of sessionIds) {
+      const status = snapshot.get(id)
+      const running = status?.running ?? false
+      const prevRunning = lastRunningBySession.get(id)
+      lastRunningBySession.set(id, running)
+
+      if (prevRunning === true && !running) {
+        // undefined: no turn/end entry found yet; null: a user abort, which never notifies.
+        let turnEvent: 'turnDone' | 'turnError' | null | undefined
+        const binding = ctx.sessions.binding(id)
+        const entries = binding?.eventSource.getSnapshot().entries
+        if (entries) {
+          for (let i = entries.length - 1; i >= 0; i--) {
+            const entry = entries[i]
+            if (entry && entry.type === 'event' && entry.event.type === 'turn/end') {
+              const reason = (entry.event.data as { reason?: { kind?: string; reason?: { kind?: string; reason?: string } } }).reason
+              if (reason?.kind === 'error' || (reason?.kind === 'aborted' && reason.reason?.kind === 'hook')) {
+                turnEvent = 'turnError'
+              } else if (reason?.kind === 'aborted') {
+                turnEvent = null
+              } else {
+                turnEvent = 'turnDone'
+              }
+              break
+            }
+          }
+        }
+        if (turnEvent === undefined) {
+          const sessionSnapshot = binding?.session.getSnapshot()
+          const failed = (sessionSnapshot?.promptError ?? null) !== null || (sessionSnapshot?.lastAgentError ?? null) !== null
+          turnEvent = failed ? 'turnError' : 'turnDone'
+        }
+        if (turnEvent !== null) {
+          const rawTitle = getTitle ? getTitle(id) : undefined
+          const title = sanitizeNotifyTitle(rawTitle)
+          postToParent({
+            source: 'gaia-dsh',
+            v: 1,
+            type: 'notify',
+            event: turnEvent,
+            title,
+          })
+        }
+      }
+
+      const pending = status?.pendingInteraction
+      if (pending && !seenInteractionKeys.has(pending.key)) {
+        seenInteractionKeys.add(pending.key)
+        const rawTitle = getTitle ? getTitle(id) : undefined
+        const title = sanitizeNotifyTitle(rawTitle)
+        postToParent({
+          source: 'gaia-dsh',
+          v: 1,
+          type: 'notify',
+          event: 'needsInput',
+          title,
+        })
+      }
+    }
+  }
+
+  return ctx.uiSession.sessionStatus.subscribe(check)
 }
 
 /**
@@ -310,9 +420,19 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
   window.addEventListener('keydown', onKeyDown, { capture: true })
 
+  const getFullSessionTitle = (id: SessionId): string => {
+    const summary = ctx.sessions.list.getSnapshot().byId[id]
+    return summary?.title ?? summary?.displayTitle ?? ''
+  }
+  let unsubFullNotifications: (() => void) | undefined
+  if (mode === 'full') {
+    unsubFullNotifications = setupSessionNotifier(ctx, undefined, getFullSessionTitle)
+  }
+
   const commonDisposer = ctx.effect(() => () => {
     window.removeEventListener('keydown', onKeyDown, { capture: true })
     unsubConnection?.()
+    unsubFullNotifications?.()
     unsubLocaleChange?.()
     root.removeAttribute(rootAttribute)
     root.removeAttribute(SETTINGS_MAXIMIZED_ATTR)
@@ -420,6 +540,12 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
   emitTurn()
   const unsubSessionStatus = ctx.uiSession.sessionStatus.subscribe(emitTurn)
+
+  const getEmbedSessionTitle = (id: SessionId): string => {
+    const summary = ctx.sessions.list.getSnapshot().byId[id]
+    return summary?.title ?? summary?.displayTitle ?? (lastTitle ?? '')
+  }
+  const unsubEmbedNotifications = setupSessionNotifier(ctx, sessionId, getEmbedSessionTitle)
 
   const emitTitleAndExistence = (): void => {
     const list = ctx.sessions.list.getSnapshot()
@@ -622,6 +748,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       ctx.layout.openRightbar = originalOpenRightbar
       window.removeEventListener('message', onMessage)
       unsubSessionStatus()
+      unsubEmbedNotifications()
       unsubList()
       sessionObserver.disconnect()
       await commonDisposer()

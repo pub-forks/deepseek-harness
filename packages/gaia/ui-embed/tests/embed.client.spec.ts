@@ -9,6 +9,7 @@ import {
   inject,
   isGaiaIncomingMessage,
   isValidSessionId,
+  sanitizeNotifyTitle,
   GAIA_EMBED_STYLE_ID,
   GAIA_SKIN_STYLE_ID,
   type GaiaOutgoingMessage,
@@ -238,6 +239,7 @@ describe('ui-embed client plugin', () => {
     }
     sessionCtx.provide('conversation', conversation)
 
+    const bindings = new Map<SessionId, unknown>()
     const sessions = {
       list: {
         getSnapshot: () => listSnapshot,
@@ -247,6 +249,7 @@ describe('ui-embed client plugin', () => {
         },
       },
       scope: vi.fn((_id: SessionId) => sessionCtx),
+      binding: vi.fn((id: SessionId) => bindings.get(id)),
     }
     ctx.provide('sessions', sessions)
 
@@ -323,11 +326,17 @@ describe('ui-embed client plugin', () => {
         })
       },
       uiSession,
-      setSessionStatus: (id: SessionId, running: boolean) => {
-        sessionStatusSnapshot = new Map([[id, { running }]])
+      setSessionStatus: (id: SessionId, running: boolean, pendingInteraction?: { key: string }) => {
+        sessionStatusSnapshot = new Map([[id, {
+          running,
+          ...(pendingInteraction ? { pendingInteraction: { key: pendingInteraction.key, kind: 'approval', sessionId: id } } : {}),
+        }]])
         sessionStatusListeners.forEach((l) => {
           l()
         })
+      },
+      setSessionBinding: (id: SessionId, binding: unknown) => {
+        bindings.set(id, binding)
       },
       sessions,
       setSessionList: (l: typeof listSnapshot) => {
@@ -1150,6 +1159,155 @@ describe('ui-embed client plugin', () => {
       })
     })
   })
+
+  describe('Gaia embed notifications', () => {
+    it('emits turnDone when running transitions from true to false', async () => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      mock.setSessionList({
+        phase: 'ready',
+        byId: {
+          's-test-123': { id: SessionId('s-test-123'), title: 'Refactor Agent', displayTitle: 'Refactor Agent' },
+        },
+      })
+      const dispose = apply(mock.ctx)
+
+      // Initial mount is not running; prime running=true
+      mock.setSessionStatus(SessionId('s-test-123'), true)
+      expect(parentMessages.filter(m => m.type === 'notify')).toHaveLength(0)
+
+      // Turn completes normally
+      mock.setSessionStatus(SessionId('s-test-123'), false)
+      expect(parentMessages).toContainEqual({
+        source: 'gaia-dsh',
+        v: 1,
+        type: 'notify',
+        event: 'turnDone',
+        title: 'Refactor Agent',
+      })
+
+      if (typeof dispose === 'function') await dispose()
+    })
+
+    it('emits turnError when the turn ended with an error event', async () => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      mock.setSessionList({
+        phase: 'ready',
+        byId: {
+          's-test-123': { id: SessionId('s-test-123'), title: 'Failing Task', displayTitle: 'Failing Task' },
+        },
+      })
+      mock.setSessionBinding(SessionId('s-test-123'), {
+        eventSource: {
+          getSnapshot: () => ({
+            entries: [
+              {
+                type: 'event',
+                event: {
+                  type: 'turn/end',
+                  data: { reason: { kind: 'error', error: { message: 'Network timeout' } } },
+                },
+              },
+            ],
+          }),
+        },
+      })
+      const dispose = apply(mock.ctx)
+
+      mock.setSessionStatus(SessionId('s-test-123'), true)
+      mock.setSessionStatus(SessionId('s-test-123'), false)
+
+      expect(parentMessages).toContainEqual({
+        source: 'gaia-dsh',
+        v: 1,
+        type: 'notify',
+        event: 'turnError',
+        title: 'Failing Task',
+      })
+
+      if (typeof dispose === 'function') await dispose()
+    })
+
+    it('does not notify when the user aborted the turn', async () => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      mock.setSessionBinding(SessionId('s-test-123'), {
+        eventSource: {
+          getSnapshot: () => ({
+            entries: [{ type: 'event', event: { type: 'turn/end', data: { reason: { kind: 'aborted', reason: { kind: 'user' } } } } }],
+          }),
+        },
+      })
+      const dispose = apply(mock.ctx)
+
+      mock.setSessionStatus(SessionId('s-test-123'), true)
+      mock.setSessionStatus(SessionId('s-test-123'), false)
+
+      expect(parentMessages.filter(m => m.type === 'notify')).toHaveLength(0)
+
+      if (typeof dispose === 'function') await dispose()
+    })
+
+    it('emits needsInput when a pending interaction arrives and does not duplicate', async () => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      mock.setSessionList({
+        phase: 'ready',
+        byId: {
+          's-test-123': { id: SessionId('s-test-123'), title: 'Approval Session', displayTitle: 'Approval Session' },
+        },
+      })
+      const dispose = apply(mock.ctx)
+
+      // Pending interaction appears
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'approval-req-1' })
+      const notifyInputs = parentMessages.filter(m => m.type === 'notify' && m.event === 'needsInput')
+      expect(notifyInputs).toHaveLength(1)
+      expect(notifyInputs[0]).toEqual({
+        source: 'gaia-dsh',
+        v: 1,
+        type: 'notify',
+        event: 'needsInput',
+        title: 'Approval Session',
+      })
+
+      // Re-publishing the same pending interaction key must not emit again
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'approval-req-1' })
+      expect(parentMessages.filter(m => m.type === 'notify' && m.event === 'needsInput')).toHaveLength(1)
+
+      // A new interaction key emits
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'approval-req-2' })
+      expect(parentMessages.filter(m => m.type === 'notify' && m.event === 'needsInput')).toHaveLength(2)
+
+      if (typeof dispose === 'function') await dispose()
+    })
+
+    it('emits notifications across sessions in full mode', async () => {
+      setLocationSearch('?gaia=full')
+      const mock = createMockContext()
+      mock.setSessionList({
+        phase: 'ready',
+        byId: {
+          's-full-1': { id: SessionId('s-full-1'), title: 'Full Session 1', displayTitle: 'Full Session 1' },
+        },
+      })
+      const dispose = apply(mock.ctx)
+
+      mock.setSessionStatus(SessionId('s-full-1'), true)
+      mock.setSessionStatus(SessionId('s-full-1'), false)
+
+      expect(parentMessages).toContainEqual({
+        source: 'gaia-dsh',
+        v: 1,
+        type: 'notify',
+        event: 'turnDone',
+        title: 'Full Session 1',
+      })
+
+      if (typeof dispose === 'function') await dispose()
+    })
+  })
 })
 
 describe('embed styles', () => {
@@ -1347,6 +1505,7 @@ describe('Gaia frame settings registrations and maximize lifecycle', () => {
     insideCtx.provide('theme', { register: vi.fn(() => () => {}), setTheme: vi.fn(), overrideTokens: vi.fn(() => () => {}) })
     insideCtx.provide('connection', { state: { getSnapshot: () => 'connected', subscribe: () => () => {} } })
     insideCtx.provide('layout', { toggleSidebar: vi.fn(), layoutInfo: { getSnapshot: () => ({ viewportWidth: 1280, sidebar: 280 }), subscribe: () => () => {} } })
+    insideCtx.provide('uiSession', { sessionStatus: { getSnapshot: () => new Map(), subscribe: () => () => {} } })
     const insideRegistrations: { name: string; id: string }[] = []
     insideCtx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string }) => { insideRegistrations.push(o); return () => {} } })
 
@@ -1362,4 +1521,15 @@ describe('Gaia frame settings registrations and maximize lifecycle', () => {
     Object.defineProperty(window, 'parent', { value: window, configurable: true })
   })
 })
+
+describe('sanitizeNotifyTitle', () => {
+  it('strips control characters, trims, and bounds length to 200 characters', () => {
+    expect(sanitizeNotifyTitle(undefined)).toBe('')
+    expect(sanitizeNotifyTitle('')).toBe('')
+    expect(sanitizeNotifyTitle('   hello world   ')).toBe('hello world')
+    expect(sanitizeNotifyTitle('hello\x00\x07\x1F world\x7F')).toBe('hello world')
+    expect(sanitizeNotifyTitle('a'.repeat(250))).toBe('a'.repeat(200))
+  })
+})
+
 

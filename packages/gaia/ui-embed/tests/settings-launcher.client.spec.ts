@@ -128,6 +128,7 @@ describe('GaiaSettingsLauncher component and openSettings handler', () => {
     ctx.provide('theme', { register: vi.fn(() => () => {}), setTheme: vi.fn(), getTheme: () => ({ preference: 'system' }), overrideTokens: vi.fn(() => () => {}) })
     ctx.provide('connection', { state: { getSnapshot: () => 'connected', subscribe: () => () => {} } })
     ctx.provide('layout', { toggleSidebar: vi.fn(), layoutInfo: { getSnapshot: () => ({ viewportWidth: 1280, sidebar: 280 }), subscribe: () => () => {} } })
+    ctx.provide('uiSession', { sessionStatus: { getSnapshot: () => new Map(), subscribe: () => () => {} } })
 
     const dispose = apply(ctx)
 

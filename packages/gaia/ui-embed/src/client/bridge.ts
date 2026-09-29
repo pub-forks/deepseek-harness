@@ -28,6 +28,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: AppShortcutCode; shift: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; event: 'turnDone' | 'needsInput' | 'turnError'; title: string }
 
 /** Allowlisted keyboard shortcut codes forwarded from the iframe to Gaia. */
 export const APP_SHORTCUT_CODES = [
@@ -168,4 +169,18 @@ export function postToParent(msg: GaiaOutgoingMessage): void {
   if (typeof window !== 'undefined' && window.parent !== window) {
     window.parent.postMessage(msg, window.location.origin)
   }
+}
+
+/** Maximum character length for notify message titles. */
+export const MAX_NOTIFY_TITLE_CHARS = 200
+
+/**
+ * Sanitize session title for safe transport over the bridge:
+ * strips ASCII control characters (0-31 and 127), trims, and bounds length to 200 chars.
+ * @param raw - candidate raw title string.
+ * @returns sanitized plain-text title string.
+ */
+export function sanitizeNotifyTitle(raw: string | undefined): string {
+  if (!raw) return ''
+  return raw.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, MAX_NOTIFY_TITLE_CHARS)
 }
