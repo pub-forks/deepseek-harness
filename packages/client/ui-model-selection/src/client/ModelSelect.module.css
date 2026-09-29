@@ -239,6 +239,7 @@
   color: var(--dsw-alias-menu-icon);
 }
 
+/* GAIA: provider header is larger than model rows, semibold, and full primary foreground color */
 .groupTitle {
   box-sizing: border-box;
   display: flex;
@@ -249,10 +250,10 @@
   border: none;
   border-radius: var(--dsw-radius-sm);
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -260,6 +261,7 @@
 
 .groupTitle:hover {
   color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .groupChevron {
@@ -308,6 +310,11 @@
   cursor: pointer;
 }
 
+/* GAIA: model rows indented under their provider header (chevron 12px + gap 5px = ~17px extra left padding), highlight spans full row */
+.group .option {
+  padding-left: 24px;
+}
+
 .option:hover:not(:disabled),
 .option:focus-visible {
   background: var(--dsw-alias-interactive-bg-hover);
@@ -331,12 +338,13 @@
   min-width: 0;
 }
 
+/* GAIA: regular weight so the semibold provider header dominates */
 .modelName {
   overflow: hidden;
   color: inherit;
   font-size: 13px;
   line-height: 18px;
-  font-weight: 500;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
