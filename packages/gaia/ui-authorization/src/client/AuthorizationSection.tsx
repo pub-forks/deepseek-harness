@@ -177,7 +177,7 @@ export function AuthorizationSection({
   return <section className={css.section} aria-label={t('nav')}>
     <h2>{t('title')}</h2><p className={css.intro}>{t('intro')}</p>
     <p>{t('apiKeyHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>
-    <form className={css.accountForm} onSubmit={(event) => { void submitAccount(event) }}>
+    <form data-gaia-auth-account-form="" className={css.accountForm} onSubmit={(event) => { void submitAccount(event) }}>
       <div className={css.accountRow}>
         <label>{t('accountKind')} <select data-dsh-select-trigger="" value={accountKind} onChange={(event) => { setAccountKind(event.target.value as 'oauth' | 'api-key') }}><option value="oauth">{t('oauthAccount')}</option><option value="api-key">{t('apiKeyAccount')}</option></select></label>
         <label>{t('accountSource')}

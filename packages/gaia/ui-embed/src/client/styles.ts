@@ -144,6 +144,10 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"] {
   border: 1px solid transparent;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
+${GAIA_CONTROLS_SCOPE} form[data-gaia-auth-account-form] [data-dsh-button="primary"] {
+  height: 36px;
+  align-self: flex-end;
+}
 ${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"]:hover:not(:disabled) {
   background: var(--dsw-alias-button-primary-hover);
 }

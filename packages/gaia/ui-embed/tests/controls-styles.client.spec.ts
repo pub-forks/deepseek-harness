@@ -35,7 +35,8 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('padding: 0 12px')
     expect(GAIA_CONTROLS_CSS).toContain('font-size: 12px')
     expect(GAIA_CONTROLS_CSS).toContain('line-height: 18px')
-    expect(GAIA_CONTROLS_CSS).not.toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*height:\s*36px/)
+    const primaryButtonRule = GAIA_CONTROLS_CSS.match(/\/\* Button default: primary buttons \*\/([\s\S]*?)\n\}/)?.[1]
+    expect(primaryButtonRule).not.toContain('height: 36px')
     expect(GAIA_CONTROLS_CSS).not.toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*padding:\s*0 16px/)
     expect(GAIA_CONTROLS_CSS).not.toMatch(/data-dsh-button="outline"[^}]*height:\s*36px/)
     expect(GAIA_CONTROLS_CSS).not.toMatch(/data-dsh-button="ghost"[^}]*height:\s*36px/)
@@ -52,6 +53,11 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('height: 36px')
     expect(GAIA_CONTROLS_CSS).toContain('border: 1px solid var(--dsw-alias-border-l2)')
     expect(GAIA_CONTROLS_CSS).toMatch(/\[data-dsh-select-trigger\]\s*\{[^}]*height:\s*36px/)
+  })
+
+  it('matches the add-account primary button height to embedded form controls', () => {
+    expect(GAIA_CONTROLS_CSS).toMatch(/form\[data-gaia-auth-account-form\] \[data-dsh-button="primary"\]\s*\{[^}]*height:\s*36px/)
+    expect(GAIA_CONTROLS_CSS).toMatch(/form\[data-gaia-auth-account-form\] \[data-dsh-button="primary"\]\s*\{[^}]*align-self:\s*flex-end/)
   })
 
   it('includes input and textarea styles with 36px height unchanged', () => {

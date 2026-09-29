@@ -43,6 +43,12 @@ it('creates and removes independently named OAuth aliases from the localized con
   await waitFor(() => { expect(operations.removeAccount).toHaveBeenCalledWith(alias.key) })
 })
 
+it('marks the add-account form for Gaia embedded control styling', async () => {
+  mount()
+  await screen.findByText('Codex', { selector: 'strong' })
+  expect(document.querySelector('form[data-gaia-auth-account-form]')).not.toBeNull()
+})
+
 it('submits API-key account credentials through the dedicated operation', async () => {
   const apiSource: FlowView = { ...flow, methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'api-key', label: 'API key' }] }
   const operations = mount([], [apiSource])
