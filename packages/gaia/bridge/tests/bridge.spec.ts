@@ -26,11 +26,6 @@ function fixture(value: string | undefined = secret, documentPath: string | null
   const workspaces = new Map<string, MockWorkspace>()
   const sessions: { sessionId: string; running: boolean; updatedAt: number; projections: { values: { title: string } } }[] = []
   const archivedSessions = new Set<string>()
-  const gateway = {
-    invoke: vi.fn(async (_request: { namespace: string; method: string; args: Record<string, unknown> }): Promise<unknown> => 'ok'),
-    stream: vi.fn(async (_request: { namespace: string; method: string; args: Record<string, unknown>; signal?: AbortSignal }) =>
-      (async function* () {})() as AsyncIterable<unknown>),
-  }
   const ctx = {
     logger: () => ({ warn: vi.fn() }),
     effect: (register: () => () => void) => { register() },
@@ -64,7 +59,6 @@ function fixture(value: string | undefined = secret, documentPath: string | null
       }),
     },
     agents: { list: () => [{ status: 'running' }] },
-    typertGateway: gateway,
     // Optional service: reachable only through ctx.get, as in a real Cordis
     // context where undeclared `ctx.configEditor` access throws.
     get: (name: string) => (name === 'configEditor' && documentPath !== null ? { documentPath } : undefined),
@@ -110,7 +104,6 @@ describe('Gaia control bridge', () => {
   it('caps JSON bodies and validates input', async () => {
     const f = fixture()
     expect((await f.call('POST', '/gaia/control/sessions', {}, { bytes: 'x'.repeat(16385) })).status).toBe(413)
-    expect((await f.call('POST', '/gaia/control/remote', {}, { bytes: 'x'.repeat(256 * 1024 + 1) })).status).toBe(413)
     expect((await f.call('PUT', '/gaia/control/config-document', {}, { bytes: 'x'.repeat(1_310_721) })).status).toBe(413)
     expect((await f.call('POST', '/gaia/control/workspaces/ensure', { path: 'relative' })).status).toBe(400)
     expect((await f.call('POST', '/gaia/control/sessions', { workspaceId: 'missing' })).status).toBe(404)
@@ -186,82 +179,10 @@ describe('Gaia control bridge', () => {
     expect((await fixture().call('GET', '/gaia/control/activity')).body).toEqual({ attachedClients: 0, runningTurns: 1, approximate: true })
   })
 
-  it('allows only listed unary Remotes and maps their errors without stacks', async () => {
+  it('does not serve removed remote and stream endpoints', async () => {
     const f = fixture()
-    expect(await f.call('POST', '/gaia/control/remote', { namespace: 'settings', method: 'openSettingsDocument', args: {} }))
-      .toMatchObject({ status: 404, body: { error: { code: 'not_allowed' } } })
-    expect(f.ctx.typertGateway.invoke).not.toHaveBeenCalled()
-    f.ctx.typertGateway.invoke.mockResolvedValueOnce({ currentRevision: 2 })
-    expect(await f.call('POST', '/gaia/control/remote', { namespace: 'settings', method: 'describe', args: {} }))
-      .toMatchObject({ status: 200, body: { result: { currentRevision: 2 } } })
-    f.ctx.typertGateway.invoke.mockRejectedValueOnce({
-      isDSHRemoteError: true, code: 'settings/refused', message: 'refused', stack: 'secret stack',
-    })
-    const failed = await f.call('POST', '/gaia/control/remote', { namespace: 'settings', method: 'describe', args: {} })
-    expect(failed).toEqual({ status: 400, body: { error: { code: 'settings/refused', message: 'refused' } } })
-    f.ctx.typertGateway.invoke.mockRejectedValueOnce({
-      isDSHRemoteError: true, code: 'gateway/signature-invalid', message: 'method kind mismatch', stack: 'private stack',
-    })
-    expect(await f.call('POST', '/gaia/control/remote', { namespace: 'settings', method: 'describe', args: {} }))
-      .toEqual({ status: 400, body: { error: { code: 'gateway/signature-invalid', message: 'method kind mismatch' } } })
-  })
-
-  it('rejects Remote call kind mismatches', async () => {
-    const f = fixture()
-    expect((await f.call('POST', '/gaia/control/remote', { namespace: 'gaiaAuthorization', method: 'start', args: {} })).status).toBe(400)
-    expect((await f.call('POST', '/gaia/control/streams', { namespace: 'settings', method: 'describe', args: {} })).status).toBe(400)
-  })
-
-  it('buffers stream items for polling and cancels the in-process source', async () => {
-    const f = fixture()
-    f.ctx.typertGateway.stream.mockImplementationOnce(async () => (async function* () {
-      yield { state: 'prompt' }
-      yield { state: 'done' }
-    })())
-    const opened = await f.call('POST', '/gaia/control/streams', { namespace: 'gaiaAuthorization', method: 'start', args: {} })
-    const id = opened.body.streamId as string
-    expect(id).toMatch(/^[0-9a-f]{32}$/)
-    expect(await f.call('GET', `/gaia/control/streams/${id}?after=0`)).toMatchObject({
-      status: 200, body: { items: [{ state: 'prompt' }], next: 1 },
-    })
-    expect(await f.call('GET', `/gaia/control/streams/${id}?after=1`)).toMatchObject({
-      status: 200, body: { items: [{ state: 'done' }], next: 2 },
-    })
-    expect(await f.call('GET', `/gaia/control/streams/${id}?after=2`)).toMatchObject({
-      status: 200, body: { items: [], next: 2, done: true },
-    })
-    const pending = new Promise<void>(() => {})
-    f.ctx.typertGateway.stream.mockImplementationOnce(async ({ signal }) => (async function* () {
-      yield 'first'
-      await pending
-      if (signal?.aborted) return
-    })())
-    const second = await f.call('POST', '/gaia/control/streams', { namespace: 'gaiaAuthorization', method: 'start', args: {} })
-    const secondId = second.body.streamId as string
-    expect((await f.call('DELETE', `/gaia/control/streams/${secondId}`)).status).toBe(200)
-    expect(f.ctx.typertGateway.stream.mock.calls[1]?.[0].signal?.aborted).toBe(true)
-  })
-
-  it('enforces stream count and buffer caps', async () => {
-    const f = fixture()
-    const forever = async function* () { await new Promise<void>(() => {}); yield null }
-    f.ctx.typertGateway.stream.mockImplementation(async () => forever())
-    const ids: string[] = []
-    for (let index = 0; index < 8; index++) {
-      const opened = await f.call('POST', '/gaia/control/streams', { namespace: 'gaiaAuthorization', method: 'start', args: {} })
-      ids.push(opened.body.streamId as string)
-    }
-    expect((await f.call('POST', '/gaia/control/streams', { namespace: 'gaiaAuthorization', method: 'start', args: {} })))
-      .toMatchObject({ status: 409, body: { error: { code: 'too_many_streams' } } })
-    for (const id of ids) await f.call('DELETE', `/gaia/control/streams/${id}`)
-
-    f.ctx.typertGateway.stream.mockImplementationOnce(async () => (async function* () { for (let i = 0; i < 501; i++) yield i })())
-    const opened = await f.call('POST', '/gaia/control/streams', { namespace: 'gaiaAuthorization', method: 'start', args: {} })
-    await new Promise<void>(resolve => setImmediate(resolve))
-    const result = await f.call('GET', `/gaia/control/streams/${opened.body.streamId as string}?after=0`)
-    expect(result.status).toBe(200)
-    expect(result.body.items).toHaveLength(500)
-    expect(result.body).toMatchObject({ done: true, error: { code: 'stream_overflow' } })
+    expect(await f.call('POST', '/gaia/control/remote', {})).toEqual({ status: 404, body: { error: 'not_found' } })
+    expect(await f.call('POST', '/gaia/control/streams', {})).toEqual({ status: 404, body: { error: 'not_found' } })
   })
 
   it('reads and atomically updates the config document with a sha256 precondition', async () => {

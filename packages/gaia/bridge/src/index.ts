@@ -1,5 +1,5 @@
 /** Gaia's loopback-only, bearer-authenticated Host control API. */
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { lstat, realpath, stat } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isIP } from 'node:net'
@@ -8,13 +8,11 @@ import type { Context } from '@deepseek-ai/cordis'
 import { getDshRuntimeVersion } from '@deepseek-ai/dsh-app-boot'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
-import type {} from '@deepseek-ai/dsh-api-gateway'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-config-editor'
-import { allowedRemoteKind } from './allowlist.ts'
 import {
   MAX_PROFILE_FILE_BYTES, PROFILE_FILE_NAMES, profileFilePath, readProfileText, sha256, validateProfileText,
   writeProfileTextIfSha,
@@ -23,18 +21,12 @@ import { scheduleSeed } from './seed.ts'
 
 const PREFIX = '/gaia/control'
 const MAX_BODY = 16 * 1024
-const MAX_REMOTE_BODY = 256 * 1024
 const MAX_DOCUMENT_BODY = 1_310_720
-const MAX_STREAMS = 8
-const MAX_STREAM_ITEMS = 500
-const MAX_STREAM_BYTES = 1024 * 1024
-const STREAM_IDLE_MS = 5 * 60 * 1000
-const STREAM_POLL_MS = 25_000
 
 /** Cordis plugin identity. */
 export const name = 'gaia-bridge'
 /** The Host services used by the bridge. */
-export const inject = ['webServer', 'workspaceRegistry', 'sessionController', 'sessions', 'agents', 'sessionTitle', 'typertGateway']
+export const inject = ['webServer', 'workspaceRegistry', 'sessionController', 'sessions', 'agents', 'sessionTitle']
 
 /**
  * Compare a submitted token with the activation-time secret in constant time.
@@ -109,124 +101,13 @@ function exactFields(record: Record<string, unknown>, keys: readonly string[]): 
   if (Object.keys(record).some(key => !keys.includes(key))) throw new RequestError(400, 'invalid_body')
 }
 
-interface StreamFailure {
-  readonly code: string
-  readonly message: string
-}
-
-interface BufferedStream {
-  readonly controller: AbortController
-  readonly items: unknown[]
-  readonly waiters: Set<() => void>
-  bytes: number
-  done: boolean
-  error?: StreamFailure
-  idleTimer: NodeJS.Timeout
-}
-
-function failureOf(error: unknown): StreamFailure {
-  if (typeof error === 'object' && error !== null) {
-    const value = error as { code?: unknown; message?: unknown; isDSHRemoteError?: unknown }
-    if (typeof value.code === 'string') {
-      return { code: value.code, message: typeof value.message === 'string' ? value.message : 'Remote call failed' }
-    }
-  }
-  return { code: 'internal', message: 'Remote call failed' }
-}
-
-function remoteFailureStatus(error: unknown, failure: StreamFailure): number {
-  if (failure.code.startsWith('gateway/')) {
-    if (['gateway/arguments-invalid', 'gateway/input-invalid', 'gateway/signature-invalid', 'gateway/protocol'].includes(failure.code)) {
-      return 400
-    }
-    if (['gateway/context-not-found', 'gateway/lookup-not-found', 'gateway/method-unavailable'].includes(failure.code)) return 404
-    if (failure.code === 'gateway/service-unavailable') return 503
-    return 502
-  }
-  if (typeof error === 'object' && error !== null && (error as { isDSHRemoteError?: unknown }).isDSHRemoteError === true) {
-    return 400
-  }
-  return 502
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function notifyStream(stream: BufferedStream): void {
-  for (const wake of stream.waiters) wake()
-  stream.waiters.clear()
-}
-
-function finishStream(stream: BufferedStream, error?: StreamFailure): void {
-  if (stream.done) return
-  stream.done = true
-  if (error !== undefined) stream.error = error
-  notifyStream(stream)
-}
-
-function resetIdleTimer(id: string, stream: BufferedStream, streams: Map<string, BufferedStream>): void {
-  clearTimeout(stream.idleTimer)
-  stream.idleTimer = setTimeout(() => {
-    stream.controller.abort()
-    streams.delete(id)
-    notifyStream(stream)
-  }, STREAM_IDLE_MS)
-  stream.idleTimer.unref()
-}
-
-async function pollStream(stream: BufferedStream, after: number): Promise<void> {
-  if (stream.items.length > after || stream.done) return
-  await new Promise<void>((resolve) => {
-    let settled = false
-    const finish = (): void => {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      stream.waiters.delete(finish)
-      resolve()
-    }
-    const timer = setTimeout(finish, STREAM_POLL_MS)
-    timer.unref()
-    stream.waiters.add(finish)
-  })
-}
-
-async function consumeStream(
-  source: AsyncIterable<unknown>,
-  stream: BufferedStream,
-): Promise<void> {
-  try {
-    for await (const item of source) {
-      if (stream.controller.signal.aborted) break
-      let serialized: string
-      try { serialized = item === undefined ? 'null' : JSON.stringify(item) }
-      catch { finishStream(stream, { code: 'stream_overflow', message: 'Stream item is not serializable' }); break }
-      const bytes = Buffer.byteLength(serialized) + (stream.items.length === 0 ? 0 : 1)
-      if (stream.items.length >= MAX_STREAM_ITEMS || stream.bytes + bytes > MAX_STREAM_BYTES) {
-        stream.controller.abort()
-        finishStream(stream, { code: 'stream_overflow', message: 'Stream buffer limit exceeded' })
-        break
-      }
-      stream.items.push(item)
-      stream.bytes += bytes
-      notifyStream(stream)
-    }
-    finishStream(stream)
-  } catch (error) {
-    if (!stream.controller.signal.aborted) finishStream(stream, failureOf(error))
-    else finishStream(stream)
-  }
-}
-
 /** Register the control API for the life of the plugin.
- * @param ctx - Host context providing the web server and Remote gateway.
- * @returns no value; route and stream resources are disposed with the plugin.
+ * @param ctx - Host context providing the web server.
+ * @returns no value; route resources are disposed with the plugin.
  */
 export function apply(ctx: Context): void {
   scheduleSeed(ctx)
   const secret = process.env.GAIA_CONTROL_SECRET
-  const streams = new Map<string, BufferedStream>()
   // GAIA: configEditor is optional here (seed.ts injects it the same way), and
   // Cordis refuses undeclared `ctx.configEditor` property access, so read it
   // through `ctx.get` and answer 503 while it is not mounted.
@@ -251,51 +132,6 @@ export function apply(ctx: Context): void {
           const method = req.method
           if (method === 'GET' && path === `${PREFIX}/health`) {
             answer(res, 200, { ready: true, dshVersion: getDshRuntimeVersion() })
-          } else if (method === 'POST' && (path === `${PREFIX}/remote` || path === `${PREFIX}/streams`)) {
-            const request = await body(req, MAX_REMOTE_BODY)
-            exactFields(request, ['namespace', 'method', 'args'])
-            const namespace = stringField(request, 'namespace')
-            const remoteMethod = stringField(request, 'method')
-            const kind = allowedRemoteKind(namespace, remoteMethod)
-            if (kind === undefined) throw new StructuredRequestError(404, { error: { code: 'not_allowed' } })
-            const streamRequest = path === `${PREFIX}/streams`
-            if ((streamRequest && kind !== 'stream') || (!streamRequest && kind !== 'unary')) {
-              throw new StructuredRequestError(400, { error: { code: 'kind_mismatch', message: `Remote method is ${kind}` } })
-            }
-            if (!isRecord(request.args)) {
-              throw new StructuredRequestError(400, { error: { code: 'invalid_args', message: 'args must be an object' } })
-            }
-            if (!streamRequest) {
-              try {
-                const result = await ctx.typertGateway.invoke({ namespace, method: remoteMethod, args: request.args })
-                answer(res, 200, { result })
-              } catch (error) {
-                const failure = failureOf(error)
-                throw new StructuredRequestError(remoteFailureStatus(error, failure), { error: failure })
-              }
-            } else {
-              if (streams.size >= MAX_STREAMS) throw new StructuredRequestError(409, { error: { code: 'too_many_streams' } })
-              const controller = new AbortController()
-              try {
-                const source = await ctx.typertGateway.stream({
-                  namespace, method: remoteMethod, args: request.args, signal: controller.signal,
-                })
-                const id = randomBytes(16).toString('hex')
-                const stream: BufferedStream = {
-                  controller, items: [], waiters: new Set(), bytes: 2, done: false,
-                  idleTimer: setTimeout(() => {}, STREAM_IDLE_MS),
-                }
-                stream.idleTimer.unref()
-                streams.set(id, stream)
-                resetIdleTimer(id, stream, streams)
-                void consumeStream(source, stream)
-                answer(res, 200, { streamId: id })
-              } catch (error) {
-                controller.abort()
-                const failure = failureOf(error)
-                throw new StructuredRequestError(remoteFailureStatus(error, failure), { error: failure })
-              }
-            }
           } else if (method === 'GET' && path === `${PREFIX}/config-document`) {
             const docPath = documentPath()
             const text = await readProfileText(docPath)
@@ -377,31 +213,6 @@ export function apply(ctx: Context): void {
             } else {
               throw new RequestError(404, 'not_found')
             }
-          } else if (method === 'GET' && /^\/gaia\/control\/streams\/[0-9a-f]{32}$/.test(path)) {
-            for (const key of url.searchParams.keys()) if (key !== 'after') throw new RequestError(400, `invalid_${key}`)
-            const rawAfter = url.searchParams.get('after') ?? '0'
-            const after = Number(rawAfter)
-            if (!Number.isSafeInteger(after) || after < 0) throw new RequestError(400, 'invalid_after')
-            const id = path.slice(`${PREFIX}/streams/`.length)
-            const stream = streams.get(id)
-            if (stream === undefined) throw new RequestError(404, 'stream_not_found')
-            resetIdleTimer(id, stream, streams)
-            await pollStream(stream, after)
-            const items = stream.items.slice(after)
-            const response: { items: unknown[]; next: number; done: boolean; error?: StreamFailure } = {
-              items, next: after + items.length, done: stream.done,
-            }
-            if (stream.error !== undefined) response.error = stream.error
-            answer(res, 200, response)
-          } else if (method === 'DELETE' && /^\/gaia\/control\/streams\/[0-9a-f]{32}$/.test(path)) {
-            const id = path.slice(`${PREFIX}/streams/`.length)
-            const stream = streams.get(id)
-            if (stream === undefined) throw new RequestError(404, 'stream_not_found')
-            stream.controller.abort()
-            clearTimeout(stream.idleTimer)
-            streams.delete(id)
-            finishStream(stream)
-            answer(res, 200, { ok: true })
           } else if (method === 'POST' && path === `${PREFIX}/workspaces/ensure`) {
             const request = await body(req)
             exactFields(request, ['path', 'title'])
@@ -515,12 +326,6 @@ export function apply(ctx: Context): void {
     })
     return () => {
       disposeRoutes()
-      for (const [id, stream] of streams) {
-        clearTimeout(stream.idleTimer)
-        stream.controller.abort()
-        finishStream(stream)
-        streams.delete(id)
-      }
     }
   }, 'gaia control routes')
 }
