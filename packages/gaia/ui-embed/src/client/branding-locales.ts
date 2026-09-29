@@ -4,6 +4,16 @@ type LocaleOverrides = Record<string, Partial<Record<'en' | 'zh', Record<string,
 
 /** Localized product-name copy used by the full Harness shell. */
 export const GAIA_LOCALE_OVERRIDES: LocaleOverrides = {
+  'settings.theme': {
+    en: {
+      'appearance.followsGaia': 'Follows Gaia’s theme',
+      'appearance.openGaiaSettings': 'Open Gaia appearance settings',
+    },
+    zh: {
+      'appearance.followsGaia': '跟随 Gaia 主题',
+      'appearance.openGaiaSettings': '打开 Gaia 外观设置',
+    },
+  },
   'settings.agentPreset': {
     en: {
       sectionIntro: 'Choose the agent’s tools and how it works. Use Standard mode for everyday tasks, or Creator mode to add capabilities to Gaia Harness.',

@@ -26,9 +26,10 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openConfigEditor' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'workspacesChanged' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
 
 /** Keys of the Gaia palette a theme message may carry. */
-export const GAIA_PALETTE_KEYS = ['background', 'surface', 'border', 'foreground', 'mutedForeground', 'accent'] as const
+export const GAIA_PALETTE_KEYS = ['background', 'surface', 'border', 'foreground', 'mutedForeground', 'accent', 'primary', 'primaryForeground', 'destructive'] as const
 
 /** Gaia's resolved theme colors, as CSS color strings. */
 export type GaiaPalette = Partial<Record<typeof GAIA_PALETTE_KEYS[number], string>>

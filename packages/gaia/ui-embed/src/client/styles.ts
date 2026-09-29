@@ -7,6 +7,99 @@ export const GAIA_EMBED_STYLE_ID = 'gaia-embed-styles'
 
 const GAIA_FRAME = ':is(html[data-gaia-embed], html[data-gaia-full])'
 
+/** Settings modal skin and maximize layout inside Gaia frames. */
+export const GAIA_SETTINGS_CSS = `
+${GAIA_FRAME} [data-shortcut-modal="settings"] {
+  width: min(960px, calc(100vw - 48px));
+  height: min(880px, calc(100vh - 2 * max(24px, var(--dsh-frame-top-clearance, 24px))));
+  max-width: none;
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  transition: width 0.15s, height 0.15s;
+  --dsw-radius-md: 6px;
+  --dsw-radius-sm: 6px;
+  --dsw-alias-brand-primary: var(--dsw-alias-link);
+}
+@media (prefers-reduced-motion: reduce) {
+  ${GAIA_FRAME} [data-shortcut-modal="settings"] {
+    transition: none;
+  }
+}
+html[data-gaia-settings-maximized] [data-shortcut-modal="settings"] {
+  width: calc(100vw - 16px);
+  height: calc(100vh - 16px);
+  border-radius: 8px;
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] nav {
+  background: var(--dsw-alias-bg-layer-1);
+  border-right: 1px solid var(--dsw-alias-border-l1);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] nav button {
+  border-radius: 6px;
+  color: var(--dsw-alias-label-tertiary);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] nav button:hover {
+  color: var(--dsw-alias-label-primary);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"] {
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 2px 0 0 var(--dsw-alias-link);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"]:hover {
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] :is(button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--dsw-alias-link);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] [data-gaia-settings-maximize] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--dsw-alias-label-primary);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] [data-gaia-settings-maximize]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+${GAIA_FRAME} [data-gaia-appearance] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+${GAIA_FRAME} [data-gaia-appearance-title] {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+}
+${GAIA_FRAME} [data-gaia-appearance-body] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+${GAIA_FRAME} [data-gaia-appearance-desc] {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+}
+`
+
 /** Gaia typography, surfaces, radii, palette-driven colors and composer styling. */
 export const GAIA_SKIN_CSS = `
 ${GAIA_FRAME} body {
@@ -131,7 +224,9 @@ ${GAIA_FRAME} [data-gaia-settings-launcher] .gaia-trigger-label {
   overflow: hidden;
   white-space: nowrap;
 }
+${GAIA_SETTINGS_CSS}
 `
+
 
 /** Chrome removal and compact-viewport treatment unique to single-session embed mode. */
 export const GAIA_EMBED_CHROME_CSS = `

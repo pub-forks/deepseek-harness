@@ -33,7 +33,10 @@ function mix(a: string, pct: number, b: string): string {
  */
 export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
   const flat: Record<string, string> = {}
-  const { background: bg, foreground: fg, surface, border, mutedForeground: muted, accent } = palette
+  const {
+    background: bg, foreground: fg, surface, border, mutedForeground: muted, accent,
+    primary, primaryForeground, destructive,
+  } = palette
   if (bg !== undefined) {
     flat['--dsw-alias-bg-base'] = bg
     flat['--dsw-alias-bg-document-preview'] = bg
@@ -81,6 +84,19 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
     flat['--dsw-alias-scrollbar-bg-l2'] = thumb
     flat['--dsw-alias-scrollbar-hover-l1'] = thumbHover
     flat['--dsw-alias-scrollbar-hover-l2'] = thumbHover
+  }
+  if (primary !== undefined) {
+    flat['--dsw-alias-button-primary-fill'] = primary
+    flat['--dsw-alias-button-primary-hover'] = bg === undefined ? primary : mix(primary, 90, bg)
+  }
+  if (primaryForeground !== undefined) {
+    flat['--dsw-alias-label-primary-foreground'] = primaryForeground
+  }
+  if (destructive !== undefined) {
+    flat['--dsw-alias-state-error-primary'] = destructive
+    if (bg !== undefined) {
+      flat['--dsw-alias-interactive-bg-hover-danger'] = mix(destructive, 12, bg)
+    }
   }
   return Object.fromEntries(Object.entries(flat).map(([name, value]) => [name, { light: value, dark: value }]))
 }

@@ -31,6 +31,8 @@ import { GaiaBrandName, GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
 import { registerGaiaLocaleOverrides } from './branding-locales.ts'
 import { GaiaSettingsLauncher, openSettings, resetCapturedSettings } from './settings-launcher.ts'
+import { GaiaSettingsMaximize, isSettingsMaximized, SETTINGS_MAXIMIZED_ATTR } from './settings-maximize.ts'
+import { GaiaAppearanceRow } from './appearance-row.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -42,6 +44,8 @@ export * from './bridge.ts'
 export * from './styles.ts'
 export * from './palette.ts'
 export * from './settings-launcher.ts'
+export * from './settings-maximize.ts'
+export * from './appearance-row.ts'
 
 /**
  * Format a timestamp into relative human-readable time (e.g. "5m ago").
@@ -138,6 +142,16 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
   }, GaiaDocumentAction))
 
+  // Both Gaia frames add a maximize/restore toggle in the settings action bar.
+  ctx.slots.inject('settings.action', () => ctx.slots.register({
+    name: 'settings.action', id: 'gaia-maximize', order: 1, priority: -1, locale: 'settings',
+  }, GaiaSettingsMaximize))
+
+  // Shadow the stock Appearance row: theme follows Gaia.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item', id: 'appearance', order: 10, priority: -1, locale: 'settings.theme',
+  }, GaiaAppearanceRow))
+
   // Gaia frame settings launcher captures openSettings and preserves the sidebar Settings trigger.
   ctx.slots.inject('settings.launcher', () => ctx.slots.register({
     name: 'settings.launcher', priority: -1, locale: 'settings',
@@ -183,6 +197,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const root = document.documentElement
   const rootAttribute = mode === 'full' ? 'data-gaia-full' : 'data-gaia-embed'
   root.setAttribute(rootAttribute, '')
+  if (isSettingsMaximized()) root.setAttribute(SETTINGS_MAXIMIZED_ATTR, '')
   const removeSkin = injectGaiaSkin()
 
   // Registered ids are deliberately non-built-in so Gaia's preference is not
@@ -241,6 +256,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const commonDisposer = ctx.effect(() => () => {
     unsubConnection?.()
     root.removeAttribute(rootAttribute)
+    root.removeAttribute(SETTINGS_MAXIMIZED_ATTR)
     removeSkin()
     restoreTitle()
     restoreFavicon()

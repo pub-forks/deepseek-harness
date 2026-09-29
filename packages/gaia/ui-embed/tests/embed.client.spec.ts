@@ -395,9 +395,11 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
-      'settings.action', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'settings.action', 'settings.action', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
+    expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize', order: 1 }))
+    expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance', priority: -1 }))
     expect(mock.slotComponents.find(({ name }) => name === 'settings.launcher')?.component)
       .toBe((await import('../src/client/settings-launcher.ts')).GaiaSettingsLauncher)
     expect(mock.slotComponents.find(({ name }) => name === 'sidebar.brand.mark')?.component)
@@ -1062,19 +1064,44 @@ describe('Gaia palette', () => {
       expect(isSafeCssColor(bad)).toBe(false)
     }
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)' } })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { primary: '#ea580c', primaryForeground: '#ffffff', destructive: '#ef4444' } })).toBe(true)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'url(x)' } })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { primary: 'url(x)' } })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { destructive: 'red; evil: true' } })).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { unknownKey: '#fff' } })).toBe(false)
   })
 
   it('maps Gaia colors onto DSH alias tokens for both schemes', async () => {
     const { paletteTokens } = await import('../src/client/palette.ts')
-    const tokens = paletteTokens({ background: 'hsl(0 0% 3.9%)', foreground: 'hsl(0 0% 90%)', border: 'hsl(20 80% 45%)', accent: 'oklch(70.5% 0.213 47.604)' })
+    const tokens = paletteTokens({
+      background: 'hsl(0 0% 3.9%)',
+      foreground: 'hsl(0 0% 90%)',
+      border: 'hsl(20 80% 45%)',
+      accent: 'oklch(70.5% 0.213 47.604)',
+      primary: '#ea580c',
+      primaryForeground: '#ffffff',
+      destructive: '#ef4444',
+    })
     expect(tokens['--dsw-alias-bg-base']).toEqual({ light: 'hsl(0 0% 3.9%)', dark: 'hsl(0 0% 3.9%)' })
     expect(tokens['--dsw-alias-label-primary']?.dark).toBe('hsl(0 0% 90%)')
     expect(tokens['--dsw-alias-border-l2']?.dark).toBe('hsl(20 80% 45%)')
     expect(tokens['--dsw-alias-link']?.dark).toBe('oklch(70.5% 0.213 47.604)')
     expect(tokens['--dsw-alias-bg-layer-2']?.dark).toContain('color-mix(')
+    expect(tokens['--dsw-alias-button-primary-fill']?.dark).toBe('#ea580c')
+    expect(tokens['--dsw-alias-button-primary-hover']?.dark).toContain('color-mix(in srgb, #ea580c 90%')
+    expect(tokens['--dsw-alias-label-primary-foreground']?.dark).toBe('#ffffff')
+    expect(tokens['--dsw-alias-state-error-primary']?.dark).toBe('#ef4444')
+    expect(tokens['--dsw-alias-interactive-bg-hover-danger']?.dark).toContain('color-mix(in srgb, #ef4444 12%')
     expect(paletteTokens({})).toEqual({})
+
+    // Partial palette leaves unsupplied tokens untouched
+    const partial = paletteTokens({ primary: '#ea580c' })
+    expect(partial['--dsw-alias-button-primary-fill']?.dark).toBe('#ea580c')
+    expect(partial['--dsw-alias-button-primary-hover']?.dark).toBe('#ea580c')
+    expect(partial['--dsw-alias-label-primary-foreground']).toBeUndefined()
+    expect(partial['--dsw-alias-state-error-primary']).toBeUndefined()
+    expect(partial['--dsw-alias-interactive-bg-hover-danger']).toBeUndefined()
+    expect(partial['--dsw-alias-bg-base']).toBeUndefined()
   })
 })
 
@@ -1096,6 +1123,8 @@ describe('embed integration of the palette and header entries', () => {
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'conversation.session.header.utilities', id: 'open-in-app', priority: -1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.actions', id: 'open-in-app', priority: -1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.unpreviewable', id: 'open-in-app', priority: -1 }))
+    expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize', order: 1 }))
+    expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance', priority: -1 }))
     window.dispatchEvent(new MessageEvent('message', {
       data: { source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)', foreground: 'hsl(0 0% 90%)' } },
       origin: window.location.origin, source: window.parent,
@@ -1172,3 +1201,56 @@ describe('active session title style', () => {
     expect(rule).toContain('color: var(--dsw-alias-link);')
   })
 })
+
+describe('Gaia settings modal skin and maximize styles', () => {
+  it('defines 960x880 panel geometry, maximize state, and token overrides', async () => {
+    const { GAIA_SETTINGS_CSS } = await import('../src/client/styles.ts')
+    expect(GAIA_SETTINGS_CSS).toContain('[data-shortcut-modal="settings"]')
+    expect(GAIA_SETTINGS_CSS).toContain('width: min(960px, calc(100vw - 48px))')
+    expect(GAIA_SETTINGS_CSS).toContain('height: min(880px, calc(100vh - 2 * max(24px, var(--dsh-frame-top-clearance, 24px))))')
+    expect(GAIA_SETTINGS_CSS).toContain('html[data-gaia-settings-maximized] [data-shortcut-modal="settings"]')
+    expect(GAIA_SETTINGS_CSS).toContain('--dsw-alias-brand-primary: var(--dsw-alias-link)')
+    expect(GAIA_SETTINGS_CSS).toContain('--dsw-radius-md: 6px')
+    expect(GAIA_SETTINGS_CSS).toContain('--dsw-radius-sm: 6px')
+    expect(GAIA_SETTINGS_CSS).toContain('box-shadow: 0 0 0 1px var(--dsw-alias-link)')
+  })
+})
+
+describe('Gaia frame settings registrations and maximize lifecycle', () => {
+  it('registers settings action and appearance item only in Gaia frames and handles maximize attribute', async () => {
+    const { SETTINGS_MAXIMIZED_ATTR, SETTINGS_MAXIMIZED_KEY } = await import('../src/client/settings-maximize.ts')
+
+    // 1. Outside an iframe (window.parent === window), apply returns undefined and registers nothing
+    Object.defineProperty(window, 'parent', { value: window, configurable: true })
+    Object.defineProperty(window, 'location', { value: new URL('http://localhost:3000/?gaia=full'), configurable: true })
+    const outsideCtx = new Context()
+    const outsideRegistrations: { name: string; id: string }[] = []
+    outsideCtx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string }) => { outsideRegistrations.push(o); return () => {} } })
+    const outsideResult = apply(outsideCtx)
+    expect(outsideResult).toBeUndefined()
+    expect(outsideRegistrations).toHaveLength(0)
+
+    // 2. Inside an iframe with maximized stored in localStorage
+    window.localStorage.setItem(SETTINGS_MAXIMIZED_KEY, '1')
+    const fakeParent = { postMessage: vi.fn() } as unknown as Window
+    Object.defineProperty(window, 'parent', { value: fakeParent, configurable: true })
+    const insideCtx = new Context()
+    insideCtx.provide('locale', new LocaleRuntime(insideCtx))
+    insideCtx.provide('theme', { register: vi.fn(() => () => {}), setTheme: vi.fn(), overrideTokens: vi.fn(() => () => {}) })
+    insideCtx.provide('connection', { state: { getSnapshot: () => 'connected', subscribe: () => () => {} } })
+    insideCtx.provide('layout', { toggleSidebar: vi.fn(), layoutInfo: { getSnapshot: () => ({ viewportWidth: 1280, sidebar: 280 }), subscribe: () => () => {} } })
+    const insideRegistrations: { name: string; id: string }[] = []
+    insideCtx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string }) => { insideRegistrations.push(o); return () => {} } })
+
+    const dispose = apply(insideCtx)
+    expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize' }))
+    expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance' }))
+    expect(document.documentElement.hasAttribute(SETTINGS_MAXIMIZED_ATTR)).toBe(true)
+
+    if (typeof dispose === 'function') await dispose()
+    expect(document.documentElement.hasAttribute(SETTINGS_MAXIMIZED_ATTR)).toBe(false)
+    window.localStorage.clear()
+    Object.defineProperty(window, 'parent', { value: window, configurable: true })
+  })
+})
+
