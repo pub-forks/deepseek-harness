@@ -64,6 +64,7 @@ export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'clear' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; sessions: ResumeSessionRow[] }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; error: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openSettings' }
 
 /**
  * Validate that a session string conforms to the safe session identifier grammar.
@@ -97,6 +98,8 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
         (GAIA_PALETTE_KEYS as readonly string[]).includes(key) && isSafeCssColor(value))
     }
     case 'focus':
+      return true
+    case 'openSettings':
       return true
     case 'insertText': {
       if (typeof msg.text !== 'string') return false

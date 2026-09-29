@@ -94,6 +94,43 @@ ${GAIA_FRAME} table:not([data-gaia-markdown] table) td {
 ${GAIA_FRAME} [data-row-key^="session:"][role="treeitem"][aria-selected="true"] > span:nth-child(2) {
   color: var(--dsw-alias-link);
 }
+${GAIA_FRAME} [data-gaia-settings-launcher] {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: 42px;
+  margin: 0;
+  padding: 0 10px 0 8px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 22px;
+}
+${GAIA_FRAME} [data-gaia-settings-launcher]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+${GAIA_FRAME} [data-gaia-settings-launcher][data-rail] {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+${GAIA_FRAME} [data-gaia-settings-launcher] .gaia-trigger-label {
+  overflow: hidden;
+  white-space: nowrap;
+}
 `
 
 /** Chrome removal and compact-viewport treatment unique to single-session embed mode. */

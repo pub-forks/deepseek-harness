@@ -37,9 +37,10 @@ describe('isGaiaIncomingMessage', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'blue' })).toBe(false)
   })
 
-  it('validates focus and clear messages', () => {
+  it('validates focus, clear, and openSettings messages', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'focus' })).toBe(true)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'clear' })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'openSettings' })).toBe(true)
   })
 
   it('validates insertText messages with length bounds', () => {
@@ -79,6 +80,8 @@ describe('isGaiaIncomingMessage', () => {
     expect(isGaiaIncomingMessage({})).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'other', v: 1, type: 'focus' })).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 2, type: 'focus' })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'other', v: 1, type: 'openSettings' })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 2, type: 'openSettings' })).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'unknown' })).toBe(false)
   })
 })
@@ -392,9 +395,11 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
-      'settings.action', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'settings.action', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
+    expect(mock.slotComponents.find(({ name }) => name === 'settings.launcher')?.component)
+      .toBe((await import('../src/client/settings-launcher.ts')).GaiaSettingsLauncher)
     expect(mock.slotComponents.find(({ name }) => name === 'sidebar.brand.mark')?.component)
       .toBe((await import('../src/client/brand.ts')).GaiaMark)
     expect(mock.slotComponents.find(({ name }) => name === 'sidebar.brand.name')?.component)

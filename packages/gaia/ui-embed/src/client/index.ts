@@ -30,6 +30,7 @@ import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
 import { GaiaBrandName, GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
 import { registerGaiaLocaleOverrides } from './branding-locales.ts'
+import { GaiaSettingsLauncher, openSettings, resetCapturedSettings } from './settings-launcher.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -40,6 +41,7 @@ declare module '@deepseek-ai/cordis' {
 export * from './bridge.ts'
 export * from './styles.ts'
 export * from './palette.ts'
+export * from './settings-launcher.ts'
 
 /**
  * Format a timestamp into relative human-readable time (e.g. "5m ago").
@@ -136,6 +138,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
   }, GaiaDocumentAction))
 
+  // Gaia frame settings launcher captures openSettings and preserves the sidebar Settings trigger.
+  ctx.slots.inject('settings.launcher', () => ctx.slots.register({
+    name: 'settings.launcher', priority: -1, locale: 'settings',
+  }, GaiaSettingsLauncher))
+
   // Declare the mark first, then register both sidebar brand slots together,
   // matching the ordering used by ui-brand-official.
   ctx.slots.inject('sidebar.brand.mark', () =>
@@ -188,18 +195,22 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     if (desiredTheme !== undefined && snapshot.preference !== desiredTheme) ctx.theme.setTheme(desiredTheme)
   })
 
-  // Theme updates have their own listener so embed controls can never process
-  // the same theme message a second time.
-  const onThemeMessage = (event: MessageEvent): void => {
+  // Theme updates and frame-level commands have their own listener so embed
+  // controls can never process the same message a second time.
+  const onIncomingMessage = (event: MessageEvent): void => {
     if (event.source !== window.parent || event.origin !== window.location.origin) return
-    if (!isGaiaIncomingMessage(event.data) || event.data.type !== 'theme') return
-    desiredTheme = event.data.mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light'
-    ctx.theme.setTheme(desiredTheme)
-    if (event.data.palette !== undefined) {
-      disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
+    if (!isGaiaIncomingMessage(event.data)) return
+    if (event.data.type === 'theme') {
+      desiredTheme = event.data.mode === 'dark' ? 'gaia-embed-dark' : 'gaia-embed-light'
+      ctx.theme.setTheme(desiredTheme)
+      if (event.data.palette !== undefined) {
+        disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
+      }
+    } else if (event.data.type === 'openSettings') {
+      openSettings()
     }
   }
-  window.addEventListener('message', onThemeMessage)
+  window.addEventListener('message', onIncomingMessage)
   postToParent({ source: 'gaia-dsh', v: 1, type: 'ready' })
 
   // Both frame modes report the connection, so Gaia's drawer and embeds
@@ -234,7 +245,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     restoreTitle()
     restoreFavicon()
     disposeLocaleOverrides()
-    window.removeEventListener('message', onThemeMessage)
+    window.removeEventListener('message', onIncomingMessage)
+    resetCapturedSettings()
     disposeWorkspaceSubscription?.()
     clearTimeout(workspaceTimer)
     disposePalette?.()
@@ -422,6 +434,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
     switch (event.data.type) {
       case 'theme': break
+      case 'openSettings': break
       case 'focus': {
         const session = getSessionInput()
         session?.input.focus()
