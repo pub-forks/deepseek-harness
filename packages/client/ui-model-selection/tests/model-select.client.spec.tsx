@@ -155,7 +155,7 @@ describe('ModelSelect reasoning effort', () => {
       snapshot.routable = false
     }) })
     expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent)
-      .toBe(removed === 'model' ? 'deepseek-official/deepseek-v4-flash· DeepSeekHigh' : 'deepseek-official/deepseek-v4-flashHigh')
+      .toBe(removed === 'model' ? 'DeepSeek ·deepseek-official/deepseek-v4-flashHigh' : 'deepseek-official/deepseek-v4-flashHigh')
     expect(directory.getSnapshot().current).toEqual(state().current)
   })
 
@@ -590,12 +590,12 @@ it('restores the account model name after login without changing the saved route
   const selected = { provider: 'deepseek-account', model: 'deepseek-flash', reasoningEffort: 'high' }
   const directory = createSnapshotStore(state({ current: selected, groups, retainedEffort: 'High' }))
   render(<ModelSelect locked={false} available directory={directory} load={vi.fn()} select={vi.fn()} t={t} />)
-  expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent).toBe('DeepSeek Flash· DeepSeek AccountHigh')
+  expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent).toBe('DeepSeek Account ·DeepSeek FlashHigh')
   act(() => { directory.update((snapshot) => { snapshot.groups = []; snapshot.routable = false }) })
   expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent)
     .toMatchInlineSnapshot('"deepseek-account/deepseek-flashHigh"')
   act(() => { directory.update((snapshot) => { snapshot.groups = groups; snapshot.routable = true }) })
-  expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent).toBe('DeepSeek Flash· DeepSeek AccountHigh')
+  expect(screen.getByRole('button', { name: /选择模型，当前/ }).textContent).toBe('DeepSeek Account ·DeepSeek FlashHigh')
   expect(directory.getSnapshot().current).toEqual(selected)
 })
 

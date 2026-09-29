@@ -472,8 +472,9 @@ export function ModelSelect(
         }}
       >
         <IconDataOutlineRegular className={css.triggerIcon} size={16} />
+        {/* GAIA: provider first, then the model, then the effort. */}
+        {providerLabel !== undefined && <span className={css.triggerProvider}>{providerLabel} ·</span>}
         <span className={css.triggerLabel}>{modelLabel}</span>
-        {providerLabel !== undefined && <span className={css.triggerProvider}>· {providerLabel}</span>}
         {effortLabel !== undefined && <span className={css.triggerEffort}>{effortLabel}</span>}
         {busy
           ? <StateDot state="ongoing" />

@@ -42,8 +42,14 @@
   cursor: default;
 }
 
+.trigger:disabled .triggerLabel {
+  color: inherit;
+}
+
 .triggerLabel {
   min-width: 0;
+  /* GAIA: the model name takes the theme accent (Gaia maps it to its own). */
+  color: var(--dsw-alias-state-business-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
