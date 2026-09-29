@@ -229,3 +229,22 @@ it('shows the OAuth empty state when there are no OAuth flows', async () => {
   expect(await screen.findByText(en.empty)).toBeTruthy()
   expect(screen.queryByRole('list')).toBeNull()
 })
+
+it('renders the add-account form in two responsive rows with expected fields and valid pattern', async () => {
+  mount()
+  await screen.findByText('Codex', { selector: 'strong' })
+  const form = screen.getByRole('button', { name: en.addAccount }).closest('form')
+  expect(form).not.toBeNull()
+  const rows = form!.querySelectorAll('div')
+  expect(rows).toHaveLength(2)
+  expect(within(rows[0] as HTMLElement).getByLabelText(en.accountKind)).toBeTruthy()
+  expect(within(rows[0] as HTMLElement).getByLabelText(en.accountSource)).toBeTruthy()
+  expect(within(rows[0] as HTMLElement).getByRole('button', { name: en.addAccount })).toBeTruthy()
+  expect(within(rows[1] as HTMLElement).getByLabelText(en.accountLabel)).toBeTruthy()
+  const accountIdInput = within(rows[1] as HTMLElement).getByLabelText(en.accountId)
+  expect(accountIdInput).toBeTruthy()
+  const pattern = accountIdInput.getAttribute('pattern')
+  expect(pattern).toBe('[a-z][a-z0-9\\-]{1,47}')
+  expect(() => new RegExp(pattern!, 'v')).not.toThrow()
+})
+

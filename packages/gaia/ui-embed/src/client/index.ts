@@ -37,7 +37,7 @@ import { GaiaBrandName, GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
 import { registerGaiaLocaleOverrides } from './branding-locales.ts'
 import { GaiaSettingsLauncher, openSettings, resetCapturedSettings } from './settings-launcher.ts'
-import { GaiaSettingsMaximize, isSettingsMaximized, SETTINGS_MAXIMIZED_ATTR } from './settings-maximize.ts'
+import { setSettingsMaximized, SETTINGS_MAXIMIZED_ATTR } from './settings-maximize.ts'
 import { GaiaAppearanceRow } from './appearance-row.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -274,10 +274,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
   }, GaiaDocumentAction))
 
-  // Both Gaia frames add a maximize/restore toggle in the settings action bar.
-  ctx.slots.inject('settings.action', () => ctx.slots.register({
-    name: 'settings.action', id: 'gaia-maximize', order: 1, priority: -1, locale: 'settings',
-  }, GaiaSettingsMaximize))
+  // Settings modal maximize toggle is disabled for now: the settings content
+  // is not responsive yet. Kept in settings-maximize.ts so it can be re-enabled.
+  // ctx.slots.inject('settings.action', () => ctx.slots.register({
+  //   name: 'settings.action', id: 'gaia-maximize', order: 1, priority: -1, locale: 'settings',
+  // }, GaiaSettingsMaximize))
 
   // Shadow the stock Appearance row: theme follows Gaia.
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
@@ -334,7 +335,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const root = document.documentElement
   const rootAttribute = mode === 'full' ? 'data-gaia-full' : 'data-gaia-embed'
   root.setAttribute(rootAttribute, '')
-  if (isSettingsMaximized()) root.setAttribute(SETTINGS_MAXIMIZED_ATTR, '')
+  // The maximize toggle is disabled (see above); clear any persisted maximize state.
+  setSettingsMaximized(false)
   const removeSkin = injectGaiaSkin()
 
   // Registered ids are deliberately non-built-in so Gaia's preference is not

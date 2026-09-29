@@ -404,10 +404,10 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
-      'settings.action', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
-    expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize', order: 1 }))
+    expect(mock.slotRegistrations).not.toContainEqual(expect.objectContaining({ id: 'gaia-maximize' }))
     expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance', priority: -1 }))
     expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'language', priority: -1 }))
     expect(mock.slotComponents.find(({ name }) => name === 'settings.launcher')?.component)
@@ -1387,7 +1387,7 @@ describe('embed integration of the palette and header entries', () => {
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'conversation.session.header.utilities', id: 'open-in-app', priority: -1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.actions', id: 'open-in-app', priority: -1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.unpreviewable', id: 'open-in-app', priority: -1 }))
-    expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize', order: 1 }))
+    expect(registrations).not.toContainEqual(expect.objectContaining({ id: 'gaia-maximize' }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance', priority: -1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'language', priority: -1 }))
     window.dispatchEvent(new MessageEvent('message', {
@@ -1510,10 +1510,11 @@ describe('Gaia frame settings registrations and maximize lifecycle', () => {
     insideCtx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string }) => { insideRegistrations.push(o); return () => {} } })
 
     const dispose = apply(insideCtx)
-    expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize' }))
+    expect(insideRegistrations).not.toContainEqual(expect.objectContaining({ id: 'gaia-maximize' }))
     expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance' }))
     expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'language' }))
-    expect(document.documentElement.hasAttribute(SETTINGS_MAXIMIZED_ATTR)).toBe(true)
+    expect(document.documentElement.hasAttribute(SETTINGS_MAXIMIZED_ATTR)).toBe(false)
+    expect(window.localStorage.getItem(SETTINGS_MAXIMIZED_KEY)).toBeNull()
 
     if (typeof dispose === 'function') await dispose()
     expect(document.documentElement.hasAttribute(SETTINGS_MAXIMIZED_ATTR)).toBe(false)

@@ -177,17 +177,21 @@ export function AuthorizationSection({
   return <section className={css.section} aria-label={t('nav')}>
     <h2>{t('title')}</h2><p className={css.intro}>{t('intro')}</p>
     <p>{t('apiKeyHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>
-    <form className={css.actions} onSubmit={(event) => { void submitAccount(event) }}>
-      <label>{t('accountKind')} <select data-dsh-select-trigger="" value={accountKind} onChange={(event) => { setAccountKind(event.target.value as 'oauth' | 'api-key') }}><option value="oauth">{t('oauthAccount')}</option><option value="api-key">{t('apiKeyAccount')}</option></select></label>
-      <label>{t('accountSource')}
-        <select data-dsh-select-trigger="" value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
-          {accountSources.map(flow => <option key={flow.key} value={flow.key.slice('llm-pi-ai/'.length)}>{flow.label}</option>)}
-        </select>
-      </label>
-      <label>{t('accountLabel')} <input value={accountLabel} maxLength={80} onChange={(event) => { setAccountLabel(event.target.value) }} required /></label>
-      <label>{t('accountId')} <input value={accountId} maxLength={48} pattern="[a-z][a-z0-9-]{1,47}" onChange={(event) => { setAccountId(event.target.value) }} required /></label>
-      {accountKind === 'api-key' && <label>{t('apiKey')} <input type="password" autoComplete="off" value={accountKey} maxLength={4096} onChange={(event) => { setAccountKey(event.target.value) }} required /></label>}
-      <Button type="submit" variant="primary" disabled={busy || accountSources.length === 0}>{t('addAccount')}</Button>
+    <form className={css.accountForm} onSubmit={(event) => { void submitAccount(event) }}>
+      <div className={css.accountRow}>
+        <label>{t('accountKind')} <select data-dsh-select-trigger="" value={accountKind} onChange={(event) => { setAccountKind(event.target.value as 'oauth' | 'api-key') }}><option value="oauth">{t('oauthAccount')}</option><option value="api-key">{t('apiKeyAccount')}</option></select></label>
+        <label>{t('accountSource')}
+          <select data-dsh-select-trigger="" value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
+            {accountSources.map(flow => <option key={flow.key} value={flow.key.slice('llm-pi-ai/'.length)}>{flow.label}</option>)}
+          </select>
+        </label>
+        <Button type="submit" variant="primary" disabled={busy || accountSources.length === 0}>{t('addAccount')}</Button>
+      </div>
+      <div className={css.accountRow}>
+        <label>{t('accountLabel')} <input value={accountLabel} maxLength={80} onChange={(event) => { setAccountLabel(event.target.value) }} required /></label>
+        <label>{t('accountId')} <input value={accountId} maxLength={48} pattern="[a-z][a-z0-9\-]{1,47}" onChange={(event) => { setAccountId(event.target.value) }} required /></label>
+        {accountKind === 'api-key' && <label>{t('apiKey')} <input type="password" autoComplete="off" value={accountKey} maxLength={4096} onChange={(event) => { setAccountKey(event.target.value) }} required /></label>}
+      </div>
     </form>
     {loading ? <p>{t('loading')}</p> : failed ? <p role="alert">{t('failed')}</p> : ordered.length === 0 ? <p>{t('empty')}</p> :
       <ul className={css.list}>{ordered.map(flow => <li key={flow.key} data-gaia-auth-card="" className={css.card}>

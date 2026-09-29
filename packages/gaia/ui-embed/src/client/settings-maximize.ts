@@ -2,6 +2,9 @@
  * Maximize/restore action for the Settings modal header inside Gaia frames.
  * Contributed to the `settings.action` slot; persists the maximized choice
  * in localStorage and applies it as a data attribute on document.documentElement.
+ *
+ * NOTE: Registration is currently disabled in index.ts because the settings modal
+ * content is not responsive yet. The module is kept intact so it can be re-enabled.
  */
 import { createElement, useCallback, useEffect, useState, type ReactElement } from 'react'
 import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
