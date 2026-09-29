@@ -50,8 +50,10 @@ export function LanguageRow({ t, setLocale, useStore }: LanguageRowComponentProp
         align="end"
         portal
         anchor={(
+          // GAIA: Select trigger hook for Gaia skin styling.
           <button
             type="button"
+            data-dsh-select-trigger=""
             className={css.selector}
             aria-haspopup="menu"
             aria-expanded={open}

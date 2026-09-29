@@ -46,16 +46,21 @@ export function EditorFooter(props: EditorFooterProps): ReactNode {
   const { t } = props
   return (
     <div className={styles['editorActions']}>
+      {/* GAIA: Tag cancel button as dsh-button outline for Gaia styling */}
       <button
         type="button"
+        data-dsh-button="outline"
+        data-dsh-cancel=""
         className={styles['secondaryButton']}
         disabled={props.busy}
         onClick={props.onCancel}
       >
         {t(props.cancelLabelKey ?? 'cancel')}
       </button>
+      {/* GAIA: Tag submit button as dsh-button primary for Gaia styling */}
       <button
         type="button"
+        data-dsh-button="primary"
         className={styles['primaryButton']}
         disabled={props.submitDisabled}
         onClick={props.onSubmit}

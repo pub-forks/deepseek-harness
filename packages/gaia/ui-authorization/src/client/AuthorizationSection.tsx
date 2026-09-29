@@ -127,7 +127,7 @@ export function AuthorizationSection({
   // A cancelled or finished attempt must not leave its last question or an
   // expired device code behind.
   const showPrompt = terminal === undefined && !localCancelled
-  const panel = selected === undefined ? null : <div className={css.panel} role="status">
+  const panel = selected === undefined ? null : <div data-gaia-auth-card="" className={css.panel} role="status">
     {showPrompt && items.filter((item): item is Extract<AttemptItem, { type: 'notice' }> => item.type === 'notice').map((item, index) => <div key={index} className={css.notice}>
       <p>{item.message}</p>
       {item.url && safeUrl(item.url) && <div className={css.actions}><a href={item.url} target="_blank" rel="noopener noreferrer">{t('open')}</a><Button variant="outline" onClick={() => { copy(item.url as string) }}>{t(copied ? 'copied' : 'copy')}</Button></div>}
@@ -135,7 +135,7 @@ export function AuthorizationSection({
     </div>)}
     {showPrompt && prompt && <form onSubmit={(event) => { event.preventDefault(); void submit() }} className={css.prompt}>
       <label>{prompt.message}
-        {prompt.kind === 'select' ? <select value={promptValue || (selected.key === 'llm-pi-ai/openai-codex' ? prompt.options?.find(option => /device/i.test(`${option.id} ${option.label}`))?.id : undefined) || prompt.options?.[0]?.id || ''} onChange={(event) => { setPromptValue(event.target.value) }}>{prompt.options?.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input type={prompt.kind === 'secret' ? 'password' : 'text'} value={promptValue} placeholder={prompt.placeholder} onChange={(event) => { setPromptValue(event.target.value) }} />}
+        {prompt.kind === 'select' ? <select data-dsh-select-trigger="" value={promptValue || (selected.key === 'llm-pi-ai/openai-codex' ? prompt.options?.find(option => /device/i.test(`${option.id} ${option.label}`))?.id : undefined) || prompt.options?.[0]?.id || ''} onChange={(event) => { setPromptValue(event.target.value) }}>{prompt.options?.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input type={prompt.kind === 'secret' ? 'password' : 'text'} value={promptValue} placeholder={prompt.placeholder} onChange={(event) => { setPromptValue(event.target.value) }} />}
       </label><Button variant="primary" onClick={() => { void submit() }}>{t('submit')}</Button>
     </form>}
     {terminal?.type === 'done' && <p>{t(terminal.outcome === 'authorized' ? 'authorized' : 'cancelled')}</p>}
@@ -158,7 +158,7 @@ export function AuthorizationSection({
     <p>{t('apiKeyHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>
     <form className={css.actions} onSubmit={(event) => { void submitAccount(event) }}>
       <label>{t('accountSource')}
-        <select value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
+        <select data-dsh-select-trigger="" value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
           {accountSources.map(flow => <option key={flow.key} value={flow.key.slice('llm-pi-ai/'.length)}>{flow.label}</option>)}
         </select>
       </label>
@@ -167,18 +167,18 @@ export function AuthorizationSection({
       <Button type="submit" variant="primary" disabled={busy || accountSources.length === 0}>{t('addAccount')}</Button>
     </form>
     {loading ? <p>{t('loading')}</p> : failed ? <p role="alert">{t('failed')}</p> : ordered.length === 0 ? <p>{t('empty')}</p> :
-      <ul className={css.list}>{ordered.map(flow => <li key={flow.key} className={css.card}>
+      <ul className={css.list}>{ordered.map(flow => <li key={flow.key} data-gaia-auth-card="" className={css.card}>
         <div className={css.row}><strong>{flow.label}</strong><span className={css.status}>{t(flow.signedIn ? 'signedIn' : 'signedOut')}{flow.expiresAt === undefined ? '' : ` · ${t('expires')} ${new Date(flow.expiresAt).toLocaleString()}`}</span></div>
         <div className={css.actions}>
-          {flow.methods.length > 1 && <label>{t('method')} <select value={selected?.key === flow.key ? method : preferredMethod(flow)} onChange={(event) => { setSelected(flow); setMethod(event.target.value) }}>{flow.methods.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
+          {flow.methods.length > 1 && <label>{t('method')} <select data-dsh-select-trigger="" value={selected?.key === flow.key ? method : preferredMethod(flow)} onChange={(event) => { setSelected(flow); setMethod(event.target.value) }}>{flow.methods.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
           <Button variant="primary" disabled={flow.inFlight || busy} onClick={() => { void begin(flow, selected?.key === flow.key && method ? method : preferredMethod(flow)) }}>{t('signIn')}</Button>
-          {flow.signedIn && <Button variant="outline" disabled={busy} onClick={() => { setConfirmKey(flow.key) }}>{t('signOut')}</Button>}
-          {flow.accountAlias && <Button variant="outline" disabled={flow.inFlight || busy} onClick={() => { setRemoveKey(flow.key) }}>{t('removeAccount')}</Button>}
+          {flow.signedIn && <Button variant="outline" data-dsh-button="danger" disabled={busy} onClick={() => { setConfirmKey(flow.key) }}>{t('signOut')}</Button>}
+          {flow.accountAlias && <Button variant="outline" data-dsh-button="danger" disabled={flow.inFlight || busy} onClick={() => { setRemoveKey(flow.key) }}>{t('removeAccount')}</Button>}
         </div>
         {selected?.key === flow.key && (busy || items.length > 0 || localCancelled) && panel}
       </li>)}</ul>}
     {actionError !== false && <p role="alert">{withDetail(t('error'), actionError)}</p>}
-    <Modal open={confirmKey !== undefined} onClose={() => { setConfirmKey(undefined) }} title={t('confirmTitle')} description={t('confirmDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setConfirmKey(undefined) }}>{t('cancel')}</Button><Button variant="primary" onClick={() => { const key = confirmKey; setConfirmKey(undefined); if (key) void signOut(key).then(load).catch((error: unknown) => { setActionError(errorDetail(error)) }) }}>{t('signOut')}</Button></>} />
-    <Modal open={removeKey !== undefined} onClose={() => { setRemoveKey(undefined) }} title={t('removeTitle')} description={t('removeDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setRemoveKey(undefined) }}>{t('cancel')}</Button><Button variant="primary" onClick={() => { void confirmRemove() }}>{t('removeAccount')}</Button></>} />
+    <Modal open={confirmKey !== undefined} onClose={() => { setConfirmKey(undefined) }} title={t('confirmTitle')} description={t('confirmDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setConfirmKey(undefined) }}>{t('cancel')}</Button><Button variant="outline" data-dsh-button="danger" onClick={() => { const key = confirmKey; setConfirmKey(undefined); if (key) void signOut(key).then(load).catch((error: unknown) => { setActionError(errorDetail(error)) }) }}>{t('signOut')}</Button></>} />
+    <Modal open={removeKey !== undefined} onClose={() => { setRemoveKey(undefined) }} title={t('removeTitle')} description={t('removeDescription')} closeLabel={t('close')} footer={<><Button variant="outline" onClick={() => { setRemoveKey(undefined) }}>{t('cancel')}</Button><Button variant="outline" data-dsh-button="danger" onClick={() => { void confirmRemove() }}>{t('removeAccount')}</Button></>} />
   </section>
 }

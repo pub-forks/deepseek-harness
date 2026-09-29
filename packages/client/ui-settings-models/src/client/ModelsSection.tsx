@@ -463,8 +463,11 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                       : null}
                 </span>
                 <span className={styles['rowActions']}>
+                  {/* GAIA: Tag Edit button as outline sm for Gaia styling */}
                   <button
                     type="button"
+                    data-dsh-button="outline"
+                    data-dsh-size="sm"
                     className={styles['secondaryButton']}
                     aria-label={providerCopy(t('editProvider'), target)}
                     onClick={() => {
@@ -480,8 +483,11 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                   </button>
                   {row.removable
                     ? (
+                      /* GAIA: Tag Remove/Delete button as danger sm for Gaia styling */
                       <button
                         type="button"
+                        data-dsh-button="danger"
+                        data-dsh-size="sm"
                         className={styles['dangerButton']}
                         aria-label={providerCopy(t('removeProvider'), target)}
                         disabled={!state.writable}
@@ -571,7 +577,9 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                   >
                     <div className={styles['field']}>
                       <span className={styles['fieldLabel']}>{t('provider')}</span>
+                      {/* GAIA: Select trigger hook for Gaia skin styling. */}
                       <select
+                        data-dsh-select-trigger=""
                         className={`${styles['input']} ${styles['selectInput']}`}
                         value={draft.target.provider}
                         aria-label={t('provider')}
@@ -643,8 +651,10 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
               // One entry for both ways to gain a provider; the card behind it
               // splits them. Full width, so it lines up with the rows above.
               <div className={styles['addActions']}>
+                {/* GAIA: Tag Add model provider button for Gaia styling */}
                 <button
                   type="button"
+                  data-dsh-add-provider=""
                   className={styles['addButton']}
                   disabled={!state.writable || (!catalogEnabled && !customEnabled)}
                   onClick={() => {

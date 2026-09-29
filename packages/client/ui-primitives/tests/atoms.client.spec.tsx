@@ -38,6 +38,22 @@ describe('Button', () => {
     render(<Button variant="outline">Cancel</Button>)
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDefined()
   })
+
+  it('renders data-dsh-button and data-dsh-size attributes', () => {
+    const { rerender } = render(<Button variant="primary" size="sm">Action</Button>)
+    const button = screen.getByRole('button', { name: 'Action' })
+    expect(button.getAttribute('data-dsh-button')).toBe('primary')
+    expect(button.getAttribute('data-dsh-size')).toBe('sm')
+
+    rerender(<Button variant="outline" size="md">Outline</Button>)
+    const outline = screen.getByRole('button', { name: 'Outline' })
+    expect(outline.getAttribute('data-dsh-button')).toBe('outline')
+    expect(outline.getAttribute('data-dsh-size')).toBe('md')
+
+    rerender(<Button variant="outline" data-dsh-button="danger">Danger</Button>)
+    const danger = screen.getByRole('button', { name: 'Danger' })
+    expect(danger.getAttribute('data-dsh-button')).toBe('danger')
+  })
 })
 
 describe('Pill', () => {
@@ -67,6 +83,12 @@ describe('Input', () => {
     fireEvent.change(input, { target: { value: 'qq' } })
     expect(onChange).toHaveBeenCalled()
     expect(screen.getByTestId('ic')).toBeDefined()
+  })
+
+  it('renders data-dsh-input attribute on the input element', () => {
+    render(<Input placeholder="test-input" />)
+    const input = screen.getByPlaceholderText<HTMLInputElement>('test-input')
+    expect(input.hasAttribute('data-dsh-input')).toBe(true)
   })
 })
 
@@ -615,10 +637,15 @@ describe('Modal', () => {
       </Modal>)
     const dialog = screen.getByRole('dialog', { name: 'Create new workspace' })
     expect(dialog).toBeDefined()
+    expect(dialog.hasAttribute('data-dsh-modal')).toBe(true)
     // The full-page layer escapes caller stacking contexts but remains in
     // this document/current WebUI window.
     expect(dialog.parentElement?.parentElement).toBe(document.body)
-    expect(screen.getByRole('button', { name: 'Configure later' })).toBeDefined()
+    const closeButton = screen.getByRole('button', { name: 'Configure later' })
+    expect(closeButton).toBeDefined()
+    expect(closeButton.hasAttribute('data-dsh-modal-close')).toBe(true)
+    const footer = dialog.querySelector('[data-dsh-modal-footer]')
+    expect(footer).not.toBeNull()
     expect(screen.getByText('Name it.')).toBeDefined()
     expect(screen.getByText('Name it.').parentElement?.className).toContain('scrolling-content')
     fireEvent.keyDown(document, { key: 'a' })

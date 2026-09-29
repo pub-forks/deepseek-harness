@@ -27,8 +27,16 @@ type ButtonProps = {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   variant = 'ghost', size = 'md', icon, className, children, ...rest
 }, ref) {
+  // GAIA: Expose variant and size hooks for Gaia skin styling. Rest props spread after so caller can pass data-dsh-* overrides.
   return (
-    <button ref={ref} type="button" className={clsx(css.button, css[variant], css[size], className)} {...rest}>
+    <button
+      ref={ref}
+      type="button"
+      data-dsh-button={variant}
+      data-dsh-size={size}
+      className={clsx(css.button, css[variant], css[size], className)}
+      {...rest}
+    >
       {icon != null && <span className={css.icon}>{icon}</span>}
       {children}
     </button>

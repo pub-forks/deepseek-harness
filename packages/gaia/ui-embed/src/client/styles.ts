@@ -46,14 +46,17 @@ ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button:hover {
 }
 ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"] {
   background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-link);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), inset 2px 0 0 var(--dsw-alias-link);
 }
 ${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"]:hover {
   background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-link);
 }
-${GAIA_FRAME} [data-shortcut-modal="settings"] :is(button, input, select, textarea):focus-visible {
+${GAIA_FRAME} [data-shortcut-modal="settings"] nav button[aria-current="true"]:focus-visible:not([data-dsh-automatic-focus]) {
+  box-shadow: inset 2px 0 0 var(--dsw-alias-link), 0 0 0 1px var(--dsw-alias-link);
+}
+${GAIA_FRAME} [data-shortcut-modal="settings"] :is(button, input, select, textarea):focus-visible:not([data-dsh-automatic-focus]) {
   outline: none;
   box-shadow: 0 0 0 1px var(--dsw-alias-link);
 }
@@ -97,6 +100,263 @@ ${GAIA_FRAME} [data-gaia-appearance-desc] {
   font-size: 13px;
   line-height: 20px;
   color: var(--dsw-alias-label-secondary);
+}
+`
+
+const GAIA_CONTROLS_SCOPE = `${GAIA_FRAME} :is([data-shortcut-modal="settings"], [data-dsh-modal])`
+
+/** Controls inside Settings and Modal dialogs styled to match Gaia's shadcn design. */
+export const GAIA_CONTROLS_CSS = `
+/* Modal card styling for DSH Modal dialogs */
+${GAIA_FRAME} [data-dsh-modal] {
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --dsw-radius-md: 6px;
+  --dsw-radius-sm: 6px;
+}
+
+/* Ensure exact box sizing on all controls */
+${GAIA_CONTROLS_SCOPE} :is(button, [data-dsh-button], [data-dsh-select-trigger], input, textarea, div[data-dsh-input]) {
+  box-sizing: border-box;
+}
+
+/* Base button defaults */
+${GAIA_CONTROLS_SCOPE} [data-dsh-button] {
+  box-sizing: border-box;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+/* Button default: primary buttons */
+${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"] {
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 16px;
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"]:hover:not(:disabled) {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+/* Button outline: outline and toolbar buttons */
+${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="outline"], [data-dsh-button="toolbar"]) {
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="outline"], [data-dsh-button="toolbar"]):hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+/* Button ghost */
+${GAIA_CONTROLS_SCOPE} [data-dsh-button="ghost"]:not([data-dsh-modal-close]) {
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-button="ghost"]:not([data-dsh-modal-close]):hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+/* Button size sm */
+${GAIA_CONTROLS_SCOPE} [data-dsh-size="sm"] {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 6px;
+}
+
+/* Button destructive / danger */
+${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="danger"], button[class*="_danger"]:not([data-dsh-modal-close]), button[class*="_deleteConfirm"]) {
+  box-sizing: border-box;
+  background: var(--dsw-alias-state-error-primary);
+  color: #fafafa;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="danger"], button[class*="_danger"]:not([data-dsh-modal-close]), button[class*="_deleteConfirm"]):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 90%, black);
+}
+
+/* Close button: closeGhost (transparent at rest, red fill on hover) */
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-close] {
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--dsw-alias-label-secondary);
+  transition: background-color 0.15s, color 0.15s;
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-close]:hover:not(:disabled) {
+  background: var(--dsw-alias-state-error-primary);
+  color: #fafafa;
+}
+
+/* Dropdown triggers: SettingSelect outline dropdown */
+${GAIA_CONTROLS_SCOPE} [data-dsh-select-trigger] {
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-select-trigger]:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+${GAIA_CONTROLS_SCOPE} select[data-dsh-select-trigger] {
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+/* Inputs and textareas */
+${GAIA_CONTROLS_SCOPE} :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]), textarea) {
+  box-sizing: border-box;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 20px;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  color: var(--dsw-alias-label-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+${GAIA_CONTROLS_SCOPE} textarea {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+}
+${GAIA_CONTROLS_SCOPE} span:has(> [data-dsh-input]) {
+  box-sizing: border-box;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  padding: 0 12px;
+}
+${GAIA_CONTROLS_SCOPE} span:has(> [data-dsh-input]) [data-dsh-input] {
+  box-sizing: border-box;
+  height: 100%;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  outline: none;
+}
+${GAIA_CONTROLS_SCOPE} div[data-dsh-input] {
+  box-sizing: border-box;
+  font-size: 14px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+${GAIA_CONTROLS_SCOPE} div[data-dsh-input] input {
+  font-size: 14px;
+}
+/* Cancel outside a modal footer (e.g. the Models inline editor): Gaia cancelOutline hover. */
+${GAIA_CONTROLS_SCOPE} [data-dsh-cancel]:hover:not(:disabled) {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  color: #451a03;
+}
+${GAIA_CONTROLS_SCOPE} div[data-dsh-input]:focus-within {
+  border-color: var(--dsw-alias-link);
+  box-shadow: 0 0 0 1px var(--dsw-alias-link);
+}
+
+/* Add provider button: dashed row button */
+${GAIA_CONTROLS_SCOPE} :is([data-dsh-add-provider], button[class*="_addButton"]) {
+  border-radius: 6px;
+}
+${GAIA_CONTROLS_SCOPE} :is([data-dsh-add-provider], button[class*="_addButton"]):hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+/* Authorization provider cards in Gaia frames: base background, 1px border, 8px radius */
+${GAIA_CONTROLS_SCOPE} [data-gaia-auth-card] {
+  box-sizing: border-box;
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+}
+
+/* Focus ring */
+${GAIA_CONTROLS_SCOPE} :is(button, input, select, textarea, [data-dsh-select-trigger]):focus-visible:not([data-dsh-automatic-focus]) {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--dsw-alias-link);
+}
+
+/* Modal footer buttons: sm sizing for all footer buttons */
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button, [data-dsh-button]) {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+/* Modal footer: primary buttons -> Gaia default sm */
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] [data-dsh-button="primary"]:not(:is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"])) {
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] [data-dsh-button="primary"]:not(:is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"])):hover:not(:disabled) {
+  background: var(--dsw-alias-button-primary-hover);
+}
+/* Modal footer: danger buttons -> destructive sm */
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"]) {
+  background: var(--dsw-alias-state-error-primary);
+  color: #fafafa;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"]):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 90%, black);
+}
+/* Modal footer: cancel / secondary buttons -> cancelOutline sm with amber hover */
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button, [data-dsh-button]):not([data-dsh-button="primary"]):not(:is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"])) {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button, [data-dsh-button]):not([data-dsh-button="primary"]):not(:is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"])):hover:not(:disabled) {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  color: #451a03;
 }
 `
 
@@ -225,6 +485,7 @@ ${GAIA_FRAME} [data-gaia-settings-launcher] .gaia-trigger-label {
   white-space: nowrap;
 }
 ${GAIA_SETTINGS_CSS}
+${GAIA_CONTROLS_CSS}
 `
 
 

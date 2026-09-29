@@ -57,7 +57,8 @@ export function ShortcutsRow({ actions, t, useCatalog }: PropsRuntime<'settings.
       <p className={css.settingDescription}>{t('description')}</p>
     </div>
     <Tooltip disabled={!shortcut?.keys.length} label={t('global-hint')} shortcutKeys={shortcut?.keys}>
-      <button className={css.button} type="button" aria-label={t('view')} aria-keyshortcuts={shortcut?.aria}
+      {/* GAIA: tag Edit shortcuts button as dsh-button outline for Gaia styling */}
+      <button data-dsh-button="outline" className={css.button} type="button" aria-label={t('view')} aria-keyshortcuts={shortcut?.aria}
         onClick={() => { actions.open() }}>{t('view')}</button>
     </Tooltip>
   </div>
@@ -159,7 +160,8 @@ export function ShortcutReference({
     }}>
       <header className={css.header}>
         <h2 className={css.title}>{t('title')}</h2>
-        <button type="button" className={css.close} aria-label={t('close')} disabled={busy} onClick={closeReference}>
+        {/* GAIA: tag headless dialog close button for Gaia styling */}
+        <button type="button" data-dsh-modal-close="" className={css.close} aria-label={t('close')} disabled={busy} onClick={closeReference}>
           <IconCloseOutlineRegular size={14} />
         </button>
       </header>

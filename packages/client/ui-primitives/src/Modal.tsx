@@ -61,6 +61,8 @@ export function Modal({
         ref={dialog}
         tabIndex={-1}
         data-shortcut-modal={shortcutModal}
+        // GAIA: Modal hook for scoped styling in Gaia frames.
+        data-dsh-modal=""
         className={clsx(css.dialog, className)}
         role="dialog"
         aria-modal="true"
@@ -73,7 +75,8 @@ export function Modal({
               <div className={clsx(css.content, contentClassName)}>
                 <div className={css.header}>
                   <h2 className={css.title}>{title}</h2>
-                  <button type="button" className={css.close} aria-label={closeLabel} onClick={onClose}>
+                  {/* GAIA: Close button hook for Gaia skin styling. */}
+                  <button type="button" data-dsh-modal-close="" className={css.close} aria-label={closeLabel} onClick={onClose}>
                     <IconCloseOutlineRegular size={14} />
                   </button>
                 </div>
@@ -82,7 +85,8 @@ export function Modal({
                 )}
                 {children !== undefined && <div className={css.body}>{children}</div>}
               </div>
-              {footer !== undefined && <div className={css.footer}>{footer}</div>}
+              {/* GAIA: Footer hook for scoped Gaia modal footer button styling. */}
+              {footer !== undefined && <div className={css.footer} data-dsh-modal-footer="">{footer}</div>}
             </>
           )}
       </div>

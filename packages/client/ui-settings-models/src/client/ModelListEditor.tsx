@@ -413,7 +413,8 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
         footer={(
           <>
             <Button variant="outline" onClick={closePicker}>{t('cancel')}</Button>
-            <Button variant="outline" onClick={adoptPicked}>{t('fetchAdopt')}</Button>
+            {/* GAIA: Tag adoptPicked button as dsh-button primary for Gaia styling */}
+            <Button variant="outline" data-dsh-button="primary" onClick={adoptPicked}>{t('fetchAdopt')}</Button>
           </>
         )}
       >

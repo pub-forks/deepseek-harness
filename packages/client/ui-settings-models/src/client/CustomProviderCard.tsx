@@ -256,7 +256,9 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
       {baseUrlInvalid ? <p className={styles['error']}>{t('customBaseUrlInvalid')}</p> : null}
       <div className={styles['field']}>
         <span className={styles['fieldLabel']}>{t('customApi')}</span>
+        {/* GAIA: Select trigger hook for Gaia skin styling. */}
         <select
+          data-dsh-select-trigger=""
           className={`${styles['input']} ${styles['selectInput']}`}
           value={protocol}
           aria-label={t('customApi')}

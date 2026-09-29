@@ -41,7 +41,8 @@ export function FontSizeRow({ t, setFontSize, useStore }: FontSizeRowComponentPr
         <div className={css.desc}>{t('fontSize.description')}</div>
       </div>
       <div className={css.control}>
-        <div className={css.stepper}>
+        {/* GAIA: Font size stepper tagged as dsh-input for Gaia styling */}
+        <div data-dsh-input="" className={css.stepper}>
           <span className={css.value}>{fontSize}</span>
           <span className={css.arrows}>
             <button

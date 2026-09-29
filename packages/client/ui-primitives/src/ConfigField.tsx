@@ -38,7 +38,8 @@ export function ConfigField(props: ConfigFieldProps) {
       {props.overridden ? <button type="button" disabled={props.disabled} onClick={props.onReset}>{props.labels.reset}</button> : null}
     </div>
     {props.choices.length > 0
-      ? <select id={id} value={props.value} disabled={props.disabled} aria-invalid={props.invalid}
+      // GAIA: Select trigger hook for Gaia skin styling.
+      ? <select id={id} data-dsh-select-trigger="" value={props.value} disabled={props.disabled} aria-invalid={props.invalid}
         onChange={(event) => { if (event.target.value === '') props.onReset(); else props.onChange(event.target.value) }}>
         <option value="">{props.labels.inherited}</option>
         {props.choices.map(choice => <option key={choice} value={choice}>{choice}</option>)}

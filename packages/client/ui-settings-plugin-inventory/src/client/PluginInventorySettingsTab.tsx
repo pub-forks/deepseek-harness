@@ -490,8 +490,10 @@ export function PluginInventorySettingsTab(
                     align="end"
                     portal
                     anchor={(
+                      // GAIA: Select trigger hook for Gaia skin styling.
                       <button
                         type="button"
+                        data-dsh-select-trigger=""
                         className={css.switcher}
                         aria-haspopup="menu"
                         aria-expanded={switcherOpen}

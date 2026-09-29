@@ -25,9 +25,11 @@ export function PreferenceRow({ title, description, value, selectedLabel, option
     onSelect(id)
   }
   const selector = (
+    // GAIA: Select trigger hook for Gaia skin styling.
     <button
       ref={selectorRef}
       type="button"
+      data-dsh-select-trigger=""
       className={css.selector}
       aria-haspopup="menu"
       aria-expanded={open}

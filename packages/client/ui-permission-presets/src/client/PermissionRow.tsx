@@ -88,8 +88,10 @@ export function PermissionRow({ load, select, usePermission, t }: PermissionRowP
           align="end"
           portal
           anchor={(
+            // GAIA: Select trigger hook for Gaia skin styling.
             <button
               type="button"
+              data-dsh-select-trigger=""
               className={css.selector}
               aria-haspopup="menu"
               aria-expanded={open}
