@@ -395,11 +395,12 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
-      'settings.action', 'settings.action', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'settings.action', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
     expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize', order: 1 }))
     expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance', priority: -1 }))
+    expect(mock.slotRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'language', priority: -1 }))
     expect(mock.slotComponents.find(({ name }) => name === 'settings.launcher')?.component)
       .toBe((await import('../src/client/settings-launcher.ts')).GaiaSettingsLauncher)
     expect(mock.slotComponents.find(({ name }) => name === 'sidebar.brand.mark')?.component)
@@ -477,7 +478,7 @@ describe('ui-embed client plugin', () => {
     for (const link of previousIcons) document.head.append(link)
   })
 
-  it('overrides an existing product locale in English and Chinese', async () => {
+  it('overrides an existing product locale in English', async () => {
     setLocationSearch('?gaia=full')
     const mock = createMockContext()
     const dispose = apply(mock.ctx)
@@ -485,11 +486,55 @@ describe('ui-embed client plugin', () => {
 
     mock.locale.setLocale('en')
     expect(t('backToHarness')).toBe('Back to Gaia Harness')
-    mock.locale.setLocale('zh')
-    expect(t('backToHarness')).toBe('返回 Gaia Harness')
 
     await dispose?.()
-    expect(t('backToHarness')).toBe('返回 DeepSeek Harness')
+    expect(t('backToHarness')).toBe('Back to DeepSeek Harness')
+  })
+
+  it('switches a zh-active locale to en at apply', async () => {
+    setLocationSearch('?gaia=embed&session=session-1')
+    const mock = createMockContext()
+    mock.locale.setLocale('zh')
+    expect(mock.locale.getLocale().active).toBe('zh')
+
+    const dispose = apply(mock.ctx)
+    expect(mock.locale.getLocale().active).toBe('en')
+    if (typeof dispose === 'function') await dispose()
+  })
+
+  it('reverts a later switch to zh back to en', async () => {
+    setLocationSearch('?gaia=embed&session=session-1')
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+    expect(mock.locale.getLocale().active).toBe('en')
+
+    mock.locale.setLocale('zh')
+    expect(mock.locale.getLocale().active).toBe('en')
+    if (typeof dispose === 'function') await dispose()
+  })
+
+  it('does not call setLocale when locale is already en', async () => {
+    setLocationSearch('?gaia=embed&session=session-1')
+    const mock = createMockContext()
+    expect(mock.locale.getLocale().active).toBe('en')
+    const setLocaleSpy = vi.spyOn(mock.locale, 'setLocale')
+
+    const dispose = apply(mock.ctx)
+    expect(setLocaleSpy).not.toHaveBeenCalled()
+    if (typeof dispose === 'function') await dispose()
+  })
+
+  it('shadows the Language settings row in Gaia frames', async () => {
+    setLocationSearch('?gaia=embed&session=session-1')
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+
+    const langEntry = mock.slotRegistrations.find(
+      r => r.name === 'settings.general.item' && r.id === 'language',
+    )
+    expect(langEntry).toBeDefined()
+    expect(langEntry?.priority).toBe(-1)
+    if (typeof dispose === 'function') await dispose()
   })
 
   it('expands a collapsed full-mode sidebar once at a 900px viewport', () => {
@@ -1125,6 +1170,7 @@ describe('embed integration of the palette and header entries', () => {
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'sidebar.right.tab.document.unpreviewable', id: 'open-in-app', priority: -1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize', order: 1 }))
     expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance', priority: -1 }))
+    expect(registrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'language', priority: -1 }))
     window.dispatchEvent(new MessageEvent('message', {
       data: { source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)', foreground: 'hsl(0 0% 90%)' } },
       origin: window.location.origin, source: window.parent,
@@ -1246,6 +1292,7 @@ describe('Gaia frame settings registrations and maximize lifecycle', () => {
     const dispose = apply(insideCtx)
     expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.action', id: 'gaia-maximize' }))
     expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'appearance' }))
+    expect(insideRegistrations).toContainEqual(expect.objectContaining({ name: 'settings.general.item', id: 'language' }))
     expect(document.documentElement.hasAttribute(SETTINGS_MAXIMIZED_ATTR)).toBe(true)
 
     if (typeof dispose === 'function') await dispose()

@@ -137,6 +137,28 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const disposeLocaleOverrides = registerGaiaLocaleOverrides(ctx.locale)
 
+  // Enforce English in all Gaia frames: Gaia is English-only.
+  let unsubLocaleChange: (() => void) | undefined
+  try {
+    const locale = ctx.locale
+    if (locale.getLocale().active !== 'en') {
+      locale.setLocale('en')
+    }
+    unsubLocaleChange = ctx.on('locale/change', (snapshot) => {
+      if (snapshot.active !== 'en') {
+        try {
+          if (locale.getLocale().active !== 'en') {
+            locale.setLocale('en')
+          }
+        } catch (error) {
+          console.error('Failed to restore English locale:', error)
+        }
+      }
+    })
+  } catch (error) {
+    console.error('Failed to enforce English locale:', error)
+  }
+
   // Both Gaia frames use Gaia's editor for the profile document action.
   ctx.slots.inject('settings.action', () => ctx.slots.register({
     name: 'settings.action', id: 'open-document', order: 0, priority: -1, locale: 'settings',
@@ -151,6 +173,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item', id: 'appearance', order: 10, priority: -1, locale: 'settings.theme',
   }, GaiaAppearanceRow))
+
+  // Shadow the stock Language row: English only, a single-option row is noise.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item', id: 'language', order: 0, priority: -1, locale: 'settings.locale',
+  }, HiddenEntry))
 
   // Gaia frame settings launcher captures openSettings and preserves the sidebar Settings trigger.
   ctx.slots.inject('settings.launcher', () => ctx.slots.register({
@@ -255,6 +282,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const commonDisposer = ctx.effect(() => () => {
     unsubConnection?.()
+    unsubLocaleChange?.()
     root.removeAttribute(rootAttribute)
     root.removeAttribute(SETTINGS_MAXIMIZED_ATTR)
     removeSkin()
