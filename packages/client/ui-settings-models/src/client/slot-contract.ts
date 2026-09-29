@@ -38,7 +38,17 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * Without a registrant the area renders nothing.
      */
     'settings.models.footer': { kind: 'list'; scope: 'root'; owner: ModelsFooterOwnerProps }
+    /**
+     * GAIA: optional extension seat supplying authentication kind inspection for provider rows.
+     */
+    'settings.models.auth-provider': { kind: 'single'; scope: 'root' }
   }
+}
+
+/** GAIA: extension hook supplying authentication kind inspection for provider rows. */
+export interface ModelsAuthProviderHook {
+  /** Determine the auth kind for a provider ('oauth' | 'api-key' | undefined). */
+  getAuthKind: (provider: string) => Promise<'oauth' | 'api-key' | undefined> | 'oauth' | 'api-key' | undefined
 }
 
 /** Owner share of one provider-card extension occurrence. */

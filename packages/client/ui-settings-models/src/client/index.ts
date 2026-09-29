@@ -30,7 +30,7 @@ import { WELCOME_NOTICE_SETTINGS_NAMESPACE } from '../onboarding-copy.ts'
 import { Config, ONBOARDING_CONFIG_GLOBAL } from '../onboarding-config.ts'
 
 export type { ModelsSectionInjected, ModelsSectionProps } from './ModelsSection.tsx'
-export type { ModelsFooterOwnerProps, ProviderCardExtrasOwnerProps } from './slot-contract.ts'
+export type { ModelsAuthProviderHook, ModelsFooterOwnerProps, ProviderCardExtrasOwnerProps } from './slot-contract.ts'
 export type { ModelsKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -126,6 +126,10 @@ export function apply(ctx: ClientContext): void {
       ctx.remote.$on('credentials/reference-updated', refreshModels),
       ctx.remote.$on('llm/adapters-updated', refreshModels),
       ctx.on('connection/reset', refreshModels),
+      // GAIA: re-evaluate provider rows when auth-provider extension registers or updates
+      ctx.on('slots/changed', (key) => {
+        if (key === 'settings.models.auth-provider') refreshModels()
+      }),
     ]
     return () => {
       welcomeController.dispose()
@@ -142,6 +146,8 @@ export function apply(ctx: ClientContext): void {
     children: {
       'settings.models.provider-card': { kind: 'keyed', scope: 'root' },
       'settings.models.footer': { kind: 'list', scope: 'root' },
+      // GAIA: declared child slot for auth-provider extension hook
+      'settings.models.auth-provider': { kind: 'single', scope: 'root' },
     },
   }, ModelsSection))
   if (!('dshDesktop' in globalThis)) ctx.slots.inject('settings.onboarding', () => ctx.slots.register({

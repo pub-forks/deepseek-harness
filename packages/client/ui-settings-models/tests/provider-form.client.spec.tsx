@@ -793,6 +793,12 @@ describe('endpoint interrogation', () => {
 })
 
 describe('provider rows', () => {
+  function rowOf(provider: string): HTMLElement {
+    const row = screen.getByText(provider).closest('li')
+    if (row === null) throw new Error(`no row for ${provider}`)
+    return row
+  }
+
   it('tags the routes the adapter declared, and only those', async () => {
     await mountSection({
       providers: {
@@ -802,11 +808,6 @@ describe('provider rows', () => {
       declaredRoutes: ['acme-gateway'],
     })
 
-    const rowOf = (provider: string): HTMLElement => {
-      const row = screen.getByText(provider).closest('li')
-      if (row === null) throw new Error(`no row for ${provider}`)
-      return row
-    }
     expect(rowOf('acme-gateway').textContent).toContain(en.customTag)
     // `openai` carries a stored profile too — the tag follows the adapter's
     // catalog, not the presence of settings, so it stays off here.
@@ -836,6 +837,133 @@ describe('provider rows', () => {
     // Absent is "unknown", never "shipped": an adapter that answers nothing
     // must not have its routes labelled either way.
     expect(screen.queryByText(en.customTag)).toBeNull()
+  })
+
+  it('works with no Gaia authorization source present (no OAuth tags rendered)', async () => {
+    const scripted = scriptedFace({
+      providers: {
+        openai: { apiKeyEnv: 'OPENAI_API_KEY' },
+        'openai-codex': {},
+      },
+    })
+    const controller = new ModelsSettingsStore(
+      ctxWith(scripted.face), settingsSchema, new SettingsDescribeMirror(ctxWith(scripted.face)))
+    await controller.load()
+    render(<ModelsSection
+      controller={controller}
+      useSnapshot={bindSnapshotSelector(controller.store)}
+      operations={operationsWith(scripted.face)}
+      schema={settingsSchema}
+      t={t}
+      renderSlot={() => null}
+    />)
+
+    expect(rowOf('openai-codex').textContent).not.toContain(en.oauthTag)
+    expect(rowOf('openai').textContent).not.toContain(en.oauthTag)
+    expect(rowOf('openai-codex').getAttribute('data-auth-kind')).toBeNull()
+    expect(rowOf('openai').getAttribute('data-auth-kind')).toBeNull()
+  })
+
+  it('marks OAuth-connected providers with an OAuth tag while API-key providers omit it', async () => {
+    const scripted = scriptedFace({
+      providers: {
+        openai: { apiKeyEnv: 'OPENAI_API_KEY' },
+        'openai-codex': {},
+      },
+    })
+    const authHook = {
+      getAuthKind: (provider: string) => {
+        if (provider === 'openai-codex') return 'oauth' as const
+        if (provider === 'openai') return 'api-key' as const
+        return undefined
+      },
+    }
+    const controller = new ModelsSettingsStore(
+      ctxWith(scripted.face), settingsSchema, new SettingsDescribeMirror(ctxWith(scripted.face)), authHook)
+    await controller.load()
+    render(<ModelsSection
+      controller={controller}
+      useSnapshot={bindSnapshotSelector(controller.store)}
+      operations={operationsWith(scripted.face)}
+      schema={settingsSchema}
+      t={t}
+      renderSlot={() => null}
+    />)
+
+    expect(rowOf('openai-codex').textContent).toContain(en.oauthTag)
+    expect(rowOf('openai').textContent).not.toContain(en.oauthTag)
+    expect(rowOf('openai-codex').getAttribute('data-auth-kind')).toBe('oauth')
+    expect(rowOf('openai').getAttribute('data-auth-kind')).toBe('api-key')
+  })
+
+  it('marks Gaia OAuth account aliases with an OAuth tag and API-key aliases without it', async () => {
+    const scripted = scriptedFace({
+      providers: {
+        'codex-work': { catalogProvider: 'openai-codex' },
+        'openai-work': { catalogProvider: 'openai' },
+      },
+    })
+    const authHook = {
+      getAuthKind: (provider: string) => {
+        if (provider === 'codex-work') return 'oauth' as const
+        if (provider === 'openai-work') return 'api-key' as const
+        return undefined
+      },
+    }
+    const controller = new ModelsSettingsStore(
+      ctxWith(scripted.face), settingsSchema, new SettingsDescribeMirror(ctxWith(scripted.face)), authHook)
+    await controller.load()
+    render(<ModelsSection
+      controller={controller}
+      useSnapshot={bindSnapshotSelector(controller.store)}
+      operations={operationsWith(scripted.face)}
+      schema={settingsSchema}
+      t={t}
+      renderSlot={() => null}
+    />)
+
+    expect(rowOf('codex-work').textContent).toContain(en.oauthTag)
+    expect(rowOf('openai-work').textContent).not.toContain(en.oauthTag)
+    expect(rowOf('codex-work').getAttribute('data-auth-kind')).toBe('oauth')
+    expect(rowOf('openai-work').getAttribute('data-auth-kind')).toBe('api-key')
+  })
+
+  it('resolves auth provider hook from slots.entriesOfSlot when registered', async () => {
+    const scripted = scriptedFace({
+      providers: {
+        openai: { apiKeyEnv: 'OPENAI_API_KEY' },
+        'openai-codex': {},
+      },
+    })
+    const ctx = Object.assign(ctxWith(scripted.face), {
+      slots: {
+        entriesOfSlot: (key: string) => {
+          if (key === 'settings.models.auth-provider') {
+            return [{
+              inject: () => ({
+                getAuthKind: (provider: string) => (provider === 'openai-codex' ? 'oauth' as const : undefined),
+              }),
+            }]
+          }
+          return []
+        },
+      },
+    })
+    const controller = new ModelsSettingsStore(
+      ctx, settingsSchema, new SettingsDescribeMirror(ctx))
+    await controller.load()
+    render(<ModelsSection
+      controller={controller}
+      useSnapshot={bindSnapshotSelector(controller.store)}
+      operations={operationsWith(scripted.face)}
+      schema={settingsSchema}
+      t={t}
+      renderSlot={() => null}
+    />)
+
+    expect(rowOf('openai-codex').textContent).toContain(en.oauthTag)
+    expect(rowOf('openai').textContent).not.toContain(en.oauthTag)
+    expect(rowOf('openai-codex').getAttribute('data-auth-kind')).toBe('oauth')
   })
 })
 

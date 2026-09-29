@@ -432,7 +432,11 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
             && row.apiKeyEnv !== undefined
             && row.credential?.configured === false
           return (
-            <li key={row.entry.provider} className={styles['rowCard']}>
+            <li
+              key={row.entry.provider}
+              className={styles['rowCard']}
+              {...row.authKind !== undefined ? { 'data-auth-kind': row.authKind } : {}}
+            >
               <div className={styles['rowHead']}>
                 <span className={styles['rowIdentity']}>
                   <span className={styles['rowName']}>{row.entry.displayName}</span>
@@ -441,6 +445,10 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                       follows its answer and stays off when it gives none. */}
                   {row.entry.declared === true
                     ? <span className={styles['rowTag']}>{t('customTag')}</span>
+                    : null}
+                  {/* GAIA: mark OAuth-connected providers with an OAuth tag */}
+                  {row.authKind === 'oauth'
+                    ? <span className={styles['rowTag']} data-dsh-oauth-tag="">{t('oauthTag')}</span>
                     : null}
                   {credentialConfigured
                     ? (

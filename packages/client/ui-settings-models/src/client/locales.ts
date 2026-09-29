@@ -87,6 +87,8 @@ export const en = {
   fetchDeselectAll: 'Deselect all',
   fetchAdopt: 'Add selected',
   customTag: 'Custom',
+  // GAIA: OAuth provider tag
+  oauthTag: 'OAuth',
   customRoute: 'Provider ID',
   customRouteHint: 'Lowercase identifier, starting with a letter, that uniquely names this provider in requests and as its credential name.',
   customRouteInvalid: 'Start with a lowercase letter; then lowercase letters, digits, and dashes.',
@@ -207,6 +209,8 @@ export const zh: { [Key in keyof typeof en]: string } = {
   fetchDeselectAll: '取消全选',
   fetchAdopt: '添加所选',
   customTag: '自定义',
+  // GAIA: OAuth provider tag
+  oauthTag: 'OAuth',
   customRoute: 'Provider ID',
   customRouteHint: '以小写字母开头的标识，在请求中唯一标识该提供商，并用于派生凭据名。',
   customRouteInvalid: '需以小写字母开头，之后可用小写字母、数字和短横线。',

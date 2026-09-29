@@ -15,6 +15,7 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
+import type { ModelsAuthProviderHook } from './slot-contract.ts'
 
 /**
  * Any route key walks a dict schema to the same profile node, so the lookup
@@ -31,6 +32,8 @@ export interface ProviderDirectoryEntry {
   readonly active: boolean
   readonly declared?: boolean
   readonly error?: string
+  /** GAIA: provider authentication kind. */
+  readonly authKind?: 'oauth' | 'api-key'
 }
 
 /**
@@ -53,6 +56,9 @@ export function joinProviderDirectory(
     active: active.has(entry.provider),
     ...entry.declared === undefined ? {} : { declared: entry.declared },
     ...entry.error === undefined ? {} : { error: entry.error },
+    ...(entry as { authKind?: 'oauth' | 'api-key' }).authKind === undefined
+      ? {}
+      : { authKind: (entry as { authKind?: 'oauth' | 'api-key' }).authKind },
   }))
   for (const provider of registered) {
     if (declared.has(provider.id)) continue
@@ -90,6 +96,11 @@ export interface ProviderRow {
    * own derivation rule.
    */
   derivedCredential?: CredentialInfo
+  /**
+   * GAIA: authentication kind for this provider ('oauth' for OAuth-connected
+   * catalog providers and Gaia OAuth account aliases).
+   */
+  authKind?: 'oauth' | 'api-key'
 }
 
 /** Page snapshot. */
@@ -166,12 +177,25 @@ export class ModelsSettingsStore {
    * `remote.credentials` namespaces carry the directory and credential reads.
    * @param schema - settings-owned schema and immutable path operations.
    * @param describeFace - the shared mirror's describe face (namespace views and writability).
+   * @param authHook - optional auth provider hook (allows test injection or companion plugin).
    */
   constructor(
     private readonly ctx: ClientContext,
     private readonly schema: SettingsSchemaOperations,
     private readonly describeFace: SettingsDescribeFace,
+    /** GAIA: optional auth provider hook (allows test injection or companion plugin). */
+    private readonly authHook?: ModelsAuthProviderHook,
   ) {}
+
+  /** GAIA: resolve the registered auth provider hook from slots if available. */
+  private resolveAuthHook(): ModelsAuthProviderHook | undefined {
+    const slots = (this.ctx as unknown as { slots?: { entriesOfSlot?: (key: string) => readonly { inject?: () => unknown }[] } }).slots
+    if (slots?.entriesOfSlot === undefined) return undefined
+    const entries = slots.entriesOfSlot('settings.models.auth-provider')
+    const entry = entries[0]
+    if (entry?.inject === undefined || typeof entry.inject !== 'function') return undefined
+    return entry.inject() as ModelsAuthProviderHook
+  }
 
   /**
    * Refresh the whole page snapshot: the provider directory and the mirror's
@@ -196,11 +220,12 @@ export class ModelsSettingsStore {
       this.failLoad(generation, mirrored.error ?? 'settings are unavailable in this browser')
       return
     }
+    const authHook = this.authHook ?? this.resolveAuthHook()
     const providers = joinProviderDirectory(registered.value, declared.value)
     const writable = mirrored.view.writable
     const views: readonly SettingsNamespaceView[] = mirrored.view.namespaces
     const namespaces = new Map(views.map(view => [view.ns, view]))
-    const rows: ProviderRow[] = providers.map((entry) => {
+    const rows: ProviderRow[] = await Promise.all(providers.map(async (entry) => {
       const namespace = namespaces.get(entry.settingsNs)
       const configured = namespace !== undefined
         && (entry.settingsPath.length === 0 || this.schema.getPath(namespace.value, entry.settingsPath) !== undefined)
@@ -208,14 +233,16 @@ export class ModelsSettingsStore {
         && entry.settingsPath.length > 0
         && this.schema.hasPath(namespace.user, entry.settingsPath)
         && !this.schema.hasPath(namespace.base, entry.settingsPath)
+      const authKind = entry.authKind ?? (authHook !== undefined ? await authHook.getAuthKind(entry.provider) : undefined)
       return {
         entry,
         configured,
         removable,
         apiKeyEnv: entry.provider === 'deepseek-account' ? undefined : apiKeyEnvOf(namespace, entry.settingsPath, this.schema),
         credential: undefined,
+        ...authKind === undefined ? {} : { authKind },
       }
-    })
+    }))
     if (rows.some(row => row.entry.provider === 'deepseek-account')) {
       const catalog = await this.ctx.remote.session.modelCatalog()
       for (const row of rows) {

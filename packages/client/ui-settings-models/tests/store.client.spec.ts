@@ -385,3 +385,33 @@ it('removes the account row after sign-out and restores it after sign-in', async
   await store.load()
   expect(store.store.getSnapshot().rows[0]?.entry.provider).toBe('deepseek-account')
 })
+
+describe('ModelsSettingsStore auth hook integration', () => {
+  it('loads rows with authKind undefined when no auth provider hook is present', async () => {
+    const { ctx, mirror } = api()
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror)
+    await store.load()
+    const rows = store.store.getSnapshot().rows
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.authKind).toBeUndefined()
+    }
+  })
+
+  it('populates row authKind from the injected auth provider hook', async () => {
+    const { ctx, mirror } = api()
+    const authHook = {
+      getAuthKind: (provider: string) => {
+        if (provider === 'openai') return 'oauth' as const
+        return 'api-key' as const
+      },
+    }
+    const store = new ModelsSettingsStore(ctx, settingsSchema, mirror, authHook)
+    await store.load()
+    const rows = store.store.getSnapshot().rows
+    const openaiRow = rows.find(r => r.entry.provider === 'openai')
+    expect(openaiRow?.authKind).toBe('oauth')
+    const anthropicRow = rows.find(r => r.entry.provider === 'anthropic')
+    expect(anthropicRow?.authKind).toBe('api-key')
+  })
+})
