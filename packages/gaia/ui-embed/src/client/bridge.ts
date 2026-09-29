@@ -26,7 +26,35 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openConfigEditor' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'workspacesChanged' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: AppShortcutCode; shift: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
+
+/** Allowlisted keyboard shortcut codes forwarded from the iframe to Gaia. */
+export const APP_SHORTCUT_CODES = [
+  'KeyJ',
+  'KeyE',
+  'KeyL',
+  'KeyK',
+  'KeyD',
+  'KeyZ',
+  'KeyF',
+  'KeyG',
+  'KeyP',
+  'KeyA',
+  'KeyN',
+] as const
+
+/** Union type of all allowlisted app shortcut codes. */
+export type AppShortcutCode = typeof APP_SHORTCUT_CODES[number]
+
+/**
+ * Check whether a code and shift modifier match the app shortcut allowlist.
+ * Shift is permitted only with KeyJ and KeyE.
+ */
+export function isAppShortcutCandidate(code: string, shift: boolean): code is AppShortcutCode {
+  if (shift) return code === 'KeyJ' || code === 'KeyE'
+  return (APP_SHORTCUT_CODES as readonly string[]).includes(code)
+}
 
 /** Keys of the Gaia palette a theme message may carry. */
 export const GAIA_PALETTE_KEYS = ['background', 'surface', 'border', 'foreground', 'mutedForeground', 'accent', 'primary', 'primaryForeground', 'destructive'] as const

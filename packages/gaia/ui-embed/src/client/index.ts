@@ -22,7 +22,7 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
-import { isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
+import { isAppShortcutCandidate, isGaiaIncomingMessage, isValidSessionId, postToParent } from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
 import { GaiaDocumentAction } from './document-action.ts'
 import { GaiaFileActions } from './file-actions.ts'
@@ -280,7 +280,38 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     if (collapsed) ctx.layout.toggleSidebar()
   }
 
+  // Intercept keyboard shortcuts that match Gaia app/drawer shortcuts or navigation chrome.
+  const onKeyDown = (e: KeyboardEvent): void => {
+    // Only closed drawer intents and allowlisted app shortcuts cross the bridge;
+    // never forward arbitrary key data. Requiring exactly one platform modifier also
+    // excludes AltGr and accidental Ctrl+Cmd combinations.
+    const platformModifier = e.ctrlKey !== e.metaKey
+    if (!e.repeat && e.altKey && platformModifier && !e.getModifierState('AltGraph')) {
+      if (!e.shiftKey && (e.code === 'KeyH' || e.code === 'KeyM')) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        postToParent({ source: 'gaia-dsh', v: 1, type: 'drawerShortcut', action: e.code === 'KeyH' ? 'toggle' : 'maximize' })
+        return
+      }
+      if (isAppShortcutCandidate(e.code, e.shiftKey)) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: e.code, shift: e.shiftKey })
+        return
+      }
+    }
+    if (mode === 'embed' && !e.altKey && (e.metaKey || e.ctrlKey) && EMBED_BLOCKED_KEYS.has(e.code)) {
+      e.preventDefault()
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+    }
+  }
+  window.addEventListener('keydown', onKeyDown, { capture: true })
+
   const commonDisposer = ctx.effect(() => () => {
+    window.removeEventListener('keydown', onKeyDown, { capture: true })
     unsubConnection?.()
     unsubLocaleChange?.()
     root.removeAttribute(rootAttribute)
@@ -332,27 +363,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   ctx.layout.toggleSidebar = () => {}
   ctx.layout.openRightbar = () => {}
 
-  // Intercept keyboard shortcuts that would open navigation or new sessions.
-  const onKeyDown = (e: KeyboardEvent): void => {
-    // Only these closed drawer intents cross the bridge; never forward key data.
-    // Requiring exactly one platform modifier also excludes AltGr and accidental
-    // Ctrl+Cmd combinations. This listener exists only in the embed branch.
-    const platformModifier = e.ctrlKey !== e.metaKey
-    if (!e.repeat && !e.shiftKey && e.altKey && platformModifier
-      && !e.getModifierState('AltGraph') && (e.code === 'KeyH' || e.code === 'KeyM')) {
-      e.preventDefault()
-      e.stopPropagation()
-      e.stopImmediatePropagation()
-      postToParent({ source: 'gaia-dsh', v: 1, type: 'drawerShortcut', action: e.code === 'KeyH' ? 'toggle' : 'maximize' })
-      return
-    }
-    if ((e.metaKey || e.ctrlKey) && EMBED_BLOCKED_KEYS.has(e.code)) {
-      e.preventDefault()
-      e.stopPropagation()
-      e.stopImmediatePropagation()
-    }
-  }
-  window.addEventListener('keydown', onKeyDown, { capture: true })
 
   // "Open in Files" launches a file manager on the machine running the
   // harness, which a drawer tab in a browser cannot use. Shadow its header
@@ -610,7 +620,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       removeChrome()
       ctx.layout.toggleSidebar = originalToggleSidebar
       ctx.layout.openRightbar = originalOpenRightbar
-      window.removeEventListener('keydown', onKeyDown, { capture: true })
       window.removeEventListener('message', onMessage)
       unsubSessionStatus()
       unsubList()

@@ -654,14 +654,75 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toEqual([])
   })
 
-  it('does not forward drawer chords from full-shell mode', () => {
+  it('forwards allowlisted appShortcut chords with exact constraints in embed mode', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+
+    // KeyJ and KeyE allow shift: false or true
+    const jNoShift = new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true, cancelable: true })
+    const jShift = new KeyboardEvent('keydown', { code: 'KeyJ', metaKey: true, altKey: true, shiftKey: true, cancelable: true })
+    const eNoShift = new KeyboardEvent('keydown', { code: 'KeyE', ctrlKey: true, altKey: true, cancelable: true })
+    const eShift = new KeyboardEvent('keydown', { code: 'KeyE', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true })
+    window.dispatchEvent(jNoShift)
+    window.dispatchEvent(jShift)
+    window.dispatchEvent(eNoShift)
+    window.dispatchEvent(eShift)
+
+    expect(jNoShift.defaultPrevented).toBe(true)
+    expect(jShift.defaultPrevented).toBe(true)
+    expect(eNoShift.defaultPrevented).toBe(true)
+    expect(eShift.defaultPrevented).toBe(true)
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: false })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: true })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyE', shift: false })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyE', shift: true })
+
+    // Other allowlisted keys: KeyL, KeyK, KeyD, KeyZ, KeyF, KeyG, KeyP, KeyA, KeyN (no shift)
+    const otherCodes = ['KeyL', 'KeyK', 'KeyD', 'KeyZ', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN']
+    for (const code of otherCodes) {
+      parentMessages = []
+      const ev = new KeyboardEvent('keydown', { code, ctrlKey: true, altKey: true, cancelable: true })
+      window.dispatchEvent(ev)
+      expect(ev.defaultPrevented).toBe(true)
+      expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code, shift: false }])
+    }
+
+    // Rejected chords: shift with non-J/E, KeyV, KeyR, unlisted, repeat, both ctrl and meta
+    parentMessages = []
+    const rejected = [
+      new KeyboardEvent('keydown', { code: 'KeyN', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyL', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyR', ctrlKey: true, altKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyX', ctrlKey: true, altKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, metaKey: true, altKey: true, cancelable: true }),
+    ]
+    rejected.forEach(event => window.dispatchEvent(event))
+    expect(rejected.every(event => !event.defaultPrevented)).toBe(true)
+    expect(parentMessages).toEqual([])
+  })
+
+  it('forwards drawer chords and appShortcut chords from full-shell mode without blocking navigation keys', () => {
     setLocationSearch('?gaia=full')
     const mock = createMockContext()
     apply(mock.ctx)
-    const event = new KeyboardEvent('keydown', { code: 'KeyH', ctrlKey: true, altKey: true, cancelable: true })
-    window.dispatchEvent(event)
-    expect(event.defaultPrevented).toBe(false)
-    expect(parentMessages).not.toContainEqual(expect.objectContaining({ type: 'drawerShortcut' }))
+
+    const h = new KeyboardEvent('keydown', { code: 'KeyH', ctrlKey: true, altKey: true, cancelable: true })
+    window.dispatchEvent(h)
+    expect(h.defaultPrevented).toBe(true)
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'drawerShortcut', action: 'toggle' })
+
+    const j = new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true, cancelable: true })
+    window.dispatchEvent(j)
+    expect(j.defaultPrevented).toBe(true)
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: false })
+
+    // EMBED_BLOCKED_KEYS (e.g. KeyB with bare ctrlKey) are not blocked in full mode
+    const b = new KeyboardEvent('keydown', { code: 'KeyB', ctrlKey: true, cancelable: true })
+    window.dispatchEvent(b)
+    expect(b.defaultPrevented).toBe(false)
   })
 
   it('posts ready, status, and turn events', () => {
