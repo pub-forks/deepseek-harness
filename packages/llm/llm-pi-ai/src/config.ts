@@ -43,6 +43,9 @@ import type {
   PiAiReasoningEfforts,
   RouteCatalog,
 } from './catalog.ts'
+// GAIA: Responses request tuning fields.
+import { REASONING_SUMMARIES, TEXT_VERBOSITIES } from './gaia-responses-payload.ts'
+import type { ReasoningSummary, TextVerbosity } from './gaia-responses-payload.ts'
 import { buildProvider, supportedProtocols } from './provider.ts'
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
@@ -163,6 +166,13 @@ export interface PiAiProviderProfile {
   cacheRetention?: CacheRetention
   /** Streaming transport preference. */
   transport?: Transport
+  /**
+   * GAIA: reasoning-summary detail for the OpenAI Responses protocols;
+   * omission keeps pi-ai's `auto`. Ignored by every other protocol.
+   */
+  reasoningSummary?: ReasoningSummary
+  /** GAIA: answer-length hint for the OpenAI Responses protocols; omission keeps pi-ai's request. */
+  textVerbosity?: TextVerbosity
   /** HTTP/provider SDK timeout in milliseconds. */
   timeoutMs?: number
   /** WebSocket connection timeout in milliseconds. */
@@ -345,6 +355,9 @@ const profile = z.object({
   thinkingBudgets,
   cacheRetention: z.union(['none', 'short', 'long']),
   transport: z.union(['sse', 'websocket', 'websocket-cached', 'auto']),
+  // GAIA: OpenAI Responses request tuning (see gaia-responses-payload.ts).
+  reasoningSummary: z.union(REASONING_SUMMARIES),
+  textVerbosity: z.union(TEXT_VERBOSITIES),
   timeoutMs: z.natural(),
   websocketConnectTimeoutMs: z.natural(),
   streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS),

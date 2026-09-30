@@ -48,6 +48,12 @@ function classifyPiAiError(message: string): string {
   if (/\b413\b|failed to buffer the request body:\s*length limit exceeded|payload too large|request body too large/i.test(message)) return 'INVALID_REQUEST'
   if (/\b400\b|invalid.?request/i.test(message)) return 'INVALID_REQUEST'
   if (/\b5\d\d\b/.test(message)) return 'SERVER'
+  // GAIA: Codex reports these in prose with no status code. Overload is
+  // transient and retryable; an empty completion is retried like the
+  // harness's own empty-stop detection; an unconfigured route needs a login.
+  if (/\b(?:servers? (?:are|is) (?:currently )?overloaded|overloaded_error|server_is_overloaded)\b/i.test(message)) return 'SERVER'
+  if (/\bprovider returned an empty response\b/i.test(message)) return EMPTY_RESPONSE_CODE
+  if (/\bprovider is not configured\b/i.test(message)) return 'AUTH'
   if (/\btime(?:d)?\s*out\b|timeout/i.test(message)) return 'TIMEOUT'
   // A stream truncated before the provider's terminal event: each pi-ai provider
   // throws its own wording when the wire closes mid-response without a terminal

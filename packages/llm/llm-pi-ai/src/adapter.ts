@@ -61,6 +61,8 @@ import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { toPiContext } from './context.ts'
 import { createModels, getSupportedThinkingLevels } from './models.ts'
 import { toStreamChunks } from './stream.ts'
+// GAIA: OpenAI Responses reasoning-summary and verbosity tuning.
+import { responsesPayloadHook } from './gaia-responses-payload.ts'
 
 /** One resolution's frozen view: the profiles and the collection built from them. */
 interface PiAiSnapshot {
@@ -199,6 +201,15 @@ function reasoningInfo(
       ...defaultLevel === undefined ? {} : { defaultEffort: ReasoningEffortId(defaultLevel) },
     },
   }
+}
+
+/** GAIA: the Responses request-tuning hook for this model, when its protocol takes one. */
+function onPayloadOption(
+  model: Model<Api>,
+  profile: ResolvedPiAiProviderProfile,
+): Pick<SimpleStreamOptions, 'onPayload'> {
+  const hook = responsesPayloadHook(model.api, profile)
+  return hook === undefined ? {} : { onPayload: hook }
 }
 
 /** Merge deployment headers while removing case-insensitive attribution collisions. */
@@ -386,6 +397,8 @@ export class PiAiAdapter extends LlmAdapter {
         // Profile headers are deployment-owned; attribution names are
         // Harness-owned and therefore win collisions.
         headers: requestHeaders(profile.headers),
+        // GAIA: configured reasoning summary and verbosity on Responses routes.
+        ...onPayloadOption(model, profile),
       })
       const iterator = toStreamChunks(events, model.contextWindow, options.signal, model.id)[Symbol.asyncIterator]()
       let exhausted = false

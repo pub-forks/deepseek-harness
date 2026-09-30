@@ -892,6 +892,18 @@ describe('mapStopReason / mapUsage', () => {
       .toEqual({ kind: 'stop' })
   })
 
+  it('GAIA: maps Codex prose failures to routable codes', () => {
+    const code = (errorMessage: string): unknown => mapStopReason(assistant({ stopReason: 'error', errorMessage }))
+    expect(code('Codex error: Our servers are currently overloaded. Please try again later.'))
+      .toMatchObject({ kind: 'error', failure: { code: 'SERVER' } })
+    expect(code('Codex error: The usage limit has been reached'))
+      .toMatchObject({ kind: 'error', failure: { code: 'QUOTA' } })
+    expect(code('Provider returned an empty response'))
+      .toMatchObject({ kind: 'error', failure: { code: EMPTY_RESPONSE_CODE } })
+    expect(code('Provider is not configured: openai-codex'))
+      .toMatchObject({ kind: 'error', failure: { code: 'AUTH' } })
+  })
+
   it('defaults the error message when pi-ai omits it', () => {
     expect(mapStopReason(assistant({ stopReason: 'error' })))
       .toEqual({ kind: 'error', failure: { message: 'pi-ai stream error', code: 'PI_AI_ERROR' } })

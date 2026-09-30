@@ -10,7 +10,11 @@
   config:
     openBrowser: false
     printUrl: true
-    surfaceContext: true
+    # GAIA: off. The web-surface section is DSH-developer orientation (HMR,
+    # `pnpm run dev:web`) and embeds the loopback URL, whose `--port 0` port
+    # changes on every runtime restart and breaks the prompt-cache prefix of
+    # resumed sessions; Gaia users reach the GUI only through Gaia's proxy.
+    surfaceContext: false
     trustedHosts: !!js ctx.webStartup.trustedHosts
 # GAIA: no llm-pi-ai row here. An overlay outranks the profile layer that
 # Settings → Models writes, which made every provider read-only. The bridge
