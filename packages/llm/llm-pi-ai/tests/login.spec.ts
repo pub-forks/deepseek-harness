@@ -90,6 +90,9 @@ describe('pi-ai login flows', () => {
     // else could ever configure it.
     expect(offered.find(entry => entry.key === CODEX)?.methods)
       .toEqual([{ id: 'oauth', label: expect.stringContaining('ChatGPT') as string }])
+    // The openai route offers only the api-key method (ChatGPT OAuth is dropped)
+    expect(offered.find(entry => entry.key === recordKeyFor('openai'))?.methods.map(one => one.id))
+      .toEqual(['api-key'])
     // A provider offering both keeps both, the subscription login first.
     expect(offered.find(entry => entry.key === recordKeyFor('anthropic'))?.methods.map(one => one.id))
       .toEqual(['oauth', 'api-key'])
@@ -97,6 +100,32 @@ describe('pi-ai login flows', () => {
     // through its own prompt rather than leaving it to the settings form.
     expect(offered.find(entry => entry.key === recordKeyFor('deepseek'))?.methods.map(one => one.id))
       .toEqual(['api-key'])
+  })
+
+  it('openai route offers only the api-key login method; openai-codex offers oauth', async () => {
+    const { catalogProvider } = await import('../src/catalog.ts')
+    const { loginMethods } = await import('../src/login.ts')
+    expect(loginMethods(catalogProvider('openai')).map(m => m.id)).toEqual(['api-key'])
+    expect(loginMethods(catalogProvider('openai-codex')).map(m => m.id)).toEqual(['oauth'])
+
+    const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-openai-alias-'))
+    dirs.push(dir)
+    const ctx = new Context()
+    await ctx.plugin(LocalCredentialProvider, { path: join(dir, '.credentials.yaml'), watch: false })
+    await ctx.plugin(AuthorizationService)
+    const alias = resolveProfiles({
+      'openai-alias': { catalogProvider: 'openai', displayName: 'OpenAI Alias' },
+      'codex-alias': { catalogProvider: 'openai-codex', displayName: 'Codex Alias' },
+    })
+    const reconcile = registerPiAiFlows(
+      ctx,
+      { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) },
+      alias,
+    )
+    const offered = ctx.authorization.list()
+    expect(offered.find(entry => entry.key === recordKeyFor('openai-alias'))?.methods.map(m => m.id)).toEqual(['api-key'])
+    expect(offered.find(entry => entry.key === recordKeyFor('codex-alias'))?.methods.map(m => m.id)).toEqual(['oauth'])
+    reconcile()
   })
 
   it('runs the pi-ai auth type the chosen method names', async () => {

@@ -27,9 +27,11 @@ import type { ResolvedPiAiProviderProfile } from './config.ts'
  * @param provider - the installed catalog provider, if pi-ai ships one.
  * @returns its methods, most preferred first; empty when it offers no login.
  */
-function loginMethods(provider: Provider | undefined): AuthorizationMethod[] {
+export function loginMethods(provider: Provider | undefined): AuthorizationMethod[] {
   const methods: AuthorizationMethod[] = []
-  const oauth = provider?.auth.oauth
+  // GAIA: drop oauth when the catalog provider is openai (Sign in with ChatGPT requires
+  // an installation device ID that the fork does not supply; openai-codex still offers OAuth).
+  const oauth = provider?.id === 'openai' ? undefined : provider?.auth.oauth
   if (oauth !== undefined) methods.push({ id: 'oauth', label: oauth.loginLabel ?? oauth.name })
   const apiKey = provider?.auth.apiKey
   if (apiKey?.login !== undefined) methods.push({ id: 'api-key', label: apiKey.name })
@@ -153,7 +155,8 @@ export function registerPiAiFlows(
       const provider = sourceId === route || sourceProvider === undefined
         ? sourceProvider
         : { ...sourceProvider, id: route, name: label ?? route }
-      const [first, ...rest] = loginMethods(provider)
+      // GAIA: pass the catalog provider so aliases inherit the openai OAuth drop
+      const [first, ...rest] = loginMethods(sourceProvider)
       /* v8 ignore next 3 -- every id here names an installed provider and every
        installed provider ships a login, so no entry is skipped; the guard
        is what keeps that from becoming a crash if either stops being true. */

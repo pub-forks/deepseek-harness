@@ -77,14 +77,26 @@ describe('catalog-route model discovery', () => {
   it.each([
     { provider: 'openai', model: 'gpt-6-sol' },
     { provider: 'openai', model: 'gpt-6-luna' },
+    { provider: 'openai', model: 'gpt-6-astra' },
+    { provider: 'openai', model: 'gpt-6.1-sol' },
     { provider: 'openai-codex', model: 'gpt-6-sol' },
     { provider: 'openai-codex', model: 'gpt-6-luna' },
+    { provider: 'openai-codex', model: 'gpt-6-astra' },
+    { provider: 'openai-codex', model: 'gpt-6.1-sol' },
   ])('reports the supported maximum capacity for $provider/$model', async ({ provider, model }) => {
     const ctx = await harness()
 
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider })
 
     expect(models.find(candidate => candidate.id === model)?.contextWindow).toBe(872_000)
+  })
+
+  it('discovers 872_000 for gpt-6.1-sol on an account alias', async () => {
+    const ctx = await harness({ providers: { 'codex-02': { displayName: 'Codex-02', catalogProvider: 'openai-codex' } } })
+
+    const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'codex-02' })
+
+    expect(models.find(candidate => candidate.id === 'gpt-6.1-sol')?.contextWindow).toBe(872_000)
   })
 
   it('imports an OAuth account alias from the catalog it inherits', async () => {
