@@ -192,6 +192,30 @@ it('blocks background commands during dialogs and gives terminal input ownership
   fireEvent.blur(window)
 })
 
+it('tracks the last matching dialog after closing and opening dialogs with a cached list', () => {
+  const { input, registry } = mount()
+  const dispatch = vi.spyOn(registry, 'dispatch')
+  const first = document.createElement('div')
+  first.setAttribute('role', 'dialog')
+  first.setAttribute('aria-modal', 'true')
+  first.dataset.shortcutModal = 'shortcuts'
+  document.body.append(first)
+  press(input)
+  expect(dispatch).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ modal: 'shortcuts' }), expect.any(Function))
+
+  first.remove()
+  press(input)
+  expect(dispatch).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ modal: null }), expect.any(Function))
+
+  const second = document.createElement('div')
+  second.setAttribute('role', 'dialog')
+  second.setAttribute('aria-modal', 'true')
+  second.dataset.shortcutModal = 'other'
+  document.body.append(second)
+  press(input)
+  expect(dispatch).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ modal: 'other' }), expect.any(Function))
+})
+
 it('routes body focus and window-delivered input through the same application command', () => {
   const { input, run } = mount()
   input.remove()
