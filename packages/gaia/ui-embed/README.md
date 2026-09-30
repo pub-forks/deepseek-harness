@@ -31,6 +31,8 @@ Gaia Voice → Read aloud offers an off-by-default “Automatically read complet
 
 In embed mode, document preview actions use the resolved absolute file path to ask Gaia to open the file in its editor or reveal it in Gaia Explorer. This replaces the preview's native desktop actions only inside the embed; the full Harness shell keeps its normal behavior.
 
+Agent embeds route turn changes-review resources into a read-only Gaia editor tab using bounded session, event, turn and selected-file coordinates. Gaia reads the original summary and comparison hunks through its session-bound runtime proxy; it does not substitute the current Git diff. Full mode keeps the native Harness review sidebar.
+
 While focus is inside the embed, `Ctrl/Cmd+Alt+H` toggles Gaia's Harness drawer and `Ctrl/Cmd+Alt+M` toggles its maximize state. The embed captures only those exact, non-repeating chords and sends a closed drawer intent through the same-origin bridge; the full shell does not forward them.
 
 -----

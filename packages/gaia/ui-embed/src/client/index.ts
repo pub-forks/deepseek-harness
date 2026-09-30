@@ -30,6 +30,7 @@ import {
   sanitizeNotifyTitle,
 } from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
+import { resolveChangesReview } from './open-changes-review.ts'
 import { GaiaDocumentAction } from './document-action.ts'
 import { GaiaFileActions } from './file-actions.ts'
 import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
@@ -615,11 +616,15 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     subtree: true, childList: true, attributes: true, attributeFilter: ['data-conversation-session'],
   })
 
-  // A drawer tab hides DSH's right Sidebar, where file links, tool rows and
-  // deliverables open files; hand file opens to Gaia's editor instead. Other
-  // resource types still go to the (hidden) Sidebar.
+  // Agent tabs hand file and original turn-review opens to Gaia's editor.
+  // Other resource types retain their native Sidebar placement.
   ctx.inject(['sidebarRight'], (scope: Context) => {
     scope.effect(() => scope.sidebarRight.setOpenInterceptor((address, options) => {
+      const review = resolveChangesReview(address, options.params)
+      if (review !== undefined && review.sessionId === sessionId) {
+        postToParent({ source: 'gaia-dsh', v: 1, type: 'openChangesReview', ...review })
+        return true
+      }
       const path = resolveFileAddress(address, id => ctx.sessions.list.getSnapshot().byId[SessionId(id)]?.cwd)
       if (path === undefined) return false
       const line = lineParam(options.params)
