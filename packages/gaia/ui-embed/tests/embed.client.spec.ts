@@ -1283,6 +1283,31 @@ describe('ui-embed client plugin', () => {
       if (typeof dispose === 'function') await dispose()
     })
 
+    it('keeps one needsInput notification through question expiry and late reply, including reload', async () => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      const dispose = apply(mock.ctx)
+
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'question-call-1' })
+      expect(parentMessages.filter(m => m.type === 'notify' && m.event === 'needsInput')).toHaveLength(1)
+
+      // Expiry and queued or delivered replies retain the question's interaction key.
+      mock.setSessionStatus(SessionId('s-test-123'), false, { key: 'question-call-1' })
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'question-call-1' })
+      mock.setSessionStatus(SessionId('s-test-123'), true)
+      mock.setSessionStatus(SessionId('s-test-123'), false, { key: 'question-call-1' })
+      expect(parentMessages.filter(m => m.type === 'notify' && m.event === 'needsInput')).toHaveLength(1)
+
+      if (typeof dispose === 'function') await dispose()
+
+      // A notifier that starts with an already-pending question records its key as seen.
+      const reloaded = createMockContext()
+      reloaded.setSessionStatus(SessionId('s-test-123'), false, { key: 'question-call-1' })
+      const disposeReloaded = apply(reloaded.ctx)
+      expect(parentMessages.filter(m => m.type === 'notify' && m.event === 'needsInput')).toHaveLength(1)
+      if (typeof disposeReloaded === 'function') await disposeReloaded()
+    })
+
     it('emits notifications across sessions in full mode', async () => {
       setLocationSearch('?gaia=full')
       const mock = createMockContext()
