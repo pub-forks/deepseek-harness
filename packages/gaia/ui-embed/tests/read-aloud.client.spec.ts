@@ -12,7 +12,7 @@ const messageId = 'message-1' as ReadAloudActionProps['messageId']
 const sessionId = SessionId('session-1')
 const snapshot = { legacy: { nodes: [{ kind: 'assistant', seq: 3, time: 10, turn: 1, step: 1, messageId, blocks: [
   { kind: 'reasoning', text: 'private reasoning' }, { kind: 'text', text: '# Hello ' }, { kind: 'text', text: '**world**' },
-] }] } } as ChatSnapshot
+] }] } } as unknown as ChatSnapshot
 
 afterEach(() => { cleanup(); Object.defineProperty(window, 'parent', { value: window, configurable: true }) })
 
