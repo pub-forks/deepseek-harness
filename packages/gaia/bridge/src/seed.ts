@@ -13,6 +13,8 @@ import type { ConfigEditor } from '@deepseek-ai/dsh-config-editor'
 
 /** The pi-ai adapter's profile row id. */
 export const LLM_PI_AI_ROW = 'llm-pi-ai'
+/** The DeepSeek session-log adapter's profile row id. */
+export const SESSION_LOG_DEEPSEEK_ROW = 'session-log-deepseek'
 /** Route seeded when the user has configured no pi-ai providers yet. */
 export const SEEDED_PROVIDERS = { 'openai-codex': {} } as const
 
@@ -38,16 +40,39 @@ export async function seedDefaultRoute(editor: SeedConfigEditor): Promise<boolea
 }
 
 /**
+ * Disable session-log uploads unless the profile already declares a choice.
+ * @param editor - the config editor service.
+ * @returns whether a write happened.
+ */
+export async function seedSessionLogDisabled(editor: SeedConfigEditor): Promise<boolean> {
+  const row = editor.configuration().find(item => item.entry.options.id === SESSION_LOG_DEEPSEEK_ROW)
+  if (row === undefined) return false
+  if (Object.prototype.hasOwnProperty.call(row.override, 'enabled')) return false
+  await editor.edit(row.entry, (current) => {
+    if (Object.prototype.hasOwnProperty.call(current, 'enabled')) return current
+    return { ...current, enabled: false }
+  })
+  return true
+}
+
+/**
  * Run the seed once the Loader tree has settled; failures only warn.
  * @param ctx - the bridge plugin context.
  */
 export function scheduleSeed(ctx: Context): void {
   ctx.inject(['configEditor'], (seedCtx) => {
     const settled = seedCtx.get('loader')?.await() ?? Promise.resolve()
+    // Sequential: both seeds edit the same profile patch, so a concurrent
+    // read-modify-write could drop one of them. Each failure only warns.
     void settled
       .then(() => seedDefaultRoute(seedCtx.configEditor))
       .catch((error: unknown) => {
         seedCtx.logger('gaia-bridge').warn('could not seed the default model route: %s',
+          error instanceof Error ? error.message : String(error))
+      })
+      .then(() => seedSessionLogDisabled(seedCtx.configEditor))
+      .catch((error: unknown) => {
+        seedCtx.logger('gaia-bridge').warn('could not seed the session-log upload setting: %s',
           error instanceof Error ? error.message : String(error))
       })
   })

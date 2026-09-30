@@ -42,3 +42,18 @@
 | `packages/client/ui-settings-models/src/client/EditorFooter.tsx` | `GAIA:` add `data-dsh-button` attributes to Cancel and Submit buttons, and `data-dsh-cancel` to Cancel. | The embed client plugin requires stable data attributes for scoped editor footer button styling. | Upstream exposes stable button attributes or uses standard button primitives. |
 | `packages/client/ui-settings-models/src/client/ModelListEditor.tsx` | `GAIA:` add `data-dsh-button` attribute to the adoptPicked button in candidate modal footer. | The embed client plugin requires a stable data attribute for primary button styling in the candidate fetch modal. | Upstream exposes stable button attributes or uses standard button primitives. |
 
+## Ported upstream changes
+
+These changes were cherry-picked with `-x`; a later full upstream merge should treat them as already present.
+
+| Upstream PR | Upstream SHA | Scope | Left out |
+| --- | --- | --- | --- |
+| #5214 | `783569bf73` | Stale DeepSeek file mappings | — |
+| #4595 | `67f648cf0c` | Failed-tool recovery | — |
+| #4816 | `1ca4e2af33` | WebKit session JSON | — |
+| #5357 | `3366973eea` | Settings composition | — |
+| #5409 | `6bb3d8becf` | Bounded Client inspect | — |
+| #5178 | `3e973e689a` | Timed questions and late answers | Six conflicting docs regenerated or hand-applied |
+| #5099 | `59fcf274d0` | Plan-review navigation | Gaia sidebar open hook kept |
+| #5445 | `454b87e59a` | pi-ai 0.87.1 | Gaia's GPT-6 model-adding hunks dropped, replaced by 872000 contextWindow hunks |
+| — | `6a0f36cdea` | Shortcuts `dom.ts`, ConversationMainPanel slots, scoped-slots memo | Whale animation parts |
