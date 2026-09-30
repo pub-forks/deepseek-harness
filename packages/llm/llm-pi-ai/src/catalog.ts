@@ -14,7 +14,6 @@
 
 import { builtinProviders, getBuiltinModels, getBuiltinProviders } from '@earendil-works/pi-ai/providers/all'
 import type { BuiltinProvider } from '@earendil-works/pi-ai/providers/all'
-import { applyGaiaCapacities } from './gaia-capacities.ts'
 import type {
   AnthropicMessagesCompat,
   Api,
@@ -202,9 +201,7 @@ export function catalogProviderIds(): readonly string[] {
 export function catalogModels(provider: string): Map<string, Model<Api>> {
   if (!catalogProviders().has(provider)) return new Map()
   const models = getBuiltinModels(provider as BuiltinProvider) as Model<Api>[]
-  // GAIA: apply capacity table overrides (shallow copy; pi-ai built-in objects are never mutated)
-  const patched = applyGaiaCapacities(provider, models)
-  return new Map(patched.map(model => [model.id, model]))
+  return new Map(models.map(model => [model.id, model]))
 }
 
 /**

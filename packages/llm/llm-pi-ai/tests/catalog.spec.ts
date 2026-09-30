@@ -12,8 +12,6 @@ import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-s
 import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript'
 import type { Api, Model, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai'
 import { resolveProfiles } from '../src/config.ts'
-import { catalogModels, resolveRouteModels } from '../src/catalog.ts'
-import { applyGaiaCapacities } from '../src/gaia-capacities.ts'
 import { createModels, createProvider, getSupportedThinkingLevels } from '../src/models.ts'
 import { buildProvider, supportedProtocols } from '../src/provider.ts'
 import { assemble } from './assemble.ts'
@@ -1252,87 +1250,5 @@ describe('configurable-provider directory', () => {
       settingsPath: ['providers', 'openai-codex'],
       declared: false,
     })
-  })
-})
-
-describe('Gaia GPT-6 capacity table', () => {
-  it('runtime-materialized route model carries 872_000', () => {
-    const codexProfiles = resolveProfiles({ 'openai-codex': {} })
-    const codexProvider = codexProfiles.get('openai-codex')?.piProvider
-    expect(codexProvider).toBeDefined()
-    const codexModels = createModels(memoryAuth())
-    codexModels.setProvider(codexProvider!)
-    expect(codexModels.getModel('openai-codex', 'gpt-6.1-sol')?.contextWindow).toBe(872_000)
-
-    const openaiProfiles = resolveProfiles({ openai: {} })
-    const openaiProvider = openaiProfiles.get('openai')?.piProvider
-    expect(openaiProvider).toBeDefined()
-    const openaiModels = createModels(memoryAuth())
-    openaiModels.setProvider(openaiProvider!)
-    expect(openaiModels.getModel('openai', 'gpt-6.1-sol')?.contextWindow).toBe(872_000)
-  })
-
-  it('does not mutate pi-ai built-in model objects', () => {
-    const catalog = catalogModels('openai-codex')
-    expect(catalog.get('gpt-6-sol')?.contextWindow).toBe(872_000)
-    const builtin = getBuiltinModels('openai-codex').find(m => m.id === 'gpt-6-sol')
-    expect(builtin?.contextWindow).toBe(272_000)
-  })
-
-  const defaultRouteCaps = {
-    defaultContextWindow: 262_144,
-    defaultMaxTokens: 32_768,
-    defaultInput: ['text' as const],
-  }
-
-  it('explicit profile models[].contextWindow wins over the table on a catalog route', () => {
-    const catalog = resolveRouteModels({
-      ...defaultRouteCaps,
-      provider: 'openai-codex',
-      models: [{ id: 'gpt-6.1-sol', contextWindow: 500_000 }],
-    })
-    expect(catalog.models.find(m => m.id === 'gpt-6.1-sol')?.contextWindow).toBe(500_000)
-  })
-
-  it('explicit profile models[].contextWindow wins over the table on an alias', () => {
-    const catalog = resolveRouteModels({
-      ...defaultRouteCaps,
-      provider: 'codex-alias',
-      catalogProvider: 'openai-codex',
-      models: [{ id: 'gpt-6.1-sol', contextWindow: 500_000 }],
-    })
-    expect(catalog.models.find(m => m.id === 'gpt-6.1-sol')?.contextWindow).toBe(500_000)
-  })
-
-  it('modelOverrides wins over the table on a catalog route', () => {
-    const catalog = resolveRouteModels({
-      ...defaultRouteCaps,
-      provider: 'openai-codex',
-      modelOverrides: { 'gpt-6.1-sol': { contextWindow: 600_000 } },
-    })
-    expect(catalog.models.find(m => m.id === 'gpt-6.1-sol')?.contextWindow).toBe(600_000)
-  })
-
-  it('modelOverrides wins over the table on an alias', () => {
-    const catalog = resolveRouteModels({
-      ...defaultRouteCaps,
-      provider: 'codex-alias',
-      catalogProvider: 'openai-codex',
-      modelOverrides: { 'gpt-6.1-sol': { contextWindow: 600_000 } },
-    })
-    expect(catalog.models.find(m => m.id === 'gpt-6.1-sol')?.contextWindow).toBe(600_000)
-  })
-
-  it('ignores table ids absent from the catalog in apply helper', () => {
-    const sample = getBuiltinModels('openai')[0]!
-    const mockModel: Model<Api> = {
-      ...sample,
-      id: 'custom-model',
-      name: 'Custom',
-      contextWindow: 128_000,
-    }
-    const applied = applyGaiaCapacities('openai', [mockModel])
-    expect(applied).toEqual([mockModel])
-    expect(applied).toHaveLength(1)
   })
 })
