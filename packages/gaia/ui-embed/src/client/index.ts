@@ -43,6 +43,8 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { GaiaReadAloudActions, type ReadAloudInjected } from './read-aloud-actions.tsx'
 import { en as readAloudLabels } from './read-aloud-locales.ts'
 import type { GaiaReadAloudState } from './bridge.ts'
+import { GaiaAutoReadLifecycle, type AutoReadInjected } from './auto-read-lifecycle.tsx'
+import { observeCompletedAnswers } from './auto-read-aloud.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -251,7 +253,20 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const disposeLocaleOverrides = registerGaiaLocaleOverrides(ctx.locale)
   ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
-  const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, status: 'idle', sessionId: null, messageId: null })
+  const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, autoRead: false, status: 'idle', sessionId: null, messageId: null })
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay', id: 'gaia-auto-read', order: 20,
+    inject: (sessionId): AutoReadInjected => ({
+      observe: () => {
+        const binding = ctx.sessions.binding(sessionId)
+        if (!binding) throw new Error('Gaia auto-read requires a live session binding')
+        return observeCompletedAnswers(binding.eventSource, sessionId, () => {
+          const player = readAloud.getSnapshot()
+          return player.enabled && player.autoRead === true
+        })
+      },
+    }),
+  }, GaiaAutoReadLifecycle))
   ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions', id: 'gaia-read-aloud', order: 20, locale: 'gaia.readAloud',
     inject: (): ReadAloudInjected => ({ hooks: { readAloud } }),
@@ -371,8 +386,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
       }
     } else if (event.data.type === 'readAloudState') {
-      const { enabled, status, sessionId, messageId } = event.data
-      readAloud.set({ enabled, status, sessionId, messageId })
+      const { enabled, autoRead, status, sessionId, messageId } = event.data
+      readAloud.set({ enabled, autoRead: autoRead === true, status, sessionId, messageId })
     } else if (event.data.type === 'openSettings') {
       openSettings()
     }

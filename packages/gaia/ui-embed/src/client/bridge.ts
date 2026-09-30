@@ -17,6 +17,8 @@ export const MAX_CHAT_SPEECH_BYTES = 200_000
 /** Shared Gaia player state received by chat actions. */
 export interface GaiaReadAloudState {
   enabled: boolean
+  /** Persisted opt-in; omitted by older Gaia hosts means disabled. */
+  autoRead?: boolean
   status: 'idle' | 'preparing' | 'loading' | 'speaking' | 'paused'
   sessionId: string | null
   messageId: string | null
@@ -24,8 +26,9 @@ export interface GaiaReadAloudState {
 
 /** Closed requests from a Gaia iframe to its same-origin parent. */
 export type GaiaOutgoingMessage =
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud'; sessionId: string; messageId: string; text: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud' | 'autoReadAloud'; sessionId: string; messageId: string; text: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'stopReadAloud'; sessionId: string; messageId: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'cancelReadAloudSession'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloudSettings' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'ready' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'status'; connected: boolean; reconnecting: boolean }
@@ -135,13 +138,14 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
   switch (msg.type) {
     case 'readAloudState':
       return typeof msg.enabled === 'boolean'
+        && (msg.autoRead === undefined || typeof msg.autoRead === 'boolean')
         && typeof msg.status === 'string'
         && ['idle', 'preparing', 'loading', 'speaking', 'paused'].includes(msg.status)
         && (msg.sessionId === null || (typeof msg.sessionId === 'string' && isValidSessionId(msg.sessionId)))
         && (msg.messageId === null || (typeof msg.messageId === 'string' && isValidSessionId(msg.messageId)))
         && ((msg.sessionId === null) === (msg.messageId === null))
         && (msg.status === 'idle' ? msg.messageId === null : msg.messageId !== null)
-        && Object.keys(msg).every(key => ['source', 'v', 'type', 'enabled', 'status', 'sessionId', 'messageId'].includes(key))
+        && Object.keys(msg).every(key => ['source', 'v', 'type', 'enabled', 'autoRead', 'status', 'sessionId', 'messageId'].includes(key))
     case 'theme': {
       if (msg.mode !== 'light' && msg.mode !== 'dark') return false
       if (msg.palette === undefined) return true
