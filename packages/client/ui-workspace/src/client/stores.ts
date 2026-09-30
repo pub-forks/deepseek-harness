@@ -26,6 +26,8 @@ type WorkspaceViewState = {
   orderBy: SessionOrderBy
   /** Browser-only Workspace group order; absent in older v5 snapshots means Manual. */
   workspaceOrderBy?: WorkspaceOrderBy
+  /** GAIA: opt-in project filter; older snapshots keep the full inventory. */
+  openSessionsOnly?: boolean
   /** Explicit group expansion keyed by Workspace identity, including descendants in tree mode. */
   groupExpansion: Record<string, boolean>
   /** Saved manual order per Workspace group plus the browser-local flat-list account. */
@@ -51,6 +53,7 @@ type WorkspaceViewActions = {
     mode: SessionOrderBy,
     initialOrders: Readonly<Record<string, readonly string[]>>,
   ) => void
+  setOpenSessionsOnly: (draft: WorkspaceViewState, enabled: boolean) => void
   setWorkspaceOrderBy: (draft: WorkspaceViewState, mode: WorkspaceOrderBy) => void
   setGroupExpanded: (draft: WorkspaceViewState, key: string, expanded: boolean) => void
   retainAccountKeys: (draft: WorkspaceViewState, workspaceKeys: readonly string[]) => void
@@ -90,6 +93,7 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       groupBy: 'workspace',
       orderBy: 'updated',
       workspaceOrderBy: 'manual',
+      openSessionsOnly: false,
       groupExpansion: {},
       sessionOrderByAccount: {},
       archivedFilter: 'default',
@@ -104,6 +108,8 @@ export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState
       },
       // GAIA: workspace ordering is a persisted client projection and never calls the Host reorder command.
       setWorkspaceOrderBy: (d, mode: WorkspaceOrderBy) => { d.workspaceOrderBy = mode },
+      // GAIA: only browser viewing state is written, never project/session data.
+      setOpenSessionsOnly: (d, enabled: boolean) => { d.openSessionsOnly = enabled },
       setGroupExpanded: (d, key: string, expanded: boolean) => { d.groupExpansion[key] = expanded },
       retainAccountKeys: (d, workspaceKeys: readonly string[]) => {
         const retained = new Set(workspaceKeys)

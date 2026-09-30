@@ -34,7 +34,7 @@ import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { ArchivedFilter, GroupNode, SessionNode, SessionOrderBy, SessionRowState } from '../tree.ts'
 import {
   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
-  orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds, UNGROUPED_KEY,
+  groupsWithOpenSessions, orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds, UNGROUPED_KEY,
 } from '../tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
 import { AnimatedRows } from './AnimatedRows.tsx'
@@ -104,13 +104,15 @@ function useNativeDragAcceptance(active: boolean): void {
 
 /** Grouping, ordering, and archived-filter menu; own open state so it resets with the wide chrome. */
 function ViewOptionsMenu({
-  groupBy, orderBy, workspaceOrderBy, archivedFilter,
-  onGroupPick, onOrderPick, onWorkspaceOrderPick, onArchivedFilterPick, t,
+  groupBy, orderBy, workspaceOrderBy, archivedFilter, openSessionsOnly,
+  onGroupPick, onOrderPick, onWorkspaceOrderPick, onArchivedFilterPick, onOpenSessionsOnlyPick, t,
 }: {
   groupBy: SessionGroupBy
   orderBy: SessionOrderBy
   workspaceOrderBy: WorkspaceOrderBy
   archivedFilter: ArchivedFilter
+  openSessionsOnly: boolean
+  onOpenSessionsOnlyPick: (enabled: boolean) => void
   onGroupPick: (mode: SessionGroupBy) => void
   onOrderPick: (mode: SessionOrderBy) => void
   onWorkspaceOrderPick: (mode: WorkspaceOrderBy) => void
@@ -135,6 +137,9 @@ function ViewOptionsMenu({
         { type: 'label' as const, id: 'workspace-order', text: t('workspaceOrder.label') },
         { id: 'workspace-manual', label: t('workspaceOrder.manual'), icon: <IconChevronsUpDownOutlineRegular /> },
         { id: 'workspace-name', label: t('workspaceOrder.name'), icon: <IconFolderCloseRegular /> },
+        // GAIA: opt-in Workspace eligibility is independent of Session archive visibility.
+        { type: 'separator' as const, id: 'workspace-filter-separator' },
+        { id: 'open-sessions-only', label: t('workspaceFilter.openSessionsOnly'), icon: <IconFolderCloseRegular /> },
         { type: 'separator' as const, id: 'archived-filter-separator' },
         { type: 'label' as const, id: 'filter-by', text: t('filterBy.label') },
         { id: 'hide-archived', label: t('viewOptions.hideArchived'), icon: <IconArchiveOffOutlineRegular /> },
@@ -142,6 +147,7 @@ function ViewOptionsMenu({
         { id: 'only-archived', label: t('viewOptions.onlyArchived'), icon: <IconArchiveCheckOutlineRegular /> },
       ]}
       selectedIds={[
+        ...(openSessionsOnly ? ['open-sessions-only'] : []),
         groupBy,
         orderBy,
         workspaceOrderBy === 'manual' ? 'workspace-manual' : 'workspace-name',
@@ -152,6 +158,7 @@ function ViewOptionsMenu({
         else if (id === 'manual' || id === 'updated') onOrderPick(id)
         else if (id === 'workspace-manual') onWorkspaceOrderPick('manual')
         else if (id === 'workspace-name') onWorkspaceOrderPick('name')
+        else if (id === 'open-sessions-only') onOpenSessionsOnlyPick(!openSessionsOnly)
         else if (id === 'hide-archived') onArchivedFilterPick('default')
         else if (id === 'show-archived') onArchivedFilterPick('show')
         else if (id === 'only-archived') onArchivedFilterPick('only')
@@ -253,6 +260,8 @@ type SessionTreeProps = Pick<
   nestWorkspaces: boolean
   /** Name order is a view projection and disables Host-backed Workspace dragging. */
   workspaceOrderBy: WorkspaceOrderBy
+  /** GAIA: retain only projects with open Sessions and their tree ancestors. */
+  openSessionsOnly: boolean
   /** Explicit persisted group expansion, including descendants in tree mode. */
   groupExpansion: Readonly<Record<string, boolean>>
   /** Persist one Workspace group's expansion. */
@@ -299,7 +308,7 @@ function SessionTree({
   onRenameRequest, onDeleteRequest, onSessionRenameRequest,
   renderSlot,
   insertWorkspaceBefore,
-  nestWorkspaces, workspaceOrderBy, groupExpansion, setGroupExpanded,
+  nestWorkspaces, workspaceOrderBy, openSessionsOnly, groupExpansion, setGroupExpanded,
   setSessionOrder, home, t,
   revealSessionId, onSessionRevealed, shortcuts,
 }: SessionTreeProps) {
@@ -347,12 +356,19 @@ function SessionTree({
     return [...workspaces.map(workspace => workspace.workspaceId), UNGROUPED_KEY]
       .filter(key => groupExpansion[key] ?? ancestorKeys.has(key))
   }, [groupExpansion, parents, workspaces])
-  const groups = useMemo(
+  const projectedGroups = useMemo(
     () => deriveGroups(list, workspaces, rowState, statuses, {
       expandedGroups,
       ungroupedOrder: ungroupedSessionIds,
     }),
     [list, workspaces, rowState, statuses, expandedGroups, ungroupedSessionIds],
+  )
+  // GAIA: retain complete membership/order for persistence and apply eligibility only to rendered groups.
+  const groups = useMemo(
+    () => openSessionsOnly
+      ? groupsWithOpenSessions(projectedGroups, list, workspaces, rowState.archivedSessionIds, parents)
+      : projectedGroups,
+    [openSessionsOnly, projectedGroups, list, workspaces, rowState.archivedSessionIds, parents],
   )
   useEffect(() => {
     for (let key = revealGroup; key !== undefined; key = parents.get(key)) {
@@ -908,6 +924,8 @@ export function WorkspaceBrowser({
   const orderBy = useStore(s => s.orderBy)
   // Older persisted v5 snapshots predate this preference and retain Host order.
   const workspaceOrderBy = useStore(s => s.workspaceOrderBy ?? 'manual')
+  // GAIA: older browser preferences preserve the full Workspace inventory.
+  const openSessionsOnly = useStore(s => s.openSessionsOnly ?? false)
   // Persisted view blobs written before the archived filter existed rehydrate
   // without the field; they read as the default hide-archived view.
   const archivedFilter = useStore(s => s.archivedFilter ?? 'default')
@@ -1296,6 +1314,8 @@ export function WorkspaceBrowser({
               orderBy={orderBy}
               workspaceOrderBy={workspaceOrderBy}
               archivedFilter={archivedFilter}
+              openSessionsOnly={openSessionsOnly}
+              onOpenSessionsOnlyPick={actions.setOpenSessionsOnly}
               onGroupPick={actions.setGroupBy}
               onOrderPick={(mode) => { actions.setOrderBy(mode, activeSessionOrders) }}
               onWorkspaceOrderPick={actions.setWorkspaceOrderBy}
@@ -1413,7 +1433,8 @@ export function WorkspaceBrowser({
                 workspaceReady={workspaceReady}
                 nestWorkspaces={groupBy === 'workspace-tree'}
                 workspaceOrderBy={workspaceOrderBy}
-                animationResetKey={`${groupBy}/${orderBy}/${workspaceOrderBy}/${archivedFilter}`}
+                openSessionsOnly={openSessionsOnly}
+                animationResetKey={`${groupBy}/${orderBy}/${workspaceOrderBy}/${archivedFilter}/${openSessionsOnly}`}
                 groupExpansion={groupExpansion}
                 setGroupExpanded={actions.setGroupExpanded}
                 setSessionOrder={saveSessionOrder}

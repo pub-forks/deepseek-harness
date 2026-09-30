@@ -101,6 +101,40 @@ export function orderWorkspacesByName(workspaces: readonly WorkspaceView[]): Wor
   )
 }
 
+/**
+ * Keep Workspace groups with open, non-archived browser Sessions, including
+ * idle Sessions and the selected New Session. Retain rendered ancestors in
+ * tree mode and leave Ungrouped and each group's archive-filtered rows intact.
+ * @param groups - groups already projected with the selected archive filter.
+ * @param list - current Session catalog; ownership and running state do not affect eligibility.
+ * @param workspaces - complete Workspace membership in the selected display order.
+ * @param archivedSessionIds - authoritative registry-global archive membership.
+ * @param parents - registered ancestors in tree mode; empty in sibling mode.
+ * @returns eligible groups in their original order without changing any input.
+ */
+// GAIA: filter after grouping so hidden projects never leak their Sessions into Ungrouped.
+export function groupsWithOpenSessions(
+  groups: readonly GroupNode[],
+  list: SessionListState,
+  workspaces: readonly WorkspaceView[],
+  archivedSessionIds: readonly SessionId[],
+  parents: ReadonlyMap<string, WorkspaceId | undefined>,
+): GroupNode[] {
+  const open = new Set(visibleSessionIds(list, archivedSessionIds, 'default'))
+  const eligible = new Set(workspaces
+    .filter(workspace => workspace.sessionIds.some(id => open.has(id)))
+    .map(workspace => workspace.workspaceId as string))
+  const retained = new Set<string>()
+  for (const group of groups) {
+    if (!eligible.has(group.key)) continue
+    retained.add(group.key)
+    for (let parent = parents.get(group.key); parent !== undefined; parent = parents.get(parent)) {
+      retained.add(parent)
+    }
+  }
+  return groups.filter(group => group.workspaceId === undefined || retained.has(group.key))
+}
+
 /** One flat search row combining list metadata with an optional content match. */
 export interface SearchResultNode {
   id: SessionId

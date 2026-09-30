@@ -9,7 +9,8 @@ import type { SessionProjectionSnapshot } from '@deepseek-ai/dsh-api-session-con
 import {
   type ArchivedFilter,
   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
-  orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds, visibleSessionIds, workspaceLabel, UNGROUPED_KEY,
+  groupsWithOpenSessions, orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds,
+  visibleSessionIds, workspaceLabel, UNGROUPED_KEY,
 } from '../src/client/tree.ts'
 import { createWorkspaceViewStore } from '../src/client/stores.ts'
 
@@ -900,5 +901,61 @@ describe('parent folder membership', () => {
     ['/Git/app', ['/git'], undefined],
   ])('groups %s under its nearest registered ancestor', (path, parents, expected) => {
     expect(owningParentFolder(path, parents)).toBe(expected)
+  })
+})
+
+// GAIA: project eligibility never depends on generation or Client retention.
+describe('Projects with open Sessions projection', () => {
+  it('keeps idle and generating projects in input order, excluding archives, missing rows and hidden placeholders', () => {
+    const sessions = list(
+      summary('idle', 1), { ...summary('running', 2), running: true },
+      { ...summary('archived', 3), running: true },
+      { ...summary('child', 4), origin: 'subagent' },
+      { ...summary('blank', 5), blank: true }, summary('loose', 6),
+    )
+    const workspaces = [
+      workspace('idle-project', ['idle']), workspace('empty', []), workspace('archive-project', ['archived']),
+      workspace('running-project', ['running']), workspace('missing', ['unknown']),
+      workspace('subagent-project', ['child']), workspace('blank-project', ['blank']),
+    ]
+    const state = rowState({ archived: ['archived'], archivedFilter: 'show' })
+    const groups = deriveGroups(sessions, workspaces, state, noAttention, view())
+    const before = JSON.stringify({ sessions, workspaces, groups })
+    const filtered = groupsWithOpenSessions(groups, sessions, workspaces, state.archivedSessionIds, new Map())
+    expect(filtered.map(group => group.key)).toEqual(['idle-project', 'running-project', UNGROUPED_KEY])
+    expect(filtered[0]).toBe(groups[0])
+    expect(JSON.stringify({ sessions, workspaces, groups })).toBe(before)
+  })
+
+  it('counts only the selected New Session placeholder', () => {
+    const sessions = withMain(list({ ...summary('new', 1), blank: true }), sid('new'))
+    const workspaces = [workspace('current', ['new'])]
+    const groups = deriveGroups(sessions, workspaces, rowState(), noAttention, view())
+    expect(groupsWithOpenSessions(groups, sessions, workspaces, [], new Map()).map(group => group.key))
+      .toEqual(['current'])
+  })
+
+  it('retains every rendered ancestor without retaining empty siblings or changing group rows', () => {
+    const sessions = list(summary('idle', 1))
+    const workspaces = [workspace('root', []), workspace('middle', []), workspace('leaf', ['idle']), workspace('empty', [])]
+    const groups = deriveGroups(sessions, workspaces, rowState(), noAttention, view(['leaf']))
+    const parents = new Map([['middle', wid('root')], ['leaf', wid('middle')], ['empty', wid('root')]])
+    const filtered = groupsWithOpenSessions(groups, sessions, workspaces, [], parents)
+    expect(filtered.map(group => group.key)).toEqual(['root', 'middle', 'leaf'])
+    expect(filtered).toEqual(groups.slice(0, 3))
+    expect(filtered[2]?.sessions.map(row => row.id)).toEqual([sid('idle')])
+  })
+
+  it.each(['default', 'show', 'only'] as const)('preserves %s archive projection inside eligible projects', (archivedFilter) => {
+    const sessions = list(summary('idle', 1), summary('old', 2), summary('closed', 3))
+    const workspaces = [workspace('mixed', ['old', 'idle']), workspace('closed-only', ['closed'])]
+    const state = rowState({ archived: ['old', 'closed'], archivedFilter })
+    const groups = deriveGroups(sessions, workspaces, state, noAttention, view(['mixed', 'closed-only']))
+    const filtered = groupsWithOpenSessions(groups, sessions, workspaces, state.archivedSessionIds, new Map())
+    expect(filtered.map(group => group.key)).toEqual(['mixed'])
+    expect(filtered[0]).toBe(groups[0])
+    expect(filtered[0]?.sessions.map(row => row.id)).toEqual(
+      (archivedFilter === 'default' ? ['idle'] : archivedFilter === 'only' ? ['old'] : ['old', 'idle']).map(sid),
+    )
   })
 })

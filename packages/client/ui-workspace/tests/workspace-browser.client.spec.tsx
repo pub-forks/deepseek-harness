@@ -459,10 +459,10 @@ describe('WorkspaceBrowser', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
     expect(screen.getByText('分组方式')).toBeTruthy() // the menu heading label
-    expect(screen.getAllByRole('separator')).toHaveLength(3)
+    expect(screen.getAllByRole('separator')).toHaveLength(4)
     expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([
       '按工作区', '按工作区树', '单列表', '手动排序', '最近更新', '手动工作区顺序', '按名称',
-      '隐藏已归档', '全部对话（显示已归档）', '仅显示已归档',
+      '仅显示有未归档会话的工作区', '隐藏已归档', '全部对话（显示已归档）', '仅显示已归档',
     ])
     expect(screen.getByRole('menuitem', { name: '按工作区' }).querySelector('svg')).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: '手动排序' }).querySelector('svg')).toBeTruthy()
@@ -2612,5 +2612,137 @@ describe('Workspace tree grouping', () => {
     fireEvent.dragEnd(alpha)
     expect(b.props.insertWorkspaceBefore).toHaveBeenCalledOnce()
     expect(b.props.insertWorkspaceBefore).toHaveBeenCalledWith(wid('alpha'), wid('gamma'))
+  })
+})
+
+// GAIA: view, live projection, and local preference persistence regressions.
+describe('Projects with open Sessions view filter', () => {
+  const choose = (name: string) => {
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    fireEvent.click(screen.getByRole('menuitem', { name }))
+  }
+  const toggle = () => { choose('仅显示有未归档会话的工作区') }
+
+  it('defaults to all projects, toggles idle projects, and restores the unchanged complete order', () => {
+    const sessions = sessionState([summary('idle', 1), summary('old', 2), summary('live', 3, { running: true })])
+    const workspaces = workspaceState([
+      workspace('z-idle', ['old', 'idle']), workspace('empty', []), workspace('a-live', ['live']),
+      workspace('archive-only', ['old']),
+    ], [sid('old')])
+    const b = mount({ useSessions: hook(sessions), useWorkspaces: hook(workspaces) })
+    const projectNames = () => screen.getAllByRole('treeitem').filter(row => row.hasAttribute('aria-expanded'))
+      .map(row => row.querySelector('[class*="groupLabel"]')?.textContent ?? row.textContent)
+    expect(b.store.getSnapshot().openSessionsOnly).toBe(false)
+    expect(screen.getByText('empty')).toBeTruthy()
+    const before = JSON.stringify({ sessions, workspaces })
+    const orders = b.store.getSnapshot().sessionOrderByAccount
+    toggle()
+    expect(screen.queryByText('empty')).toBeNull()
+    expect(screen.queryByText('archive-only')).toBeNull()
+    expect(projectNames().map(name => name?.replace(/\d+$/, ''))).toEqual(['z-idle', 'a-live'])
+    choose('按名称')
+    expect(projectNames().map(name => name?.replace(/\d+$/, ''))).toEqual(['a-live', 'z-idle'])
+    choose('手动工作区顺序')
+    fireEvent.click(screen.getByText('z-idle'))
+    expect(screen.getByText('idle')).toBeTruthy()
+    choose('全部对话（显示已归档）')
+    expect(screen.getByText('old')).toBeTruthy()
+    choose('仅显示已归档')
+    expect(screen.getByText('old')).toBeTruthy()
+    expect(screen.queryByText('idle')).toBeNull()
+    expect(screen.queryByText('a-live')).toBeNull()
+    expect(screen.queryByText('archive-only')).toBeNull()
+    toggle()
+    expect(screen.getByText('archive-only')).toBeTruthy()
+    choose('隐藏已归档')
+    expect(screen.getByText('empty')).toBeTruthy()
+    expect(b.store.getSnapshot().sessionOrderByAccount).toEqual(orders)
+    expect(JSON.stringify({ sessions, workspaces })).toBe(before)
+    expect(b.props.insertWorkspaceBefore).not.toHaveBeenCalled()
+    expect(b.props.deleteWorkspace).not.toHaveBeenCalled()
+    expect(b.props.unarchiveSession).not.toHaveBeenCalled()
+  })
+
+  it('retains nested empty ancestors and saved collapse while hiding empty siblings', () => {
+    createWorkspaceViewStore().create().actions.setGroupBy('workspace-tree')
+    const b = mount({
+      useSessions: hook(sessionState([summary('idle', 1)])),
+      useWorkspaces: hook(workspaceState([
+        { ...workspace('root', [], 'Projects'), path: '/projects' },
+        workspace('middle', [], 'Middle'),
+        { ...workspace('leaf', ['idle'], 'Leaf'), path: '/projects/middle/leaf' },
+        workspace('empty', []),
+      ])),
+    })
+    toggle()
+    const root = screen.getByText('Projects').closest<HTMLElement>('[class*="groupSection"]')!
+    expect(within(root).getByText('Middle')).toBeTruthy()
+    expect(within(root).getByText('Leaf')).toBeTruthy()
+    expect(screen.queryByText('empty')).toBeNull()
+    fireEvent.click(screen.getByText('Middle'))
+    toggle()
+    toggle()
+    expect(screen.queryByText('Leaf')).toBeNull()
+    expect(b.store.getSnapshot().groupExpansion.middle).toBe(false)
+    fireEvent.click(screen.getByText('Middle'))
+    expect(within(root).getByText('Leaf')).toBeTruthy()
+  })
+
+  it('updates eligibility on archive and catalog changes, independently of running state', () => {
+    const workspaces = [workspace('project', ['idle'])]
+    const b = mount({ useWorkspaces: hook(workspaceState(workspaces)) })
+    toggle()
+    expect(screen.queryByText('project')).toBeNull()
+    const sessions = sessionState([summary('idle', 1)])
+    b.view.rerender(<WorkspaceBrowser {...b.props} useSessions={hook(sessions)} />)
+    expect(screen.getByText('project')).toBeTruthy()
+    b.view.rerender(<WorkspaceBrowser {...b.props} useSessions={hook(sessions)}
+      useWorkspaces={hook(workspaceState(workspaces, [sid('idle')]))} />)
+    expect(screen.queryByText('project')).toBeNull()
+    b.view.rerender(<WorkspaceBrowser {...b.props} useSessions={hook(sessions)} />)
+    expect(screen.getByText('project')).toBeTruthy()
+  })
+
+  it('persists the opt-in across reloads and leaves single-list and search views unchanged', () => {
+    const seats = {
+      useSessions: hook(sessionState([summary('archived-hit', 1), summary('idle-hit', 2)])),
+      useWorkspaces: hook(workspaceState([workspace('closed', ['archived-hit']), workspace('open', ['idle-hit']), workspace('empty', [])], [sid('archived-hit')])),
+    }
+    mount(seats)
+    toggle()
+    choose('全部对话（显示已归档）')
+    cleanup()
+    const restored = mount(seats)
+    expect(restored.store.getSnapshot().openSessionsOnly).toBe(true)
+    expect(screen.queryByText('closed')).toBeNull()
+    choose('单列表')
+    expect(screen.getByText('archived-hit')).toBeTruthy()
+    choose('按工作区')
+    fireEvent.click(screen.getByRole('button', { name: '搜索会话' }))
+    fireEvent.change(screen.getByPlaceholderText('搜索会话名称'), { target: { value: 'hit' } })
+    expect(screen.getByText('archived-hit')).toBeTruthy()
+    expect(screen.getByText('idle-hit')).toBeTruthy()
+  })
+
+  it('reads older v5 preferences as unfiltered and preserves unrelated saved state when toggled', () => {
+    const previous = {
+      groupBy: 'workspace', orderBy: 'manual', workspaceOrderBy: 'name', archivedFilter: 'show',
+      groupExpansion: { empty: false }, sessionOrderByAccount: { empty: ['missing'] },
+    }
+    localStorage.setItem('dsh.workspace.view.v5', JSON.stringify(previous))
+    const b = mount({ useWorkspaces: hook(workspaceState([workspace('empty', ['missing'])])) })
+    expect(screen.getByText('empty')).toBeTruthy()
+    expect(b.store.getSnapshot().openSessionsOnly ?? false).toBe(false)
+    const before = b.store.getSnapshot()
+    toggle()
+    expect(b.store.getSnapshot()).toEqual({ ...before, openSessionsOnly: true })
+    const saved = JSON.parse(localStorage.getItem('dsh.workspace.view.v5')!) as Record<string, unknown>
+    expect(saved).toEqual(b.store.getSnapshot())
+    cleanup()
+    const restored = mount({ useWorkspaces: hook(workspaceState([workspace('empty', ['missing'])])) })
+    expect(restored.store.getSnapshot().openSessionsOnly).toBe(true)
+    expect(screen.queryByText('empty')).toBeNull()
+    toggle()
+    expect(screen.getByText('empty')).toBeTruthy()
   })
 })

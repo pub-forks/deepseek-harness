@@ -28,6 +28,8 @@ export const zh = {
   'workspaceOrder.label': '工作区顺序',
   'workspaceOrder.manual': '手动工作区顺序',
   'workspaceOrder.name': '按名称',
+  // GAIA: Workspace eligibility toggle, independent of the archived Session filter.
+  'workspaceFilter.openSessionsOnly': '仅显示有未归档会话的工作区',
   'filterBy.label': '筛选会话',
   'viewOptions.hideArchived': '隐藏已归档',
   'viewOptions.showArchived': '全部对话（显示已归档）',
@@ -149,6 +151,8 @@ export const en = {
   'workspaceOrder.label': 'Workspace order',
   'workspaceOrder.manual': 'Manual workspace order',
   'workspaceOrder.name': 'Workspace name',
+  // GAIA: Workspace eligibility toggle, independent of the archived Session filter.
+  'workspaceFilter.openSessionsOnly': 'Projects with open sessions only',
   'filterBy.label': 'Filter sessions',
   'viewOptions.hideArchived': 'Hide archived',
   'viewOptions.showArchived': 'All conversations (show archived)',
