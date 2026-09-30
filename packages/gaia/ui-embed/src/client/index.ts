@@ -39,6 +39,10 @@ import { registerGaiaLocaleOverrides } from './branding-locales.ts'
 import { GaiaSettingsLauncher, openSettings, resetCapturedSettings } from './settings-launcher.ts'
 import { setSettingsMaximized, SETTINGS_MAXIMIZED_ATTR } from './settings-maximize.ts'
 import { GaiaAppearanceRow } from './appearance-row.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { GaiaReadAloudActions, type ReadAloudInjected } from './read-aloud-actions.tsx'
+import { en as readAloudLabels } from './read-aloud-locales.ts'
+import type { GaiaReadAloudState } from './bridge.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -246,6 +250,12 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   if (!inGaiaFrame) return
 
   const disposeLocaleOverrides = registerGaiaLocaleOverrides(ctx.locale)
+  ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
+  const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, status: 'idle', sessionId: null, messageId: null })
+  ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
+    name: 'conversation.chat.assistant-actions', id: 'gaia-read-aloud', order: 20, locale: 'gaia.readAloud',
+    inject: (): ReadAloudInjected => ({ hooks: { readAloud } }),
+  }, GaiaReadAloudActions))
 
   // Enforce English in all Gaia frames: Gaia is English-only.
   let unsubLocaleChange: (() => void) | undefined
@@ -360,6 +370,9 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       if (event.data.palette !== undefined) {
         disposePalette = ctx.theme.overrideTokens(GAIA_PALETTE_LAYER, paletteTokens(event.data.palette))
       }
+    } else if (event.data.type === 'readAloudState') {
+      const { enabled, status, sessionId, messageId } = event.data
+      readAloud.set({ enabled, status, sessionId, messageId })
     } else if (event.data.type === 'openSettings') {
       openSettings()
     }
@@ -615,6 +628,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     if (!isGaiaIncomingMessage(event.data)) return
 
     switch (event.data.type) {
+      case 'readAloudState': break
       case 'theme': break
       case 'openSettings': break
       case 'focus': {

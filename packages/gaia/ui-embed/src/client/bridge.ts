@@ -11,10 +11,22 @@ export const GAIA_BRIDGE_SOURCE = 'gaia-dsh' as const
 /** Maximum byte length for insertText messages (8 KB). */
 export const MAX_INSERT_TEXT_BYTES = 8192
 
-/** Outgoing messages sent from the embedded DSH iframe to the Gaia parent frame.
- * Drawer shortcuts are closed intents; key data is never forwarded.
- */
+/** Maximum UTF-8 bytes in a complete chat narration request. */
+export const MAX_CHAT_SPEECH_BYTES = 200_000
+
+/** Shared Gaia player state received by chat actions. */
+export interface GaiaReadAloudState {
+  enabled: boolean
+  status: 'idle' | 'preparing' | 'loading' | 'speaking' | 'paused'
+  sessionId: string | null
+  messageId: string | null
+}
+
+/** Closed requests from a Gaia iframe to its same-origin parent. */
 export type GaiaOutgoingMessage =
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud'; sessionId: string; messageId: string; text: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'stopReadAloud'; sessionId: string; messageId: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloudSettings' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'ready' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'status'; connected: boolean; reconnecting: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'turn'; running: boolean }
@@ -88,6 +100,7 @@ export interface ResumeSessionRow {
 
 /** Incoming messages accepted from the Gaia parent frame. */
 export type GaiaIncomingMessage =
+  | ({ source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloudState' } & GaiaReadAloudState)
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'theme'; mode: 'light' | 'dark'; palette?: GaiaPalette }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'focus' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'insertText'; text: string }
@@ -120,6 +133,15 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
   }
 
   switch (msg.type) {
+    case 'readAloudState':
+      return typeof msg.enabled === 'boolean'
+        && typeof msg.status === 'string'
+        && ['idle', 'preparing', 'loading', 'speaking', 'paused'].includes(msg.status)
+        && (msg.sessionId === null || (typeof msg.sessionId === 'string' && isValidSessionId(msg.sessionId)))
+        && (msg.messageId === null || (typeof msg.messageId === 'string' && isValidSessionId(msg.messageId)))
+        && ((msg.sessionId === null) === (msg.messageId === null))
+        && (msg.status === 'idle' ? msg.messageId === null : msg.messageId !== null)
+        && Object.keys(msg).every(key => ['source', 'v', 'type', 'enabled', 'status', 'sessionId', 'messageId'].includes(key))
     case 'theme': {
       if (msg.mode !== 'light' && msg.mode !== 'dark') return false
       if (msg.palette === undefined) return true

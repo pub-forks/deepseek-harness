@@ -1,0 +1,31 @@
+// @vitest-environment jsdom
+import { expect } from 'vitest'
+import { ClientRoster, createClientTest, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
+import * as gaiaEmbed from '../src/client/index.ts'
+
+const name = '@deepseek-ai/dsh-gaia-ui-embed'
+const roster = ClientRoster.of([...webApp.rows, { name, inject: [], immediately: false }])
+const test = createClientTest({ roster, provide: { [name]: gaiaEmbed } })
+
+test('Loader composition contributes narration in Gaia full mode and removes it on reload/unload', async ({ start }) => {
+  const originalParent = window.parent
+  const originalUrl = window.location.href
+  const parent = document.createElement('iframe')
+  document.body.append(parent)
+  Object.defineProperty(window, 'parent', { value: parent.contentWindow, configurable: true })
+  window.history.replaceState(null, '', '/?gaia=full')
+  try {
+    const client = await start()
+    await client.flush()
+    const entries = () => client.ctx.slots.entries('conversation.chat.assistant-actions').filter(entry => entry.options.id === 'gaia-read-aloud')
+    expect(entries()).toHaveLength(1)
+    await client.reload(name)
+    expect(entries()).toHaveLength(1)
+    await client.unload(name)
+    expect(entries()).toHaveLength(0)
+  } finally {
+    Object.defineProperty(window, 'parent', { value: originalParent, configurable: true })
+    window.history.replaceState(null, '', originalUrl)
+    parent.remove()
+  }
+}, 30_000)
