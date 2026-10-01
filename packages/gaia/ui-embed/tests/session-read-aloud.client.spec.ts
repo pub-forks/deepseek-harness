@@ -29,7 +29,7 @@ test('marks only the reading session, pulses only during speech, and removes the
     view.rerender(createElement(GaiaSessionReadAloud, props({ ...active, status })))
     const icon = view.getByRole('img', { name: 'Reading aloud' })
     expect(icon.hasAttribute('data-playing')).toBe(status === 'speaking')
-    expect(icon.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
+    expect(icon.querySelectorAll('[aria-hidden="true"]')).toHaveLength(4)
     view.rerender(createElement(GaiaSessionReadAloud, props({ ...active, status }, SessionId('session-2'))))
     expect(view.queryByRole('img', { name: en.reading })).toBeNull()
   }
