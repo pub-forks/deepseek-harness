@@ -202,7 +202,8 @@ describe('ui-embed client plugin', () => {
     }
     ctx.provide('uiSession', uiSession)
 
-    let listSnapshot: { phase: string; byId: Record<string, { id: SessionId; title?: string; displayTitle: string }> } = {
+    type ListEntry = { id: SessionId; title?: string; displayTitle: string; cwd?: string; retainedBy?: Record<string, number> }
+    let listSnapshot: { phase: string; byId: Record<string, ListEntry> } = {
       phase: 'ready',
       byId: {},
     }
@@ -1184,6 +1185,8 @@ describe('ui-embed client plugin', () => {
         type: 'notify',
         event: 'turnDone',
         title: 'Refactor Agent',
+        sessionId: 's-test-123',
+        shown: true,
       })
 
       if (typeof dispose === 'function') await dispose()
@@ -1224,6 +1227,8 @@ describe('ui-embed client plugin', () => {
         type: 'notify',
         event: 'turnError',
         title: 'Failing Task',
+        sessionId: 's-test-123',
+        shown: true,
       })
 
       if (typeof dispose === 'function') await dispose()
@@ -1270,6 +1275,8 @@ describe('ui-embed client plugin', () => {
         type: 'notify',
         event: 'needsInput',
         title: 'Approval Session',
+        sessionId: 's-test-123',
+        shown: true,
       })
 
       // Re-publishing the same pending interaction key must not emit again
@@ -1308,26 +1315,59 @@ describe('ui-embed client plugin', () => {
       if (typeof disposeReloaded === 'function') await disposeReloaded()
     })
 
+    it('opens a notified session when Gaia asks the full shell to', async () => {
+      setLocationSearch('?gaia=full')
+      const mock = createMockContext()
+      const dispose = apply(mock.ctx)
+      mock.uiWorkspace.openSession.mockClear()
+      const send = (data: object) => window.dispatchEvent(new MessageEvent('message', {
+        source: fakeParent, origin: window.location.origin, data: { source: 'gaia-dsh', v: 1, ...data },
+      }))
+      send({ type: 'openSession', sessionId: 's-full-9' })
+      expect(mock.uiWorkspace.openSession).toHaveBeenCalledWith('s-full-9')
+      // Invalid ids and extra keys are refused by the bridge guard.
+      send({ type: 'openSession', sessionId: '../etc' })
+      send({ type: 'openSession', sessionId: 's-ok', extra: 1 })
+      expect(mock.uiWorkspace.openSession).toHaveBeenCalledTimes(1)
+      if (typeof dispose === 'function') await dispose()
+    })
+
     it('emits notifications across sessions in full mode', async () => {
       setLocationSearch('?gaia=full')
       const mock = createMockContext()
       mock.setSessionList({
         phase: 'ready',
         byId: {
-          's-full-1': { id: SessionId('s-full-1'), title: 'Full Session 1', displayTitle: 'Full Session 1' },
+          's-full-1': { id: SessionId('s-full-1'), title: 'Full Session 1', displayTitle: 'Full Session 1', cwd: '/home/u/proj', retainedBy: {} },
+          's-full-2': { id: SessionId('s-full-2'), title: 'Full Session 2', displayTitle: 'Full Session 2', retainedBy: { mainView: 1 } },
         },
       })
       const dispose = apply(mock.ctx)
 
       mock.setSessionStatus(SessionId('s-full-1'), true)
       mock.setSessionStatus(SessionId('s-full-1'), false)
+      mock.setSessionStatus(SessionId('s-full-2'), true)
+      mock.setSessionStatus(SessionId('s-full-2'), false)
 
+      // A background session is not shown; the main-view one is.
       expect(parentMessages).toContainEqual({
         source: 'gaia-dsh',
         v: 1,
         type: 'notify',
         event: 'turnDone',
         title: 'Full Session 1',
+        sessionId: 's-full-1',
+        workspacePath: '/home/u/proj',
+        shown: false,
+      })
+      expect(parentMessages).toContainEqual({
+        source: 'gaia-dsh',
+        v: 1,
+        type: 'notify',
+        event: 'turnDone',
+        title: 'Full Session 2',
+        sessionId: 's-full-2',
+        shown: true,
       })
 
       if (typeof dispose === 'function') await dispose()

@@ -53,7 +53,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: AppShortcutCode; shift: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; event: 'turnDone' | 'needsInput' | 'turnError'; title: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; event: 'turnDone' | 'needsInput' | 'turnError'; title: string; sessionId?: string; workspacePath?: string; shown?: boolean }
 
 /** Allowlisted keyboard shortcut codes forwarded from the iframe to Gaia. */
 export const APP_SHORTCUT_CODES = [
@@ -121,6 +121,7 @@ export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; sessions: ResumeSessionRow[] }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; error: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openSettings' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openSession'; sessionId: string }
 
 /**
  * Validate that a session string conforms to the safe session identifier grammar.
@@ -167,6 +168,9 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
       return true
     case 'openSettings':
       return true
+    case 'openSession':
+      return typeof msg.sessionId === 'string' && isValidSessionId(msg.sessionId)
+        && Object.keys(msg).every(key => ['source', 'v', 'type', 'sessionId'].includes(key))
     case 'insertText': {
       if (typeof msg.text !== 'string') return false
       return new TextEncoder().encode(msg.text).length <= MAX_INSERT_TEXT_BYTES

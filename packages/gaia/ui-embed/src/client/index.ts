@@ -26,6 +26,7 @@ import {
   isAppShortcutCandidate,
   isGaiaIncomingMessage,
   isValidSessionId,
+  narrationWorkspace,
   postToParent,
   sanitizeNotifyTitle,
 } from './bridge.ts'
@@ -170,6 +171,14 @@ export function setupSessionNotifier(
     }
   }
 
+  // Which session this is, where it lives, and whether this frame is showing it
+  // (an embed shows only its own session; the full shell shows its main view).
+  const about = (id: SessionId): { sessionId: string; workspacePath?: string; shown: boolean } => {
+    const summary = ctx.sessions.list.getSnapshot().byId[id]
+    const shown = targetSessionId !== undefined || (summary?.retainedBy.mainView ?? 0) > 0
+    return { sessionId: id, ...narrationWorkspace(summary?.cwd), shown }
+  }
+
   const check = (): void => {
     const snapshot = ctx.uiSession.sessionStatus.getSnapshot()
     const sessionIds = targetSessionId !== undefined ? [targetSessionId] : [...snapshot.keys()]
@@ -215,6 +224,7 @@ export function setupSessionNotifier(
             type: 'notify',
             event: turnEvent,
             title,
+            ...about(id),
           })
         }
       }
@@ -230,6 +240,7 @@ export function setupSessionNotifier(
           type: 'notify',
           event: 'needsInput',
           title,
+          ...about(id),
         })
       }
     }
@@ -464,14 +475,27 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     return summary?.title ?? summary?.displayTitle ?? ''
   }
   let unsubFullNotifications: (() => void) | undefined
+  let onFullMessage: ((event: MessageEvent) => void) | undefined
   if (mode === 'full') {
     unsubFullNotifications = setupSessionNotifier(ctx, undefined, getFullSessionTitle)
+    // A notification's "Open in Harness" asks the full shell to show its session.
+    onFullMessage = (event: MessageEvent): void => {
+      if (event.source !== window.parent || event.origin !== window.location.origin) return
+      if (!isGaiaIncomingMessage(event.data) || event.data.type !== 'openSession') return
+      try {
+        ctx.uiWorkspace.openSession(SessionId(event.data.sessionId))
+      } catch {
+        // The session may have been archived or deleted since it notified.
+      }
+    }
+    window.addEventListener('message', onFullMessage)
   }
 
   const commonDisposer = ctx.effect(() => () => {
     window.removeEventListener('keydown', onKeyDown, { capture: true })
     unsubConnection?.()
     unsubFullNotifications?.()
+    if (onFullMessage) window.removeEventListener('message', onFullMessage)
     unsubLocaleChange?.()
     root.removeAttribute(rootAttribute)
     root.removeAttribute(SETTINGS_MAXIMIZED_ATTR)
@@ -691,6 +715,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         break
       }
       case 'resumeSessions':
+        break
+      case 'openSession':
         break
     }
   }
