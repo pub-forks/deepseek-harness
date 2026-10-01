@@ -117,6 +117,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /** GAIA: indicators beside the title remain visible during activity and on archived/search rows. */
+    'sidebar.session.row.decoration': { kind: 'list'; scope: 'root'; owner: SessionRowScheduleOwnerProps }
     /**
      * Leading decoration of one Session row, in the 16px cell before the title
      * that the row's own state dot otherwise occupies. A higher-priority state
@@ -457,6 +459,8 @@ export type WorkspaceBrowserProps =
     | 'sidebar.workspaces.directoryFlow'
     | 'sidebar.workspaces.session.menu.item'
     | 'sidebar.workspaces.session.row.action'
+    // GAIA: always-visible session decorations share the browser renderer.
+    | 'sidebar.session.row.decoration'
     | 'sidebar.session.row.leading'
     | 'sidebar.session.row.hover'
   >

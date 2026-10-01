@@ -12,7 +12,7 @@ import type { MenuOpenState, SessionRowOwnerProps } from '../src/client/contract
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { RowDragProps } from '../src/client/rows/Rows.tsx'
 import {
-  ProjectRowItem, SearchResultItem, SessionNodeItem as SessionNodeItemComponent,
+  ProjectRowItem, SearchResultItem as SearchResultItemComponent, SessionNodeItem as SessionNodeItemComponent,
 } from '../src/client/rows/Rows.tsx'
 import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
 import { en, zh } from '../src/client/locales.ts'
@@ -29,6 +29,8 @@ const wid = (id: string) => id as WorkspaceId
 type RowSlotName =
   | 'sidebar.workspaces.session.menu.item'
   | 'sidebar.workspaces.session.row.action'
+  // GAIA: specs supply the new ambient decoration renderer too.
+  | 'sidebar.session.row.decoration'
   | 'sidebar.session.row.leading'
   | 'sidebar.session.row.hover'
 type RowRenderSlot = PropsRenderSlots<RowSlotName>['renderSlot']
@@ -41,6 +43,11 @@ function SessionNodeItem({ renderSlot = renderNoRowEntries, onRenameRequest = ()
   SessionNodeItemProps, 'renderSlot' | 'onRenameRequest'
 > & Partial<Pick<SessionNodeItemProps, 'renderSlot' | 'onRenameRequest'>>) {
   return <SessionNodeItemComponent {...props} renderSlot={renderSlot} onRenameRequest={onRenameRequest} />
+}
+
+// GAIA: direct search row specs default to an empty decoration seat.
+function SearchResultItem(props: Omit<ComponentProps<typeof SearchResultItemComponent>, 'renderSlot'>) {
+  return <SearchResultItemComponent {...props} renderSlot={renderNoRowEntries} />
 }
 
 /** Half detection reads the row rect; jsdom rects are all-zero by default. */
@@ -983,6 +990,8 @@ describe('session row schedule seats', () => {
    */
   function seatSpy(): RowRenderSlot {
     return vi.fn((key: RowSlotName, owner: object) => {
+      // GAIA: this stand-in occupies only the schedule seats.
+      if (key === 'sidebar.session.row.decoration') return null
       if (!('sessionId' in owner) || typeof owner.sessionId !== 'string') return null
       return <span key={key} data-seat={key} data-owner={owner.sessionId} />
     })

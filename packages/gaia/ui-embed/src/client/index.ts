@@ -41,6 +41,7 @@ import { GaiaSettingsLauncher, openSettings, resetCapturedSettings } from './set
 import { setSettingsMaximized, SETTINGS_MAXIMIZED_ATTR } from './settings-maximize.ts'
 import { GaiaAppearanceRow } from './appearance-row.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import { GaiaSessionReadAloud, type SessionReadAloudInjected } from './session-read-aloud.tsx'
 import { GaiaReadAloudActions, type ReadAloudInjected } from './read-aloud-actions.tsx'
 import { en as readAloudLabels } from './read-aloud-locales.ts'
 import type { GaiaReadAloudState } from './bridge.ts'
@@ -274,6 +275,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       hooks: { readAloud }, workspacePath: () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd,
     }),
   }, GaiaReadAloudActions))
+
+  ctx.slots.inject('sidebar.session.row.decoration', () => ctx.slots.register({
+    name: 'sidebar.session.row.decoration', id: 'gaia-read-aloud', order: 20, locale: 'gaia.readAloud',
+    inject: (): SessionReadAloudInjected => ({ hooks: { readAloud } }),
+  }, GaiaSessionReadAloud))
 
   // Enforce English in all Gaia frames: Gaia is English-only.
   let unsubLocaleChange: (() => void) | undefined

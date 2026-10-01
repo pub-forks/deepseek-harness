@@ -240,6 +240,8 @@ type SessionTreeProps = Pick<
 > & PropsRenderSlots<
   | 'sidebar.workspaces.session.menu.item'
   | 'sidebar.workspaces.session.row.action'
+  // GAIA: always-visible session decorations share the browser renderer.
+  | 'sidebar.session.row.decoration'
   | 'sidebar.session.row.leading'
   | 'sidebar.session.row.hover'
 > & {
@@ -777,9 +779,11 @@ function SearchResults({
   query,
   remote,
   resultLimit,
+  // GAIA: forward ambient decorations to search rows.
+  renderSlot,
   usePanelInfo,
   t,
-}: Pick<WorkspaceBrowserProps, 'useSessions' | 'useSessionStatus' | 'open' | 't' | 'usePanelInfo'> & {
+}: Pick<WorkspaceBrowserProps, 'useSessions' | 'useSessionStatus' | 'open' | 't' | 'usePanelInfo' | 'renderSlot'> & {
   workspaces: readonly WorkspaceView[]
   archivedSessionIds: readonly SessionNode['id'][]
   /** Search matches follow the archived filter selected for the list. */
@@ -820,6 +824,8 @@ function SearchResults({
         <div className={css.searchTree} role="tree" aria-label={t('search.results.aria')}>
           {results.items.map(result => (
             <SearchResultItem
+              // GAIA: search and catalog rows share session decorations.
+              renderSlot={renderSlot}
               key={result.id}
               result={result}
               currentId={currentId}
@@ -1386,6 +1392,8 @@ export function WorkspaceBrowser({
         {wide && (normalizedQuery !== ''
           ? (
             <SearchResults
+              // GAIA: search uses the owning browser renderer.
+              renderSlot={renderSlot}
               usePanelInfo={usePanelInfo}
               useSessions={useSessions}
               useSessionStatus={useSessionStatus}

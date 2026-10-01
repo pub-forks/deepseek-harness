@@ -40,6 +40,8 @@ type RowTranslate = WorkspaceBrowserProps['t']
 type RowRenderSlots = PropsRenderSlots<
   | 'sidebar.workspaces.session.menu.item'
   | 'sidebar.workspaces.session.row.action'
+  // GAIA: always-visible session decorations share the browser renderer.
+  | 'sidebar.session.row.decoration'
   | 'sidebar.session.row.leading'
   | 'sidebar.session.row.hover'
 >['renderSlot']
@@ -468,13 +470,14 @@ function SessionHoverContent({ node, now, renderSlot, t }: {
  * @param props.t - Workspace-browser translation seat.
  * @returns the result row.
  */
-export function SearchResultItem({ result, currentId, onOpen, onUnarchive, t }: {
+export function SearchResultItem({ result, currentId, onOpen, onUnarchive, t, renderSlot }: {
   result: SearchResultNode
   currentId: string | undefined
   onOpen: (id: SearchResultNode['id']) => void
   onUnarchive: (id: SearchResultNode['id']) => void
   t: RowTranslate
-}) {
+  // GAIA: search results carry the same ambient indicators as catalog rows.
+} & PropsRenderSlots<'sidebar.session.row.decoration'>) {
   const selected = result.id === currentId
   const statuses = sessionStatuses(result, t)
   const primaryStatus = statuses[0]
@@ -496,6 +499,8 @@ export function SearchResultItem({ result, currentId, onOpen, onUnarchive, t }: 
           )}
         </span>
         <span className={css.searchResultTitle}>{result.title}</span>
+        {/* GAIA: playback remains visible beside search result titles. */}
+        {renderSlot('sidebar.session.row.decoration', { sessionId: result.id })}
         {result.archived && (
           <span className={css.rowActions}>
             <Tooltip label={t('actions.unarchive')} side="bottom" align="end" delayMs={500}>
@@ -558,6 +563,8 @@ export function SessionNodeItem({
 } & PropsRenderSlots<
   | 'sidebar.workspaces.session.menu.item'
   | 'sidebar.workspaces.session.row.action'
+  // GAIA: always-visible session decorations share the browser renderer.
+  | 'sidebar.session.row.decoration'
   | 'sidebar.session.row.leading'
   | 'sidebar.session.row.hover'
 >) {
@@ -642,6 +649,8 @@ export function SessionNodeItem({
       >
         {title}
       </span>
+      {/* GAIA: keep ambient indicators visible alongside status dots and on archived rows. */}
+      {!row.blank && renderSlot('sidebar.session.row.decoration', { sessionId: node.id })}
       {/* A blank New Session row is a provisional placeholder: nothing has
           happened in it yet, so a "now" timestamp and the row verbs
           (rename/fork/archive) would all act on content that does not

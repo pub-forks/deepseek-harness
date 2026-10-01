@@ -404,7 +404,7 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
-      'conversation.input.overlay', 'conversation.chat.assistant-actions', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'conversation.input.overlay', 'conversation.chat.assistant-actions', 'sidebar.session.row.decoration', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
     expect(mock.slotRegistrations).not.toContainEqual(expect.objectContaining({ id: 'gaia-maximize' }))

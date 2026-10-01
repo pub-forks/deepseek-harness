@@ -1,0 +1,21 @@
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--dsw-alias-link);
+  opacity: 0.7;
+}
+
+.indicator[data-playing] {
+  animation: reading-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes reading-pulse {
+  50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator[data-playing] {
+    animation: none;
+  }
+}
