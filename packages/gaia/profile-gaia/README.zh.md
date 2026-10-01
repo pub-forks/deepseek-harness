@@ -27,6 +27,8 @@ Gaia 使用指向 `gaia.patch.yml` 的 `--patch` 启动内置 `web` 配置。覆
 
 -----
 
+现有控制桥同时为抽屉和 Agent 的新 Session 启用[工作区模型记忆](../bridge/README.zh.md#use-this-package)。
+
 <a id="dev-note"></a>
 ## 开发备注
 

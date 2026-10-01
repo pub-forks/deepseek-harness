@@ -18,6 +18,7 @@ import {
   writeProfileTextIfSha,
 } from './profile-files.ts'
 import { scheduleSeed } from './seed.ts'
+import * as WorkspaceModel from './workspace-model.ts'
 
 const PREFIX = '/gaia/control'
 const MAX_BODY = 16 * 1024
@@ -106,7 +107,7 @@ function isOperatorAuthority(entry: string): boolean {
   if (entry.includes('*')) return false
   let url: URL
   try { url = new URL(`http://${entry}`) }
-  catch (error) { return false /* Invalid authorities are warned about by apply. */ }
+  catch (_error) { return false /* Invalid authorities are warned about by apply. */ }
   const port = url.port !== '' ? url.port : new URL(`https://${entry}`).port
   const canonical = port === '' ? url.hostname : `${url.hostname}:${port}`
   return canonical === entry.toLowerCase()
@@ -117,6 +118,7 @@ function isOperatorAuthority(entry: string): boolean {
  * @returns no value; route resources are disposed with the plugin.
  */
 export function apply(ctx: Context): void {
+  ctx.plugin(WorkspaceModel)
   scheduleSeed(ctx)
   const hosts: string[] = []
   for (const value of (process.env.GAIA_OPERATOR_HOSTS ?? '').split(',')) {

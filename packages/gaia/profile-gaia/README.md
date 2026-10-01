@@ -23,7 +23,7 @@ Gaia launches the shipped `web` profile with `--patch` pointing to `gaia.patch.y
 <a id="use-this-package"></a>
 ## Use this package
 
-The launcher receives `--profile web --patch <absolute path to gaia.patch.yml> --port 0 --no-open`. `--patch` is a launcher flag and precedes the Web app flags. The Gaia server supplies `DSH_HOME` and `GAIA_CONTROL_SECRET` in the child environment.
+The launcher receives `--profile web --patch <absolute path to gaia.patch.yml> --port 0 --no-open`. `--patch` is a launcher flag and precedes the Web app flags. The Gaia server supplies `DSH_HOME` and `GAIA_CONTROL_SECRET` in the child environment. The existing bridge mount also activates [workspace model memory](../bridge/README.md#use-this-package) for new drawer and agent sessions.
 
 -----
 

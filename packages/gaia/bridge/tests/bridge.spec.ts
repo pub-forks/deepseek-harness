@@ -33,6 +33,7 @@ function fixture(value: string | undefined = secret, documentPath: string | null
   const warn = vi.fn()
   const ctx = {
     logger: () => ({ warn }),
+    plugin: () => {},
     on: (event: string, listener: (table: IndexInjection[]) => void) => {
       if (event === 'webserver/index-inject') indexInjectListeners.push(listener)
     },
