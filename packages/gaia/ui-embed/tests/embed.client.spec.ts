@@ -10,6 +10,7 @@ import {
   isGaiaIncomingMessage,
   isValidSessionId,
   sanitizeNotifyTitle,
+  postToParent,
   GAIA_EMBED_STYLE_ID,
   GAIA_SKIN_STYLE_ID,
   type GaiaOutgoingMessage,
@@ -242,6 +243,7 @@ describe('ui-embed client plugin', () => {
 
     const bindings = new Map<SessionId, unknown>()
     const sessions = {
+      fork: vi.fn(async (_options: { sessionId: SessionId; atSeq?: number; increaseTitle?: boolean }) => SessionId('fork-child')),
       list: {
         getSnapshot: () => listSnapshot,
         subscribe: (fn: () => void) => {
@@ -830,6 +832,7 @@ describe('ui-embed client plugin', () => {
     document.body.appendChild(shown)
     await new Promise((resolve) => { setTimeout(resolve, 0) })
     expect(mock.uiWorkspace.openSession).toHaveBeenCalledWith('s-test-123')
+    expect(parentMessages.filter(m => m.type === 'branched')).toEqual([])
     // Once our Session is displayed, nothing more happens.
     mock.uiWorkspace.openSession.mockClear()
     shown.setAttribute('data-conversation-session', 's-test-123')
@@ -837,6 +840,96 @@ describe('ui-embed client plugin', () => {
     expect(mock.uiWorkspace.openSession).not.toHaveBeenCalled()
     shown.remove()
     if (typeof dispose === 'function') await dispose()
+  })
+
+  it('hands this frame\'s message fork to Gaia once and restores the pinned session', async () => {
+    setLocationSearch('?gaia=embed&session=pinned')
+    const mock = createMockContext()
+    mock.setSessionList({ phase: 'ready', byId: { pinned: { id: SessionId('pinned'), displayTitle: 'Pinned' } } })
+    const originalFork = mock.sessions.fork
+    const dispose = apply(mock.ctx)
+    const child = await mock.ctx.sessions.fork({ sessionId: SessionId('pinned'), atSeq: 12, increaseTitle: true })
+    expect(originalFork).toHaveBeenCalledWith({ sessionId: 'pinned', atSeq: 12, increaseTitle: true })
+    // The fork resolves before chat opens its returned child; no list update is required.
+    expect(parentMessages.filter(m => m.type === 'branched')).toEqual([])
+    const shown = document.createElement('div')
+    shown.setAttribute('data-conversation-session', child)
+    document.body.append(shown)
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    expect(parentMessages.filter(m => m.type === 'branched')).toEqual([
+      { source: 'gaia-dsh', v: 1, type: 'branched', sessionId: child },
+    ])
+    expect(mock.uiWorkspace.openSession).toHaveBeenLastCalledWith('pinned')
+    shown.setAttribute('data-conversation-session', 'pinned')
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    shown.setAttribute('data-conversation-session', child)
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    expect(parentMessages.filter(m => m.type === 'branched')).toHaveLength(1)
+    if (typeof dispose === 'function') await dispose()
+    expect(mock.sessions.fork).toBe(originalFork)
+    shown.remove()
+  })
+
+  it('does not report restores, resume, subagents, unrelated forks or failed forks as branches', async () => {
+    setLocationSearch('?gaia=embed&session=pinned')
+    const mock = createMockContext()
+    mock.setSessionList({ phase: 'ready', byId: { pinned: { id: SessionId('pinned'), displayTitle: 'Pinned' } } })
+    const originalFork = mock.sessions.fork
+    apply(mock.ctx)
+    await mock.ctx.sessions.fork({ sessionId: SessionId('another-frame'), atSeq: 12, increaseTitle: true })
+    await mock.ctx.sessions.fork({ sessionId: SessionId('pinned'), increaseTitle: true })
+    await mock.ctx.sessions.fork({ sessionId: SessionId('pinned'), atSeq: 12 })
+    originalFork.mockRejectedValueOnce(new Error('fork unavailable'))
+    await expect(mock.ctx.sessions.fork({ sessionId: SessionId('pinned'), atSeq: 12, increaseTitle: true })).rejects.toThrow('fork unavailable')
+    const shown = document.createElement('div')
+    document.body.append(shown)
+    for (const id of ['fork-child', 'restored', 'resumed', 'subagent']) {
+      shown.setAttribute('data-conversation-session', id)
+      await new Promise((resolve) => { setTimeout(resolve, 0) })
+    }
+    expect(parentMessages.filter(m => m.type === 'branched')).toEqual([])
+    shown.remove()
+  })
+
+  it('leaves forks and navigation unchanged in full mode', async () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    const originalFork = mock.sessions.fork
+    apply(mock.ctx)
+    expect(mock.sessions.fork).toBe(originalFork)
+    const child = await mock.ctx.sessions.fork({ sessionId: SessionId('pinned'), atSeq: 12, increaseTitle: true })
+    const shown = document.createElement('div')
+    shown.setAttribute('data-conversation-session', child)
+    document.body.append(shown)
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    expect(mock.uiWorkspace.openSession).not.toHaveBeenCalled()
+    expect(parentMessages.filter(m => m.type === 'branched')).toEqual([])
+    shown.remove()
+  })
+
+  it('restores the fork method when disposed during a pending fork', async () => {
+    setLocationSearch('?gaia=embed&session=pinned')
+    const mock = createMockContext()
+    let resolveFork: ((id: SessionId) => void) | undefined
+    const originalFork = mock.sessions.fork
+    originalFork.mockImplementationOnce(() => new Promise<SessionId>((resolve) => { resolveFork = resolve }))
+    const dispose = apply(mock.ctx)
+    const pending = mock.ctx.sessions.fork({ sessionId: SessionId('pinned'), atSeq: 0, increaseTitle: true })
+    if (typeof dispose === 'function') await dispose()
+    expect(mock.sessions.fork).toBe(originalFork)
+    resolveFork?.(SessionId('late-child'))
+    await expect(pending).resolves.toBe('late-child')
+    expect(parentMessages.filter(m => m.type === 'branched')).toEqual([])
+  })
+
+  it('validates outgoing branch ids and rejects extra fields', () => {
+    postToParent({ source: 'gaia-dsh', v: 1, type: 'branched', sessionId: 'child-1' })
+    for (const sessionId of ['', '../child', 'child with spaces', 'a'.repeat(129)]) {
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'branched', sessionId })
+    }
+    const extra = { source: 'gaia-dsh', v: 1, type: 'branched', sessionId: 'child-2', path: '/secret' } as const
+    postToParent(extra)
+    expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'branched', sessionId: 'child-1' }])
   })
 
   it('emits session_not_found error when list is ready and session is missing', () => {
@@ -1597,5 +1690,3 @@ describe('sanitizeNotifyTitle', () => {
     expect(sanitizeNotifyTitle('a'.repeat(250))).toBe('a'.repeat(200))
   })
 })
-
-

@@ -47,6 +47,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'error'; code: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeList'; reqId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resume'; sessionId: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'branched'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openFile'; path: string; action?: 'open' | 'reveal'; line?: number }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openConfigEditor' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'workspacesChanged' }
@@ -206,6 +207,9 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
  * @param msg - bridge payload to post to window.parent.
  */
 export function postToParent(msg: GaiaOutgoingMessage): void {
+  if (msg.type === 'branched' && (!isValidSessionId(msg.sessionId)
+    || Object.keys(msg).length !== 4
+    || Object.keys(msg).some(key => !['source', 'v', 'type', 'sessionId'].includes(key)))) return
   if (typeof window !== 'undefined' && window.parent !== window) {
     window.parent.postMessage(msg, window.location.origin)
   }

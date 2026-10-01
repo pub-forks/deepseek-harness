@@ -533,6 +533,21 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const sessionId = SessionId(rawSession)
 
+  // Only this frame's successful message forks qualify; shared list lineage
+  // also contains other frames' forks and subagents.
+  const branchChildren = new Set<SessionId>()
+  const reportedBranches = new Set<SessionId>()
+  let disposed = false
+  // oxlint-disable-next-line typescript/unbound-method -- restored on embed teardown
+  const originalFork = ctx.sessions.fork
+  ctx.sessions.fork = async (options) => {
+    const childId = await originalFork.call(ctx.sessions, options)
+    if (!disposed && options.sessionId === sessionId && options.atSeq !== undefined && options.increaseTitle === true) {
+      branchChildren.add(childId)
+    }
+    return childId
+  }
+
   // Mark the root document for scoped embed CSS.
   const removeChrome = injectEmbedChrome()
 
@@ -640,6 +655,11 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     const shown = document.querySelector('[data-conversation-session]')?.getAttribute('data-conversation-session')
     if (shown === undefined || shown === null || shown === sessionId) return
     if (ctx.sessions.list.getSnapshot().byId[sessionId] === undefined) return
+    const childId = SessionId(shown)
+    if (branchChildren.delete(childId) && !reportedBranches.has(childId)) {
+      reportedBranches.add(childId)
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'branched', sessionId: childId })
+    }
     openedSession = false
     attemptOpenSession()
   }
@@ -813,6 +833,10 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   // Scope effect for teardown.
   return ctx.effect(() => {
     return async () => {
+      disposed = true
+      ctx.sessions.fork = originalFork
+      branchChildren.clear()
+      reportedBranches.clear()
       removeChrome()
       ctx.layout.toggleSidebar = originalToggleSidebar
       ctx.layout.openRightbar = originalOpenRightbar

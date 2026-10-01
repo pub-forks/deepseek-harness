@@ -41,6 +41,8 @@ While focus is inside the embed, `Ctrl/Cmd+Alt+H` toggles Gaia's Harness drawer 
 
 -----
 
+In embed mode, message branching records the child returned by this frame's successful `sessions.fork` call for the pinned session (`atSeq` and `increaseTitle: true`). When chat displays that child, the plugin posts `{ source: 'gaia-dsh', v: 1, type: 'branched', sessionId }` once and restores the pinned session. Gaia creates or focuses a separate project agent for the child. Shared session-list changes, startup restores, `/resume` selections and subagents do not emit this message; full mode keeps native fork navigation. The fork method is restored on disposal.
+
 <a id="dev-note"></a>
 ## Dev Note
 
