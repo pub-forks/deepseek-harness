@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, expect, it, test, vi } from 'vitest'
 import { MutableSessionEventSource, type SessionLiveEventEntry } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SessionId, SessionSeq, type SessionEvent, type TurnEndReason } from '@deepseek-ai/dsh-session/types'
 type LlmAttemptId = Parameters<MutableSessionEventSource['settleAssistant']>[0]
@@ -70,4 +70,18 @@ it('skips failed aborted blocked empty interrupted and oversized answers', () =>
   view.source.settleAssistant('partial' as LlmAttemptId, { ...partial, event: { ...partial.event, data: { ...partial.event.data, interrupted: true as const } } })
   view.append([end(seq++, turn)])
   expect(view.requests()).toHaveLength(0); dispose()
+})
+
+test('automatic narration includes the workspace path at completion and omits invalid metadata', () => {
+  const view = setup()
+  let path: string | undefined
+  const dispose = observeCompletedAnswers(view.source, sessionId, () => true, () => path)
+  view.append([start(1, 1), answer(2, 1, 'Answer')])
+  path = '/work/gaia-ai-os'
+  view.append([end(3, 1)])
+  expect(view.requests()).toEqual([[{ source: 'gaia-dsh', v: 1, type: 'autoReadAloud', sessionId, messageId: 'm-2', text: 'Answer', workspacePath: path }, window.location.origin]])
+  path = 'invalid/path'
+  view.append([start(4, 2), answer(5, 2, 'Next answer'), end(6, 2)])
+  expect(view.requests()[1]?.[0]).toEqual({ source: 'gaia-dsh', v: 1, type: 'autoReadAloud', sessionId, messageId: 'm-5', text: 'Next answer' })
+  dispose()
 })

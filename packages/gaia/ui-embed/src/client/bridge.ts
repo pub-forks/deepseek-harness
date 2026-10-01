@@ -14,6 +14,15 @@ export const MAX_INSERT_TEXT_BYTES = 8192
 /** Maximum UTF-8 bytes in a complete chat narration request. */
 export const MAX_CHAT_SPEECH_BYTES = 200_000
 
+/**
+ * Keep optional narration metadata within Gaia's absolute POSIX path bound.
+ * @param path - session workspace path, when known.
+ * @returns metadata to include, or an empty object for unknown/invalid paths.
+ */
+export function narrationWorkspace(path: string | undefined): { workspacePath?: string } {
+  return path?.startsWith('/') && path.length <= 4096 && !/[\0\r\n\t]/.test(path) ? { workspacePath: path } : {}
+}
+
 /** Shared Gaia player state received by chat actions. */
 export interface GaiaReadAloudState {
   enabled: boolean
@@ -27,7 +36,7 @@ export interface GaiaReadAloudState {
 /** Closed requests from a Gaia iframe to its same-origin parent. */
 export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openChangesReview'; sessionId: string; seq: number; turn: number; index: number }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud' | 'autoReadAloud'; sessionId: string; messageId: string; text: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud' | 'autoReadAloud'; sessionId: string; messageId: string; text: string; workspacePath?: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'stopReadAloud'; sessionId: string; messageId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'cancelReadAloudSession'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloudSettings' }

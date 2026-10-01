@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { createElement } from 'react'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, expect, it, test, vi } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import { GaiaReadAloudActions, readableAssistantText, type ReadAloudActionProps } from '../src/client/read-aloud-actions.tsx'
-import { isGaiaIncomingMessage, MAX_CHAT_SPEECH_BYTES, type GaiaReadAloudState } from '../src/client/bridge.ts'
+import { isGaiaIncomingMessage, MAX_CHAT_SPEECH_BYTES, narrationWorkspace, type GaiaReadAloudState } from '../src/client/bridge.ts'
 import { en } from '../src/client/read-aloud-locales.ts'
 
 const messageId = 'message-1' as ReadAloudActionProps['messageId']
@@ -19,7 +19,7 @@ afterEach(() => { cleanup(); Object.defineProperty(window, 'parent', { value: wi
 function props(player: GaiaReadAloudState): ReadAloudActionProps {
   // Presentation tests supply only the framework seats read by this entry.
   return { messageId, sessionId, t: (key: keyof typeof en) => en[key],
-    useChat: selector => selector(snapshot), useReadAloud: selector => selector(player),
+    useChat: selector => selector(snapshot), useReadAloud: selector => selector(player), workspacePath: () => undefined,
   } as ReadAloudActionProps
 }
 
@@ -72,4 +72,24 @@ it('validates parent playback status and paired bounded message identities', () 
     { ...state, status: 'speaking' }, { ...state, messageId: 'bad/id', sessionId }, { ...state, extra: true }]) {
     expect(isGaiaIncomingMessage(invalid)).toBe(false)
   }
+})
+
+test('manual narration reads the latest workspace path when clicked', () => {
+  const postMessage = vi.fn()
+  Object.defineProperty(window, 'parent', { value: { postMessage }, configurable: true })
+  let path: string | undefined
+  const view = render(createElement(GaiaReadAloudActions, {
+    ...props({ enabled: true, status: 'idle', sessionId: null, messageId: null }), workspacePath: () => path,
+  }))
+  path = '/work/gaia-ai-os'
+  fireEvent.click(view.getByRole('button', { name: en.read }))
+  expect(postMessage).toHaveBeenLastCalledWith({ source: 'gaia-dsh', v: 1, type: 'readAloud', sessionId, messageId, text: '# Hello **world**', workspacePath: path }, window.location.origin)
+  path = undefined
+  fireEvent.click(view.getByRole('button', { name: en.read }))
+  expect(postMessage).toHaveBeenLastCalledWith({ source: 'gaia-dsh', v: 1, type: 'readAloud', sessionId, messageId, text: '# Hello **world**' }, window.location.origin)
+})
+
+test('optional narration metadata omits unknown and invalid workspace paths', () => {
+  for (const path of ['/work/gaia-ai-os', '/' + 'x'.repeat(4095)]) expect(narrationWorkspace(path)).toEqual({ workspacePath: path })
+  for (const path of [undefined, '', 'relative/path', '/' + 'x'.repeat(4096), '/bad\0path', '/bad\npath', '/bad\rpath', '/bad\tpath']) expect(narrationWorkspace(path)).toEqual({})
 })

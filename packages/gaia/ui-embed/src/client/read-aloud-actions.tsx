@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react'
 import { IconPlayOutlineRegular, IconStopFillRegular, IconSettingsOutlineRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
-import { MAX_CHAT_SPEECH_BYTES, postToParent, type GaiaReadAloudState } from './bridge.ts'
+import { MAX_CHAT_SPEECH_BYTES, narrationWorkspace, postToParent, type GaiaReadAloudState } from './bridge.ts'
 import type {} from './read-aloud-locales.ts'
 import css from './ReadAloudActions.module.css'
 
 /** Parent-owned playback observation supplied through framework hooks. */
 export interface ReadAloudInjected {
   hooks: { readAloud: HostObservable<GaiaReadAloudState> }
+  workspacePath: () => string | undefined
 }
 
 /** Finalized message owner, session/chat seats, playback hook and labels. */
@@ -35,7 +36,7 @@ export function readableAssistantText(snapshot: ChatSnapshot, messageId: ReadAlo
  * @param props - framework-owned message and session seats.
  * @returns localized controls; streaming messages never own this slot.
  */
-export function GaiaReadAloudActions({ messageId, sessionId, useChat, useReadAloud, t }: ReadAloudActionProps) {
+export function GaiaReadAloudActions({ messageId, sessionId, useChat, useReadAloud, workspacePath, t }: ReadAloudActionProps) {
   const player = useReadAloud(state => state)
   const chat = useChat(snapshot => snapshot)
   const reading = player.status !== 'idle' && player.messageId === messageId && player.sessionId === sessionId
@@ -49,7 +50,7 @@ export function GaiaReadAloudActions({ messageId, sessionId, useChat, useReadAlo
     if (!player.enabled) return
     const text = readableAssistantText(chat, messageId)
     setFailed(text === null)
-    if (text !== null) postToParent({ source: 'gaia-dsh', v: 1, type: 'readAloud', sessionId, messageId, text })
+    if (text !== null) postToParent({ source: 'gaia-dsh', v: 1, type: 'readAloud', sessionId, messageId, text, ...narrationWorkspace(workspacePath()) })
   }
   const label = reading ? t('stop') : t('read')
   return <>

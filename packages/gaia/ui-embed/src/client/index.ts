@@ -264,13 +264,15 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         return observeCompletedAnswers(binding.eventSource, sessionId, () => {
           const player = readAloud.getSnapshot()
           return player.enabled && player.autoRead === true
-        })
+        }, () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd)
       },
     }),
   }, GaiaAutoReadLifecycle))
   ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions', id: 'gaia-read-aloud', order: 20, locale: 'gaia.readAloud',
-    inject: (): ReadAloudInjected => ({ hooks: { readAloud } }),
+    inject: (sessionId): ReadAloudInjected => ({
+      hooks: { readAloud }, workspacePath: () => ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd,
+    }),
   }, GaiaReadAloudActions))
 
   // Enforce English in all Gaia frames: Gaia is English-only.

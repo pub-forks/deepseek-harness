@@ -1,16 +1,20 @@
 /** Completion-only narration driven by synchronous live event deltas, never by historical message mounts. */
 import type { SessionEventLikeEntry, SessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId, SessionEvent } from '@deepseek-ai/dsh-session/types'
-import { MAX_CHAT_SPEECH_BYTES, postToParent } from './bridge.ts'
+import { MAX_CHAT_SPEECH_BYTES, narrationWorkspace, postToParent } from './bridge.ts'
 
 /**
  * Observe successful live turn closure and narrate its final assistant text once.
  * @param source - the current session binding's event window.
  * @param sessionId - owning session identity.
  * @param enabled - latest parent opt-in and output availability.
+ * @param workspacePath - latest workspace path of the owning session, when known.
  * @returns disposal callback; unsubscribes without processing late events.
  */
-export function observeCompletedAnswers(source: SessionEventSource, sessionId: SessionId, enabled: () => boolean): () => void {
+export function observeCompletedAnswers(
+  source: SessionEventSource, sessionId: SessionId, enabled: () => boolean,
+  workspacePath: () => string | undefined = () => undefined,
+): () => void {
   let lastRevision = source.getSnapshot().revision
   let lastEndSeq = -1
   let turn: number | undefined
@@ -33,7 +37,7 @@ export function observeCompletedAnswers(source: SessionEventSource, sessionId: S
         const fresh = event.seq > lastEndSeq
         lastEndSeq = Math.max(lastEndSeq, event.seq)
         if (live && fresh && event.data.turn === turn && event.data.reason.kind === 'completed' && answer && enabled()) {
-          postToParent({ source: 'gaia-dsh', v: 1, type: 'autoReadAloud', sessionId, ...answer })
+          postToParent({ source: 'gaia-dsh', v: 1, type: 'autoReadAloud', sessionId, ...answer, ...narrationWorkspace(workspacePath()) })
         }
         turn = undefined
         answer = undefined
