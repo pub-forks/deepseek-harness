@@ -110,11 +110,15 @@ export interface ClientTransportHooks {
 interface ClientTransportGlobal {
   __DSH_TRANSPORT__?: ClientTransportHooks
   __DSH_CONNECTION_RECOVERY__?: unknown
+  // GAIA: Host-declared operator authorities affect settings presentation only.
+  __DSH_OPERATOR_HOSTS__?: unknown
 }
 
 /** Browser location fields used to classify loopback authority. */
 export interface ConnectionLocation {
   readonly hostname: string
+  // GAIA: Full page URL preserves the authority's exact port for operator matching.
+  readonly href?: string
 }
 
 /** Instance-local inputs for installing a Connection service. */
@@ -125,6 +129,8 @@ export interface ConnectionInstallOptions {
   readonly recovery?: ConnectionRecoveryConfig
   /** Page location; omit for a non-browser composition. */
   readonly location?: ConnectionLocation
+  // GAIA: Explicit operator authorities supplied by the page composition.
+  readonly operatorHosts?: readonly string[]
 }
 
 /**
@@ -136,6 +142,8 @@ export interface ConnectionHandle {
    * Whether the privileged surface is reachable: the page authority is
    * loopback, the transport declares the page owns the Host
    * ({@link ClientTransportHooks.ownsHost}), or the context is not a browser.
+   * GAIA: an exact declared operator authority also enables this presentation policy;
+   * Host RPC authorization is unchanged.
    */
   readonly isLoopback: boolean
   /** Current Remote event generation and the Host facts carried by its opening frame. */
@@ -197,6 +205,20 @@ function watchBrowserNetwork(controller: ConnectionController): () => void {
   }
 }
 
+// GAIA: Match exact normalized authorities; a port-less entry never matches every port.
+function isOperatorPage(pageLocation: ConnectionLocation | undefined, hosts: readonly string[]): boolean {
+  if (pageLocation?.href === undefined) return false
+  let authority: string
+  try { authority = new URL(pageLocation.href).host.toLowerCase() }
+  catch (error) { return false /* An invalid page URL cannot identify an operator. */ }
+  return hosts.some((entry) => {
+    let host: string
+    try { host = new URL(`http://${entry}`).host.toLowerCase() }
+    catch (error) { return false /* Ignore unparsable injected entries. */ }
+    return host === authority
+  })
+}
+
 /**
  * Install one Context-owned Connection service from explicit composition inputs.
  * @param ctx - client Cordis context.
@@ -245,7 +267,9 @@ export function installConnection(ctx: Context, options: ConnectionInstallOption
     publishState(undefined)
   }
   const handle: ConnectionHandle = {
-    isLoopback: transport?.ownsHost === true || pageLocation === undefined || isLoopbackHostname(pageLocation.hostname),
+    // GAIA: Extend only client presentation policy, preserving the existing local/owned-Host rules.
+    isLoopback: transport?.ownsHost === true || pageLocation === undefined || isLoopbackHostname(pageLocation.hostname) ||
+      isOperatorPage(pageLocation, options.operatorHosts ?? []),
     generation: {
       getSnapshot: () => generation,
       subscribe: (listener) => {
@@ -318,9 +342,15 @@ export function apply(ctx: Context): void {
   const globals = globalThis as ClientTransportGlobal
   const pageLocation = typeof location === 'undefined' ? undefined : location
   const transport = globals.__DSH_TRANSPORT__
+  // GAIA: Read the injected declaration at composition time, never inside installConnection.
+  const operatorHosts = Array.isArray(globals.__DSH_OPERATOR_HOSTS__)
+    ? globals.__DSH_OPERATOR_HOSTS__.filter((entry): entry is string => typeof entry === 'string')
+    : []
   installConnection(ctx, {
     ...(transport === undefined ? {} : { transport }),
     recovery: resolveConnectionConfig(globals.__DSH_CONNECTION_RECOVERY__),
     ...(pageLocation === undefined ? {} : { location: pageLocation }),
+    // GAIA: Pass only string entries from the optional Host declaration.
+    operatorHosts,
   })
 }

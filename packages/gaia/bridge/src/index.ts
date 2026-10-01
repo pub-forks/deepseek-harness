@@ -101,12 +101,35 @@ function exactFields(record: Record<string, unknown>, keys: readonly string[]): 
   if (Object.keys(record).some(key => !keys.includes(key))) throw new RequestError(400, 'invalid_body')
 }
 
+/** Match client-connection's assertTrustedAuthority without a runtime package dependency. */
+function isOperatorAuthority(entry: string): boolean {
+  if (entry.includes('*')) return false
+  let url: URL
+  try { url = new URL(`http://${entry}`) }
+  catch (error) { return false /* Invalid authorities are warned about by apply. */ }
+  const port = url.port !== '' ? url.port : new URL(`https://${entry}`).port
+  const canonical = port === '' ? url.hostname : `${url.hostname}:${port}`
+  return canonical === entry.toLowerCase()
+}
+
 /** Register the control API for the life of the plugin.
  * @param ctx - Host context providing the web server.
  * @returns no value; route resources are disposed with the plugin.
  */
 export function apply(ctx: Context): void {
   scheduleSeed(ctx)
+  const hosts: string[] = []
+  for (const value of (process.env.GAIA_OPERATOR_HOSTS ?? '').split(',')) {
+    const entry = value.trim()
+    if (!entry) continue
+    if (isOperatorAuthority(entry)) hosts.push(entry)
+    else ctx.logger('gaia-bridge').warn(`Dropping invalid GAIA_OPERATOR_HOSTS entry ${JSON.stringify(entry)}`)
+  }
+  if (hosts.length > 0) {
+    ctx.on('webserver/index-inject', (table) => {
+      table.push({ kind: 'global', name: '__DSH_OPERATOR_HOSTS__', value: hosts })
+    })
+  }
   const secret = process.env.GAIA_CONTROL_SECRET
   // GAIA: configEditor is optional here (seed.ts injects it the same way), and
   // Cordis refuses undeclared `ctx.configEditor` property access, so read it

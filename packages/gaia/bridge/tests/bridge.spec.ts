@@ -1,13 +1,16 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
 import { apply, isLoopbackPeer, validBearer } from '../src/index.ts'
 import { sha256 } from '../src/profile-files.ts'
 
 const secret = 'a'.repeat(64)
+
+afterEach(() => { vi.unstubAllEnvs() })
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => Promise<void>
 
@@ -26,8 +29,13 @@ function fixture(value: string | undefined = secret, documentPath: string | null
   const workspaces = new Map<string, MockWorkspace>()
   const sessions: { sessionId: string; running: boolean; updatedAt: number; projections: { values: { title: string } } }[] = []
   const archivedSessions = new Set<string>()
+  const indexInjectListeners: ((table: IndexInjection[]) => void)[] = []
+  const warn = vi.fn()
   const ctx = {
-    logger: () => ({ warn: vi.fn() }),
+    logger: () => ({ warn }),
+    on: (event: string, listener: (table: IndexInjection[]) => void) => {
+      if (event === 'webserver/index-inject') indexInjectListeners.push(listener)
+    },
     effect: (register: () => () => void) => { register() },
     // The default-route seed runs through ctx.inject; it has its own tests.
     inject: () => {},
@@ -86,10 +94,45 @@ function fixture(value: string | undefined = secret, documentPath: string | null
     await handler?.(req, res)
     return { status, body: JSON.parse(payload) as Record<string, unknown> }
   }
-  return { call, ctx }
+  return { call, ctx, warn, indexInjectListeners }
 }
 
 describe('Gaia control bridge', () => {
+  it('injects valid operator authorities as a dedicated page global', () => {
+    vi.stubEnv('GAIA_OPERATOR_HOSTS', ' AI.RAYA.WORK, localhost:3002, [::1]:80, example.test:443, , ')
+    const f = fixture()
+    const table: IndexInjection[] = []
+    for (const listener of f.indexInjectListeners) listener(table)
+    expect(table).toEqual([{
+      kind: 'global', name: '__DSH_OPERATOR_HOSTS__',
+      value: ['AI.RAYA.WORK', 'localhost:3002', '[::1]:80', 'example.test:443'],
+    }])
+    expect(f.warn).not.toHaveBeenCalled()
+  })
+
+  it('drops invalid operator authorities with one warning per entry', () => {
+    const invalid = [
+      'https://ai.raya.work', 'ai.raya.work/path', 'user@ai.raya.work',
+      'ai.raya.work?query', 'ai.raya.work#hash', '*.raya.work',
+      'ai.raya.work:', 'ai.raya.work:080', 'ai.raya.work:99999',
+      '0x7f.0.0.1', '%61i.raya.work', '::1', 'ai. raya.work',
+    ]
+    vi.stubEnv('GAIA_OPERATOR_HOSTS', ['ai.raya.work', ...invalid].join(','))
+    const f = fixture()
+    const table: IndexInjection[] = []
+    for (const listener of f.indexInjectListeners) listener(table)
+    expect(table).toEqual([{ kind: 'global', name: '__DSH_OPERATOR_HOSTS__', value: ['ai.raya.work'] }])
+    expect(f.warn).toHaveBeenCalledTimes(invalid.length)
+    for (const entry of invalid) {
+      expect(f.warn).toHaveBeenCalledWith(`Dropping invalid GAIA_OPERATOR_HOSTS entry ${JSON.stringify(entry)}`)
+    }
+  })
+
+  it.each([undefined, '', ' , , ', 'host/path'])('does not register injection without valid operator hosts: %j', (value) => {
+    vi.stubEnv('GAIA_OPERATOR_HOSTS', value)
+    expect(fixture().indexInjectListeners).toHaveLength(0)
+  })
+
   it('rejects a missing secret, bad bearer and remote peer; accepts a good bearer', async () => {
     expect((await fixture('').call('GET', '/gaia/control/health')).status).toBe(503)
     const f = fixture()
