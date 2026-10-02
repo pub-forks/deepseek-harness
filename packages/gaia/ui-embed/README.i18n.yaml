@@ -9,30 +9,30 @@
   en: 77f3966186dd47e7
   zh: 34a26dc8b0c501fb
 /deepseek-ai-dsh-gaia-ui-embed/summary:
-  en: 042505031696e062
-  zh: 0141d13d1e58c0f7
+  en: 851c47b1b9fc71fc
+  zh: e6dc785c4cc654c5
 /deepseek-ai-dsh-gaia-ui-embed/table-of-contents:
   en: 134c9b5c374e0e8e
   zh: e1882ebb8288f6bc
 /deepseek-ai-dsh-gaia-ui-embed/use-this-package:
-  en: 67c83dfc0fc46485
-  zh: 0e9dcdf104c1dc0a
+  en: 8b134e0e29db9559
+  zh: 8146d50e1aa78753
 /deepseek-ai-dsh-gaia-ui-embed/dev-note:
   en: e63e9edfb313a953
   zh: 0c2130dcbd4af1f4
 /deepseek-ai-dsh-gaia-ui-embed/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
-/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-embed:
-  en: e6496cab19a03c12
-  zh: 5c6b0460d1b0b39e
-/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-embed/what-the-model-sees:
-  en: 26df3875802252f7
-  zh: 5e3ff557b92d35d9
-/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-embed/token-effect:
+/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-modes:
+  en: 484d4138c1ef609c
+  zh: 2cd81ed151068919
+/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-modes/what-the-model-sees:
+  en: 39b03612db4d3f75
+  zh: 7c83cf6110c7b202
+/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-modes/token-effect:
   en: 57aeae7253e5418f
   zh: 5b17dc9b67839b2c
-/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-embed/kv-cache-effect:
+/deepseek-ai-dsh-gaia-ui-embed/model-experience/gaia-iframe-modes/kv-cache-effect:
   en: 8ad497ee1947660e
   zh: 1423133e084397ab
 /deepseek-ai-dsh-gaia-ui-embed/known-limitations-and-deferred-work:

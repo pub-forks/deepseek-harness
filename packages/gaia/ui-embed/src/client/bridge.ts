@@ -52,7 +52,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openConfigEditor' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'workspacesChanged' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: AppShortcutCode; shift: boolean }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: AppShortcutCode; shift: boolean; phase?: 'keyup' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; event: 'turnDone' | 'needsInput' | 'turnError'; title: string; sessionId?: string; workspacePath?: string; shown?: boolean }
 
@@ -69,6 +69,8 @@ export const APP_SHORTCUT_CODES = [
   'KeyP',
   'KeyA',
   'KeyN',
+  'KeyV',
+  'KeyR',
 ] as const
 
 /** Union type of all allowlisted app shortcut codes. */
@@ -76,10 +78,10 @@ export type AppShortcutCode = typeof APP_SHORTCUT_CODES[number]
 
 /**
  * Check whether a code and shift modifier match the app shortcut allowlist.
- * Shift is permitted only with KeyJ and KeyE.
+ * Shift is permitted only with KeyJ, KeyE and task dictation's KeyV.
  */
 export function isAppShortcutCandidate(code: string, shift: boolean): code is AppShortcutCode {
-  if (shift) return code === 'KeyJ' || code === 'KeyE'
+  if (shift) return code === 'KeyJ' || code === 'KeyE' || code === 'KeyV'
   return (APP_SHORTCUT_CODES as readonly string[]).includes(code)
 }
 

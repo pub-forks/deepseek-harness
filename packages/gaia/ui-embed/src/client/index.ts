@@ -441,6 +441,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
 
   // Intercept keyboard shortcuts that match Gaia app/drawer shortcuts or navigation chrome.
+  let voiceShortcutHeld = false
   const onKeyDown = (e: KeyboardEvent): void => {
     // Only closed drawer intents and allowlisted app shortcuts cross the bridge;
     // never forward arbitrary key data. Requiring exactly one platform modifier also
@@ -455,6 +456,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         return
       }
       if (isAppShortcutCandidate(e.code, e.shiftKey)) {
+        if (e.code === 'KeyV') voiceShortcutHeld = true
         e.preventDefault()
         e.stopPropagation()
         e.stopImmediatePropagation()
@@ -468,7 +470,14 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       e.stopImmediatePropagation()
     }
   }
+  const onKeyUp = (e: KeyboardEvent): void => {
+    // Releasing modifiers before V must still stop push-to-talk.
+    if (e.code !== 'KeyV' || !voiceShortcutHeld) return
+    voiceShortcutHeld = false
+    postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift: false, phase: 'keyup' })
+  }
   window.addEventListener('keydown', onKeyDown, { capture: true })
+  window.addEventListener('keyup', onKeyUp, { capture: true })
 
   const getFullSessionTitle = (id: SessionId): string => {
     const summary = ctx.sessions.list.getSnapshot().byId[id]
@@ -493,6 +502,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const commonDisposer = ctx.effect(() => () => {
     window.removeEventListener('keydown', onKeyDown, { capture: true })
+    window.removeEventListener('keyup', onKeyUp, { capture: true })
     unsubConnection?.()
     unsubFullNotifications?.()
     if (onFullMessage) window.removeEventListener('message', onFullMessage)

@@ -37,7 +37,7 @@ In embed mode, document preview actions use the resolved absolute file path to a
 
 Agent embeds route turn changes-review resources into a read-only Gaia editor tab using bounded session, event, turn and selected-file coordinates. Gaia reads the original summary and comparison hunks through its session-bound runtime proxy; it does not substitute the current Git diff. Full mode keeps the native Harness review sidebar.
 
-While focus is inside the embed, `Ctrl/Cmd+Alt+H` toggles Gaia's Harness drawer and `Ctrl/Cmd+Alt+M` toggles its maximize state. The embed captures only those exact, non-repeating chords and sends a closed drawer intent through the same-origin bridge; the full shell does not forward them.
+Both iframe modes forward Gaia's allowlisted, non-repeating `Ctrl/Cmd+Alt` application chords through the same-origin bridge, including `V` for dictation, `Shift+V` for task dictation and `R` for read aloud. Only J, E and V permit Shift; AltGraph and simultaneous Ctrl+Cmd are rejected. Dictation uses the sending iframe's composer without moving focus. A V release following a forwarded press sends `phase: 'keyup'` even if modifiers were released first, preserving push-to-talk; keydown messages omit phase. H and M send closed Harness drawer toggle/maximize intents in both modes. Listeners are removed on disposal.
 
 -----
 

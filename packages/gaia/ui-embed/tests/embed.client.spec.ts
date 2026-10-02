@@ -691,7 +691,7 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyE', shift: true })
 
     // Other allowlisted keys: KeyL, KeyK, KeyD, KeyZ, KeyF, KeyG, KeyP, KeyA, KeyN (no shift)
-    const otherCodes = ['KeyL', 'KeyK', 'KeyD', 'KeyZ', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN']
+    const otherCodes = ['KeyL', 'KeyK', 'KeyD', 'KeyZ', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN', 'KeyR']
     for (const code of otherCodes) {
       parentMessages = []
       const ev = new KeyboardEvent('keydown', { code, ctrlKey: true, altKey: true, cancelable: true })
@@ -700,13 +700,13 @@ describe('ui-embed client plugin', () => {
       expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code, shift: false }])
     }
 
-    // Rejected chords: shift with non-J/E, KeyV, KeyR, unlisted, repeat, both ctrl and meta
+    // Rejected chords: shift with non-J/E/V, unlisted, repeat, both ctrl and meta
     parentMessages = []
     const rejected = [
       new KeyboardEvent('keydown', { code: 'KeyN', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyL', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
-      new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true, cancelable: true }),
-      new KeyboardEvent('keydown', { code: 'KeyR', ctrlKey: true, altKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyR', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyX', ctrlKey: true, altKey: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, metaKey: true, altKey: true, cancelable: true }),
@@ -735,6 +735,40 @@ describe('ui-embed client plugin', () => {
     const b = new KeyboardEvent('keydown', { code: 'KeyB', ctrlKey: true, cancelable: true })
     window.dispatchEvent(b)
     expect(b.defaultPrevented).toBe(false)
+  })
+
+  it.each(['embed', 'full'])('forwards voice press and release without retaining modifiers in %s mode', async (mode) => {
+    setLocationSearch(`?gaia=${mode}&session=s-test-123`)
+    const mock = createMockContext()
+    const dispose = apply(mock.ctx)
+    for (const shift of [false, true]) {
+      parentMessages = []
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
+      expect(parentMessages).toEqual([])
+      const press = new KeyboardEvent('keydown', { code: 'KeyV', metaKey: true, altKey: true, shiftKey: shift, cancelable: true })
+      window.dispatchEvent(press)
+      expect(press.defaultPrevented).toBe(true)
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV', metaKey: true, altKey: true, repeat: true }))
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyR' }))
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
+      expect(parentMessages).toEqual([
+        { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift },
+        { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift: false, phase: 'keyup' },
+      ])
+    }
+    const altGraph = new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true })
+    Object.defineProperty(altGraph, 'getModifierState', { value: (key: string) => key === 'AltGraph' })
+    parentMessages = []
+    window.dispatchEvent(altGraph)
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
+    expect(parentMessages).toEqual([])
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true }))
+    await dispose?.()
+    parentMessages = []
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true }))
+    expect(parentMessages).toEqual([])
   })
 
   it('posts ready, status, and turn events', () => {
