@@ -26,6 +26,8 @@ import type { ArbitrateKey, ArbitrateOutcome } from '../../contract/draft-editor
 export interface ComposerKeymapHandlers {
   /** Keyboard arbitration while the menu is open ('pass' when no pipeline). */
   arbitrate(key: ArbitrateKey, composing: boolean): ArbitrateOutcome
+  /** GAIA: @param direction - unmodified, non-composing arrow. @returns whether a history provider consumed it. */
+  navigateHistory?(direction: 'up' | 'down'): boolean
   /** Space adjudication; true = a claim was applied — the keystroke is consumed. */
   space(): boolean
   /** Dismiss the popupSelect shell (Escape layering: an open overlay closes first). */
@@ -84,6 +86,13 @@ export function registerComposerKeymap(editor: LexicalEditor, handlers: Composer
     const inComposition = event !== null && isComposingEvent(event, recentlyComposing)
     if (handlers.arbitrate(key, inComposition) !== 'pass') {
       event?.preventDefault()
+      return true
+    }
+    // GAIA: Menus retain priority; repeats never race through multiple messages.
+    if ((key === 'up' || key === 'down') && event !== null && !inComposition && !editor.isComposing() && !event.repeat
+      && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+      && handlers.navigateHistory?.(key)) {
+      event.preventDefault()
       return true
     }
     return false

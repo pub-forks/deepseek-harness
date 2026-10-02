@@ -13,7 +13,8 @@ import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import {
   createSnapshotStore, type ObservableSnapshot, type SnapshotStore,
 } from '@deepseek-ai/dsh-client-store'
-import type { LexicalEditor } from 'lexical'
+// GAIA: Immutable draft checkpoints stay inside their owning input shell.
+import type { EditorState, LexicalEditor } from 'lexical'
 import type {
   CommandClaim, ConsumeTokenRequest, DraftAttachmentId,
   InputActions, InputEffect, InputNotice, InputState, InputTriggerController, PickOutcome,
@@ -24,7 +25,8 @@ import type {
 } from '../contract/draft-editor.ts'
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import { SubmitMachine } from './machine.ts'
-import { DraftEditorRuntime } from './editor/runtime.ts'
+// GAIA: Recall commits share the runtime's private editor update tag.
+import { DraftEditorRuntime, HISTORY_RECALL_TAG } from './editor/runtime.ts'
 import type { EditorProjection } from './editor/projection.ts'
 
 /** Popup face the shell needs (dismissal only; typed structurally to avoid a value import). */
@@ -136,6 +138,8 @@ export class SessionInputShell implements SessionInput {
     return this.draftEditor.projection
   }
   private rev = 0
+  /** GAIA: Lossless unsent draft and selection, retained only during message traversal. */
+  private historyCheckpoint: EditorState | undefined
   private readonly unregister: () => void
   private noticeSeq = 0
   private lastMirroredDraft = ''
@@ -163,7 +167,8 @@ export class SessionInputShell implements SessionInput {
 
   constructor(private readonly deps: SessionInputDeps) {
     this.draftEditor = new DraftEditorRuntime({
-      onUpdate: () => { this.onEditorUpdate() },
+      // GAIA: Tag-aware checkpoints distinguish recalls from ordinary edits.
+      onUpdate: (tags) => { this.onEditorUpdate(tags) },
       openReference: (source, reference) =>
         this.deps.inputTriggers?.()?.openReference(source, reference) ?? false,
       activeClaimToken: () => this.activeClaimToken(),
@@ -178,13 +183,16 @@ export class SessionInputShell implements SessionInput {
   // ---- editor plumbing ----
 
   /** Re-project, run the claim watch, publish, and feed trigger tracking after every editor commit. */
-  private onEditorUpdate(): void {
+  // GAIA: Selection-only updates keep traversal; content edits exit it.
+  private onEditorUpdate(tags: ReadonlySet<string>): void {
     const prev = this.draftEditor.refreshProjection()
     // Selection-only commits advance neither the revision nor the published
     // state: menus still track the caret below, while draftRev moves only
     // with content so a snapshot-built span (apply.ts) stays CAS-valid across
     // caret motion and subscribers do not re-render per caret move.
     if (projectionContentChanged(prev, this.projection)) {
+      // GAIA: A provider never restores a checkpoint over newly edited content.
+      if (!tags.has(HISTORY_RECALL_TAG)) this.historyCheckpoint = undefined
       this.rev += 1
       if (!this.restoringFailures && this.failedRestoreRev !== undefined) {
         this.failedDetached.clear()
@@ -377,6 +385,53 @@ export class SessionInputShell implements SessionInput {
   }
 
   /**
+   * GAIA: Route a document-edge arrow without sharing the editor with another domain.
+   * @param direction - unmodified arrow after trigger-menu arbitration.
+   * @returns whether a scoped history provider applied a replacement or restoration.
+   */
+  navigateHistory(direction: 'up' | 'down'): boolean {
+    if (this.disposed || this.core.state.phase !== 'plain' || !this.editor.isEditable()
+      || this.attachmentIds.length > 0 || this.projection.occurrences.length > 0) return false
+    const draft = this.draftEditor.captureHistoryDraft()
+    if (draft === undefined || draft.projection.occurrences.length > 0) return false
+    const selection = draft.projection.selection
+    if (selection === null || selection.start !== selection.end) return false
+    const length = draft.projection.detectText.length
+    const edge = direction === 'up' ? 0 : length
+    // Either edge permits reversing an active traversal without an extra native caret move.
+    if (selection.start !== edge && !(this.historyCheckpoint !== undefined
+      && (selection.start === 0 || selection.start === length))) return false
+    const rev = this.rev
+    let active = true
+    let applied = false
+    const usable = (): boolean => active && !applied && !this.disposed
+      && this.rev === rev && this.core.state.phase === 'plain'
+    try {
+      this.deps.actx.bail('conversation/input-history', {
+        direction, draftRev: rev, hasCheckpoint: this.historyCheckpoint !== undefined,
+        replace: (text, fresh) => {
+          if (!usable()) return false
+          if (fresh || this.historyCheckpoint === undefined) this.historyCheckpoint = draft.checkpoint
+          this.draftEditor.setDraft(text, direction)
+          applied = true
+          return true
+        },
+        restore: () => {
+          if (!usable() || this.historyCheckpoint === undefined) return false
+          const checkpoint = this.historyCheckpoint
+          this.historyCheckpoint = undefined
+          this.draftEditor.restoreHistoryDraft(checkpoint)
+          applied = true
+          return true
+        },
+      })
+      return applied
+    } finally {
+      active = false
+    }
+  }
+
+  /**
    * Hot plain-text reference lexicon source for the decoration scan:
    * delegates to the controller's aggregated store. Stable
    * identity per shell; without a pipeline the snapshot is the empty Map and
@@ -500,6 +555,8 @@ export class SessionInputShell implements SessionInput {
       flight.controller.abort()
     }
     this.disposed = true
+    // GAIA: Scope disposal releases the retained editor snapshot.
+    this.historyCheckpoint = undefined
     this.dispatchRun(({ type: 'release' }))
     this.unsubscribeInbox?.()
     this.unregister()

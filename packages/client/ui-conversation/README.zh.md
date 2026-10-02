@@ -54,6 +54,8 @@ target package 通过 declaration merge 扩展 snapshot 与 Location data map，
 
 `SessionInputShell` 通过私有 [DraftEditorRuntime](src/client/input/editor/runtime.ts) 为每个 Session 持有一个 Lexical editor，同时保留提交、附件选择和恢复决策。[DraftEditor](src/client/input/editor/DraftEditor.tsx) 呈现借用的 editor；InputBar 保留钩子与 refs，并通过 [view-binding](src/client/input/editor/view-binding.ts) 安装 DOM 行为。编辑器类型位于 [draft-editor.ts](src/client/contract/draft-editor.ts)，共享输入和提交类型位于 [input.ts](src/client/contract/input.ts)。编辑器后台更新会保留草稿选区，不修改文档选区或从其他控件夺回焦点；显式聚焦 Composer 时恢复其选区。这一拆分不支持同一 Session 同时挂载多个可编辑 root；[两阶段隔离提案](../../../.agents/notes/proposed/architecture/2026-09-14-composer-model-and-draft-editor.zh.md) 定义剩余工作。
 
+Gaia 可选的 Session 作用域 `conversation/input-history` 提供者接收同步、仅可使用一次的替换和恢复回调，不能获取编辑器。外壳仅允许无引用或附件、可编辑且处于普通草稿状态的输入框，在文档端点的折叠选区中浏览历史。它读取实时光标位置，并拒绝尚未提交的内容编辑。私有检查点保留原草稿结构、格式和选区；内容编辑使其失效，仅选区变化则保留。调出历史与恢复草稿不会新增撤销快照。命令菜单仲裁和组合输入保护先于历史处理；没有提供者时方向键保留原有行为。[Gaia ui-embed](../../gaia/ui-embed/README.zh.md) 负责已加载消息的筛选与保留上限。
+
 已认领的命令在仅删除参数和末尾分隔空格时保留身份与高亮，改动命令名才会释放认领。所有命令和语言使用相同规则，包括 `/goal`、`/目标`、`/plan` 和 `/计划`。输入法组合输入期间，命令提示和普通占位文字持续隐藏，直到编辑器提交最终文字且对应输入为空时才重新显示。
 
 工作区选择使用 `uiWorkspace.openWorkspace` 准备目标并提交导航。草稿文字和附件仅在该请求仍为当前请求时，通过它的同步准备回调搬移；后续导航或所有者释放会保留原草稿。

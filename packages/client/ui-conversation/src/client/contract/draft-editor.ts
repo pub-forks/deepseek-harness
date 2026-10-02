@@ -57,6 +57,8 @@ export interface ComposerKeyboard {
   caretSpan(): EditSelection
   /** Keyboard arbitration while the menu is open ('pass' when no pipeline). */
   arbitrate(key: ArbitrateKey, composing: boolean): ArbitrateOutcome
+  /** GAIA: @param direction - unmodified arrow after menu routing. @returns whether scoped history consumed it. */
+  navigateHistory(direction: 'up' | 'down'): boolean
   /** Space adjudication; true = the input applied a claim — caller preventDefaults. */
   space(): boolean
   /** Dismiss the popupSelect shell (any interaction outside the box). */

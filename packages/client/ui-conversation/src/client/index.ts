@@ -72,7 +72,8 @@ export type {
 } from './contract/slots.ts'
 export type {
   BeginCommandRequest, CommandClaim, ConsumeTokenRequest, DraftAttachmentId, InputActions,
-  InputState, InsertReferenceRequest, InsertTextRequest, PickOutcome, SessionInput,
+  // GAIA: Type-only history-provider currency; no new runtime browser exports.
+  InputHistoryRequest, InputState, InsertReferenceRequest, InsertTextRequest, PickOutcome, SessionInput,
   SessionInputResolver, SubmitAttachment, SubmitOutcome,
 } from './contract/input.ts'
 export type { ArbitrateKey, ArbitrateOutcome, ReferenceInsert, TokenSpan } from './contract/draft-editor.ts'

@@ -1,9 +1,9 @@
 /** The Composer model's private Lexical editor, projections, and node operations. */
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
-import type { LexicalEditor, NodeKey } from 'lexical'
+import type { EditorState, LexicalEditor, NodeKey } from 'lexical'
 import {
   $addUpdateTag, $createParagraphNode, $createTextNode, $getRoot, $getSelection, $isRangeSelection,
-  BLUR_COMMAND, CLEAR_HISTORY_COMMAND, COMMAND_PRIORITY_CRITICAL, createEditor, HISTORY_MERGE_TAG, PASTE_TAG,
+  BLUR_COMMAND, CLEAR_HISTORY_COMMAND, COMMAND_PRIORITY_CRITICAL, createEditor, HISTORY_MERGE_TAG, HISTORIC_TAG, PASTE_TAG,
   RootNode, SELECTION_CHANGE_COMMAND, SKIP_DOM_SELECTION_TAG,
 } from 'lexical'
 import { registerPlainText } from '@lexical/plain-text'
@@ -23,7 +23,8 @@ type Lexicon = ReadonlyMap<'/' | '@', readonly string[]>
 
 /** Model callbacks read at the same editor registration and update points. */
 interface DraftEditorRuntimeDeps {
-  readonly onUpdate: () => void
+  /** GAIA: Commit tags distinguish recall from external content edits. */
+  readonly onUpdate: (tags: ReadonlySet<string>) => void
   readonly openReference: (source: string | undefined, reference: Pick<ReferenceInsert, 'ref' | 'appearance'>) => boolean
   readonly activeClaimToken: () => string | null
   readonly lexicon: () => Lexicon
@@ -40,6 +41,9 @@ const REFERENCE_PLACEHOLDER_RE = /[\uE100-\uE11D\uFFFC]/gu
 
 /** Undo merge window for contiguous typing, in ms (the old machine's mergeWindowMs). */
 const HISTORY_MERGE_DELAY_MS = 1000
+
+/** GAIA: Owner-tagged message recall never invalidates the shell's draft checkpoint. */
+export const HISTORY_RECALL_TAG = 'gaia-input-history'
 
 /** One model-owned editor; registration and disposal remain with its model. */
 export class DraftEditorRuntime {
@@ -86,7 +90,8 @@ export class DraftEditorRuntime {
       registerReferenceActivation(this.editor, (source, reference) =>
         this.deps.openReference(source, reference)),
       registerHistory(this.editor, createEmptyHistoryState(), HISTORY_MERGE_DELAY_MS),
-      this.editor.registerUpdateListener(() => { this.deps.onUpdate() }),
+      // GAIA: History checkpoints survive only owner-tagged recall commits.
+      this.editor.registerUpdateListener(({ tags }) => { this.deps.onUpdate(tags) }),
       registerClaimDecoration(this.editor, () => this.deps.activeClaimToken()),
       registerTextRefDecoration(this.editor, () => this.deps.lexicon(), () => this.deps.activeClaimToken()),
       () => { this.lexiconOff?.() },
@@ -100,6 +105,27 @@ export class DraftEditorRuntime {
   /** The latest committed editor projection. */
   get projection(): EditorProjection {
     return this.projected
+  }
+
+  /**
+   * GAIA: Snapshot the live caret without retaining mutable pending editor content.
+   * @returns committed nodes with the current selection, or undefined during a content edit.
+   */
+  captureHistoryDraft(): { projection: EditorProjection; checkpoint: EditorState } | undefined {
+    if (this.editor._updating && (this.editor._dirtyLeaves.size > 0 || this.editor._dirtyElements.size > 0)) return undefined
+    const capture = () => ({
+      projection: $projectComposer(key => this.occurrenceIdOf(key)),
+      checkpoint: this.editor.getEditorState().clone($getSelection()?.clone() ?? null),
+    })
+    return this.editor._updating ? capture() : this.editor.getEditorState().read(capture)
+  }
+
+  /**
+   * GAIA: Restore a private checkpoint without adding recall snapshots to undo history.
+   * @param checkpoint - immutable editor state captured before recall.
+   */
+  restoreHistoryDraft(checkpoint: EditorState): void {
+    this.editor.setEditorState(checkpoint, { tag: HISTORIC_TAG })
   }
 
   /**
@@ -160,11 +186,14 @@ export class DraftEditorRuntime {
    * Placeholder-sanitized; newlines split paragraphs; the caret lands at the
    * end. Merged into history so a seed is not an undoable step of its own.
    * @param text - the full next draft.
+   * @param historyDirection - GAIA: recall selects the arrow's document edge without creating an undo step.
    */
-  setDraft(text: string): void {
+  setDraft(text: string, historyDirection?: 'up' | 'down'): void {
     const clean = text.replace(REFERENCE_PLACEHOLDER_RE, '')
-    if (clean === this.projection.clipboardText) return
-    this.editor.update(() => {
+    if (historyDirection === undefined && clean === this.projection.clipboardText) return
+    // GAIA: Apply within the current key command instead of deferring a nested update.
+    this.applyEdit(() => {
+      if (historyDirection !== undefined) $addUpdateTag(HISTORY_RECALL_TAG)
       const root = $getRoot()
       root.clear()
       for (const line of clean.split('\n')) {
@@ -172,8 +201,10 @@ export class DraftEditorRuntime {
         if (line !== '') paragraph.append($createTextNode(line))
         root.append(paragraph)
       }
-      root.selectEnd()
-    }, { discrete: true, tag: HISTORY_MERGE_TAG })
+      // GAIA: Consecutive recalls stay at a safe document edge.
+      if (historyDirection === 'up') root.selectStart()
+      else root.selectEnd()
+    }, historyDirection === undefined ? HISTORY_MERGE_TAG : HISTORIC_TAG)
   }
 
   /**

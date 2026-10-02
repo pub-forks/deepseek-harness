@@ -48,6 +48,8 @@ import { en as readAloudLabels } from './read-aloud-locales.ts'
 import type { GaiaReadAloudState } from './bridge.ts'
 import { GaiaAutoReadLifecycle, type AutoReadInjected } from './auto-read-lifecycle.tsx'
 import { observeCompletedAnswers } from './auto-read-aloud.ts'
+import { GaiaMessageHistoryLifecycle, type MessageHistoryInjected } from './message-history-lifecycle.tsx'
+import { observeMessageHistory } from './message-history.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -280,6 +282,17 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       },
     }),
   }, GaiaAutoReadLifecycle))
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay', id: 'gaia-message-history', order: 21,
+    inject: (sessionId): MessageHistoryInjected => ({
+      observe: () => {
+        const binding = ctx.sessions.binding(sessionId)
+        if (!binding) throw new Error('Gaia message history requires a live session binding')
+        return observeMessageHistory(binding.eventSource,
+          handler => binding.ctx.on('conversation/input-history', handler))
+      },
+    }),
+  }, GaiaMessageHistoryLifecycle))
   ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
     name: 'conversation.chat.assistant-actions', id: 'gaia-read-aloud', order: 20, locale: 'gaia.readAloud',
     inject: (sessionId): ReadAloudInjected => ({

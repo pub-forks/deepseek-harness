@@ -128,8 +128,30 @@ export interface InputTriggerController {
   toggleSource(source: string, hit: InputTriggerHit): void
 }
 
+/** GAIA: Synchronous history request; callbacks expire when scoped arbitration returns. */
+export interface InputHistoryRequest {
+  readonly direction: 'up' | 'down'
+  readonly draftRev: number
+  readonly hasCheckpoint: boolean
+  /**
+   * @param text - complete plain-text message.
+   * @param fresh - start traversal from the current draft.
+   * @returns whether replacement applied.
+   */
+  replace(text: string, fresh: boolean): boolean
+  /** @returns whether the original editor content and selection were restored. */
+  restore(): boolean
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Events {
+    /**
+     * GAIA: Offer a document-edge arrow to a session-scoped history provider.
+     * @param request - synchronous draft replacement and restoration capabilities.
+     * @mode bail
+     * @dshScopeScan unsupported Session context is the routing identity.
+     */
+    'conversation/input-history'(request: InputHistoryRequest): true | undefined
     /**
      * Claim a command token for the scoped input machine.
      * @param request - command claim and span.

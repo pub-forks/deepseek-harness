@@ -110,6 +110,9 @@ export function installDraftKeymap(
 ): () => void {
   return registerComposerKeymap(editor, {
     arbitrate: (key, composing) => keyboard.arbitrate(key, composing),
+    // GAIA: Busy/locked/uploading inputs keep their native arrow behavior.
+    navigateHistory: direction => !gate.current.machineBusy && !gate.current.locked
+      && !gate.current.uploadsPending && keyboard.navigateHistory(direction),
     space: () => {
       if (gate.current.machineBusy || gate.current.locked) return false
       return keyboard.space()
