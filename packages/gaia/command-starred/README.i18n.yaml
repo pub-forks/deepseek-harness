@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/command-starred/README.md
+/:
+  en: 5d6a26fa26ab6c8e
+  zh: 2602536eb75ee3ce
+/deepseek-ai-dsh-gaia-command-starred:
+  en: afe122e171107f93
+  zh: 6b2e57d412c82a4b
+/deepseek-ai-dsh-gaia-command-starred/summary:
+  en: 4eead12b159d28ad
+  zh: 3487277d52cf8a86
+/deepseek-ai-dsh-gaia-command-starred/table-of-contents:
+  en: 29fd260d67958928
+  zh: b3c2adb1ea6301a6
+/deepseek-ai-dsh-gaia-command-starred/use-this-package:
+  en: 5775dd5d05c0b0f0
+  zh: 0c2c7cac251f748b
+/deepseek-ai-dsh-gaia-command-starred/dev-note:
+  en: 4781de4dade29fe9
+  zh: 012426b5900d5dc1
+/deepseek-ai-dsh-gaia-command-starred/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-gaia-command-starred/model-experience/starred-task-follow-up:
+  en: de7e4e073003a219
+  zh: b51e834cb539ff07
+/deepseek-ai-dsh-gaia-command-starred/model-experience/starred-task-follow-up/what-the-model-sees:
+  en: d4d8d55b63240b0e
+  zh: 9e2b82e2d0f89b5f
+/deepseek-ai-dsh-gaia-command-starred/model-experience/starred-task-follow-up/token-effect:
+  en: 52a3413d36aaeb5f
+  zh: 880e62155ab6a06d
+/deepseek-ai-dsh-gaia-command-starred/model-experience/starred-task-follow-up/kv-cache-effect:
+  en: 20fb9b192a393a5b
+  zh: 2d6941f8c496cc8a
+/deepseek-ai-dsh-gaia-command-starred/known-limitations-and-deferred-work:
+  en: f67fab23ec969e33
+  zh: 0d2cd433e1f125b0

@@ -39,6 +39,9 @@
     # GAIA: the bridge also mounts Host workspace model memory for new sessions.
     - id: gaia-bridge
       name: '@deepseek-ai/dsh-gaia-bridge'
+    # GAIA: expand starred task requests into sequential agent follow-ups.
+    - id: gaia-command-starred
+      name: '@deepseek-ai/dsh-gaia-command-starred'
     # GAIA: Remote runs behind the regular browser-cookie API Gateway.
     - id: gaia-api-authorization
       name: '@deepseek-ai/dsh-gaia-api-authorization'

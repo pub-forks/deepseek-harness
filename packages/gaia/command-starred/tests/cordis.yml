@@ -1,0 +1,10 @@
+- id: sessions
+  name: cordis:sessions
+- id: projections
+  name: cordis:projections
+- id: agents
+  name: cordis:agents
+- id: commands
+  name: cordis:commands
+- id: starred
+  name: cordis:starred

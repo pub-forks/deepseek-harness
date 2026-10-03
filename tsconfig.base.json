@@ -49,6 +49,7 @@
 
       // GAIA: resolve the fork packages from source during host checks.
       "@deepseek-ai/dsh-gaia-bridge": ["./packages/gaia/bridge/src/index.ts"],
+      "@deepseek-ai/dsh-gaia-command-starred": ["./packages/gaia/command-starred/src/index.ts"],
       "@deepseek-ai/dsh-gaia-api-authorization": ["./packages/gaia/api-authorization/src/index.ts"],
       "@deepseek-ai/dsh-gaia-api-authorization/types": ["./packages/gaia/api-authorization/src/types.ts"],
       "@deepseek-ai/dsh-gaia-ui-authorization": ["./packages/gaia/ui-authorization/src/index.ts"],
