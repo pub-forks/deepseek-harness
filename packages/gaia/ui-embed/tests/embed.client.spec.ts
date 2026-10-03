@@ -306,6 +306,7 @@ describe('ui-embed client plugin', () => {
         registeredCommands.push(cmd)
         return commandUiDisposer
       }),
+      face: vi.fn(() => commandUiDisposer),
     }
     ctx.provide('commandUi', commandUi)
 
@@ -407,7 +408,7 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
-      'conversation.input.overlay', 'conversation.chat.assistant-actions', 'sidebar.session.row.decoration', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
+      'conversation.input.overlay', 'conversation.input.overlay', 'conversation.chat.assistant-actions', 'sidebar.session.row.decoration', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
     expect(mock.slotRegistrations).not.toContainEqual(expect.objectContaining({ id: 'gaia-maximize' }))
@@ -1285,6 +1286,17 @@ describe('ui-embed client plugin', () => {
         type: 'resume',
         sessionId: 's-selected-42',
       })
+    })
+  })
+
+  describe('/starred command face', () => {
+    it.each(['embed', 'full'] as const)('registers the /starred face in %s mode', async (mode) => {
+      setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      apply(mock.ctx)
+      for (let i = 0; i < 10; i++) await Promise.resolve()
+
+      expect(mock.commandUi.face).toHaveBeenCalledWith(expect.objectContaining({ name: 'starred' }))
     })
   })
 

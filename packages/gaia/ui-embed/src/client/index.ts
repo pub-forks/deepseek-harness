@@ -22,6 +22,7 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { StarIcon } from './star-icon.tsx'
 import {
   isAppShortcutCandidate,
   isGaiaIncomingMessage,
@@ -267,6 +268,10 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   if (!inGaiaFrame) return
 
   const disposeLocaleOverrides = registerGaiaLocaleOverrides(ctx.locale)
+  // GAIA: the Host owns /starred; this face supplies its slash-menu glyph in full and embed modes.
+  ctx.inject(['commandUi'], (scope: Context) => {
+    scope.effect(() => scope.commandUi.face({ name: 'starred', icon: StarIcon }))
+  })
   ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
   const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, autoRead: false, status: 'idle', sessionId: null, messageId: null })
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({

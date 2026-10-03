@@ -28,7 +28,7 @@ import type {
   CandidateRequest, ClientSessionContext, CommandClaim, PickOutcome, InputTriggerCandidate, InputTriggerPick,
   SubmitAttachment, SubmitEnvelope, SubmitOutcome,
 } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
-import type { CommandContribution, CommandDecoration, CommandUiContract } from './contract.ts'
+import type { CommandContribution, CommandDecoration, CommandFace, CommandUiContract } from './contract.ts'
 import type { CommandDescriptor } from './directory.ts'
 import { CommandDirectory } from './directory.ts'
 import { PopupSelectController } from './popup.ts'
@@ -69,6 +69,8 @@ function submittedCommandName(line: string): string {
 interface LiveState {
   readonly contributions: Map<string, CommandContribution>
   readonly decorations: Map<string, CommandDecoration>
+  // GAIA: client-provided glyphs for existing Host catalog rows.
+  readonly faces: Map<string, CommandFace>
   readonly popups: WeakMapWithValues<SessionBinding, PopupSelectController<ClientSessionContext>>
 }
 
@@ -80,6 +82,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
   private readonly live: LiveState = {
     contributions: new Map(),
     decorations: new Map(),
+    faces: new Map(),
     popups: new WeakMapWithValues(),
   }
   /** `command`-namespace translator (composer refusal notices). */
@@ -166,6 +169,25 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
   }
 
   /**
+   * Register a glyph for one host command's slash-menu row; effect disposer.
+   * Duplicate names throw.
+   * @param face - host command name and menu glyph.
+   * @returns the disposer removing the registration.
+   */
+  // GAIA: faces are presentational and do not create command rows.
+  face(face: CommandFace): () => void {
+    const dispose = this.ctx.effect(() => {
+      const { faces } = this.live
+      if (faces.has(face.name)) {
+        throw new Error(`ui-commands: duplicate face for /${face.name}`)
+      }
+      faces.set(face.name, face)
+      return () => { faces.delete(face.name) }
+    }, 'command.face()')
+    return () => { void dispose() }
+  }
+
+  /**
    * Close every open popup for a command whose options have become stale.
    * Pending loads and confirmations lose their binding; drafts stay intact.
    * @param name - command name without the leading slash.
@@ -226,9 +248,13 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     const seen = new Set<string>()
     for (const c of list) {
       seen.add(c.name)
+      const builtInFace = builtinRowFace(c, this.t)
+      const registeredIcon = this.live.faces.get(c.name)?.icon
       rows.push({
         name: c.name,
-        ...(builtinRowFace(c, this.t) ?? { description: c.description }),
+        ...(builtInFace ?? { description: c.description }),
+        // GAIA: use registered glyphs only when the built-in presentation has none.
+        ...(builtInFace === undefined && registeredIcon !== undefined ? { icon: registeredIcon } : {}),
         ...(c.input !== undefined ? { hint: c.input.hint } : {}),
       })
     }

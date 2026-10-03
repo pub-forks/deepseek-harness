@@ -319,6 +319,57 @@ describe('candidates', () => {
     expect(names).toEqual(['theme'])
   })
 
+  describe('Host command faces', () => {
+    const StarIcon = () => null
+
+    it('gives an existing Host row its registered icon while preserving catalog copy', async () => {
+      const { command, source } = await bench({
+        commands: () => Promise.resolve({ commands: [{ name: 'starred', description: 'Starred files' }] }),
+      })
+      command.face({ name: 'starred', icon: StarIcon })
+      const [row] = await source.candidates(proj('s1'), req(''))
+      expect(row).toMatchObject({ name: 'starred', description: 'Starred files', icon: StarIcon })
+    })
+
+    it('lets a built-in Host face win over a registered face', async () => {
+      const { command, source } = await bench({
+        commands: () => Promise.resolve({ commands: [{
+          definitionId: CommandDefinitionId('@deepseek-ai/dsh-command-goal'),
+          name: 'goal', description: 'Set a goal', input: { hint: '<objective>' },
+        }] }),
+      })
+      command.face({ name: 'goal', icon: StarIcon })
+      const [row] = await source.candidates(proj('s1'), req(''))
+      expect(row?.icon).toBe(IconGoalOutlineRegular)
+    })
+
+    it('does not create a row for a face without a Host command', async () => {
+      const { command, source } = await bench()
+      command.face({ name: 'missing', icon: StarIcon })
+      const rows = await source.candidates(proj('s1'), req(''))
+      expect(rows.map(row => row.name)).not.toContain('missing')
+    })
+
+    it('removes the icon when its disposer runs', async () => {
+      const { command, source } = await bench({
+        commands: () => Promise.resolve({ commands: [{ name: 'starred', description: 'Starred files' }] }),
+      })
+      const dispose = command.face({ name: 'starred', icon: StarIcon })
+      expect((await source.candidates(proj('s1'), req('')))[0]?.icon).toBe(StarIcon)
+      dispose()
+      await expect(source.candidates(proj('s1'), req(''))).resolves.toMatchObject([
+        { name: 'starred', description: 'Starred files' },
+      ])
+      expect((await source.candidates(proj('s1'), req('')))[0]?.icon).toBeUndefined()
+    })
+
+    it('throws for a duplicate face name', async () => {
+      const { command } = await bench()
+      command.face({ name: 'starred', icon: StarIcon })
+      expect(() => command.face({ name: 'starred', icon: StarIcon })).toThrow('duplicate face for /starred')
+    })
+  })
+
   it('localizes canonical built-in and contribution descriptions on every candidate request', async () => {
     let locale = 'zh'
     const commands: CommandDescriptor[] = [

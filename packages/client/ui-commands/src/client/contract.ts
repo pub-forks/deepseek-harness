@@ -104,6 +104,15 @@ export interface CommandDecoration {
   readonly ui: CommandUiSpec
 }
 
+/** A client-owned glyph for an existing Host command's slash-menu row. */
+// GAIA: allow client plugins to supply menu glyphs for Host commands.
+export interface CommandFace {
+  /** The HOST command name whose row receives this glyph. */
+  readonly name: string
+  /** Menu row glyph from the shared icon set. */
+  readonly icon: ComponentType<IconProps>
+}
+
 /** The `ctx.commandUi` service face visible to business packages. */
 export interface CommandUiContract {
   /**
@@ -116,6 +125,12 @@ export interface CommandUiContract {
    * Duplicate names throw at registration.
    */
   decorate(decoration: CommandDecoration): () => void
+  /**
+   * Register a glyph for one host command's menu row; effect disposer.
+   * Duplicate names throw at registration.
+   */
+  // GAIA: faces affect presentation only and never contribute command rows.
+  face(face: CommandFace): () => void
   /** Close this command's open popups and confirmations without consuming composer drafts. */
   dismiss(name: string): void
   /** Resolve the per-session popup controller for one session scope (wiring/overlay layer). */
