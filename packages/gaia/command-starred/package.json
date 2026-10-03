@@ -2,6 +2,7 @@
   "name": "@deepseek-ai/dsh-gaia-command-starred",
   "description": "Human-facing slash command for sequential starred project tasks",
   "version": "0.1.7-rc.2",
+  "icon": "./icon.svg",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -19,6 +20,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "icon.svg",
     "lib/index.js",
     "lib/types/**/*.d.ts"
   ],
