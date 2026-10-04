@@ -23,6 +23,7 @@ import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
 import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { StarIcon } from './star-icon.tsx'
+import { RenameIcon } from './rename-icon.tsx'
 import {
   isAppShortcutCandidate,
   isGaiaIncomingMessage,
@@ -271,6 +272,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   // GAIA: the Host owns /starred; this face supplies its slash-menu glyph in full and embed modes.
   ctx.inject(['commandUi'], (scope: Context) => {
     scope.effect(() => scope.commandUi.face({ name: 'starred', icon: StarIcon }))
+    // GAIA: /rename is a Host command; this client face supplies its menu glyph.
+    scope.effect(() => scope.commandUi.face({ name: 'rename', icon: RenameIcon }))
   })
   ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
   const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, autoRead: false, status: 'idle', sessionId: null, messageId: null })

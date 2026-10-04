@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/session-rename/README.md
+/:
+  en: 74bcc5fbc3354ac6
+  zh: eb546d75933c6431
+/deepseek-ai-dsh-gaia-session-rename:
+  en: f843f4bc368ee239
+  zh: 50c52b59dcc946f9
+/deepseek-ai-dsh-gaia-session-rename/summary:
+  en: 05ca82623ae278fb
+  zh: 7e5248c95dd2f194
+/deepseek-ai-dsh-gaia-session-rename/table-of-contents:
+  en: 29fd260d67958928
+  zh: b3c2adb1ea6301a6
+/deepseek-ai-dsh-gaia-session-rename/use-this-package:
+  en: c04292fea18a6ac8
+  zh: 1aaace3f09502ae0
+/deepseek-ai-dsh-gaia-session-rename/dev-note:
+  en: 0995b980ac931b07
+  zh: d22093d5cbf2b8f1
+/deepseek-ai-dsh-gaia-session-rename/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename:
+  en: 845a74666a607731
+  zh: 5350addad60b7113
+/deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/what-the-model-sees:
+  en: 1dd6767b3beac07a
+  zh: 1cd8505aa427f7ff
+/deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/token-effect:
+  en: 6d6ba312c6962817
+  zh: b3f28f74b3b220e9
+/deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/kv-cache-effect:
+  en: d45a9a7ad8eb3015
+  zh: c871de1f8969f3b6
+/deepseek-ai-dsh-gaia-session-rename/known-limitations-and-deferred-work:
+  en: e6496db65abaacea
+  zh: 986c383edcaf80b0

@@ -1289,14 +1289,15 @@ describe('ui-embed client plugin', () => {
     })
   })
 
-  describe('/starred command face', () => {
-    it.each(['embed', 'full'] as const)('registers the /starred face in %s mode', async (mode) => {
+  describe('Gaia command faces', () => {
+    it.each(['embed', 'full'] as const)('registers /starred and /rename faces in %s mode', async (mode) => {
       setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed&session=s-test-123')
       const mock = createMockContext()
       apply(mock.ctx)
       for (let i = 0; i < 10; i++) await Promise.resolve()
 
       expect(mock.commandUi.face).toHaveBeenCalledWith(expect.objectContaining({ name: 'starred' }))
+      expect(mock.commandUi.face).toHaveBeenCalledWith(expect.objectContaining({ name: 'rename' }))
     })
   })
 

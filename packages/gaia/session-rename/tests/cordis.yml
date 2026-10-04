@@ -1,0 +1,14 @@
+- id: sessions
+  name: cordis:sessions
+- id: projections
+  name: cordis:projections
+- id: agents
+  name: cordis:agents
+- id: commands
+  name: cordis:commands
+- id: titles
+  name: cordis:session-title
+- id: tools
+  name: cordis:tools
+- id: session-rename
+  name: cordis:session-rename

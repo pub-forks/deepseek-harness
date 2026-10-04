@@ -42,6 +42,9 @@
     # GAIA: expand starred task requests into sequential agent follow-ups.
     - id: gaia-command-starred
       name: '@deepseek-ai/dsh-gaia-command-starred'
+    # GAIA: provides /rename and the explicit rename_session model tool.
+    - id: gaia-session-rename
+      name: '@deepseek-ai/dsh-gaia-session-rename'
     # GAIA: Remote runs behind the regular browser-cookie API Gateway.
     - id: gaia-api-authorization
       name: '@deepseek-ai/dsh-gaia-api-authorization'

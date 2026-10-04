@@ -458,9 +458,10 @@
     { "path": "./packages/host/directory-picker-browse" },
     { "path": "./packages/host/directory-picker-native" },
     { "path": "./packages/host/frontend-static" },
-    // GAIA: include the bridge, starred command, and overlay entries in the host aggregate.
+    // GAIA: include the bridge, Gaia commands, and overlay entries in the host aggregate.
     { "path": "./packages/gaia/bridge" },
     { "path": "./packages/gaia/command-starred" },
+    { "path": "./packages/gaia/session-rename" },
     { "path": "./packages/gaia/api-authorization" },
     { "path": "./packages/gaia/profile-gaia" },
     { "path": "./packages/host/open-in-app" },
