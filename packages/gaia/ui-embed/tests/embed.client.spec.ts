@@ -819,7 +819,25 @@ describe('ui-embed client plugin', () => {
       },
     })
 
-    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'title', title: 'My Custom Title' })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'title', title: 'My Custom Title', explicit: true })
+  })
+
+  it('marks a placeholder display title as not explicit', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+
+    mock.setSessionList({
+      phase: 'ready',
+      byId: {
+        's-test-123': {
+          id: SessionId('s-test-123'),
+          displayTitle: 'project-folder',
+        },
+      },
+    })
+
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'title', title: 'project-folder', explicit: false })
   })
 
   it('does not recurse when openSession synchronously notifies the Session list', () => {

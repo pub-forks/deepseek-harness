@@ -666,7 +666,9 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       const title = summary.title ?? summary.displayTitle
       if (title !== lastTitle) {
         lastTitle = title
-        postToParent({ source: 'gaia-dsh', v: 1, type: 'title', title })
+        // explicit: a real title, not the folder/id placeholder displayTitle
+        // falls back to, so Gaia only renames its agent after a real title.
+        postToParent({ source: 'gaia-dsh', v: 1, type: 'title', title, explicit: summary.title !== undefined })
       }
     } else if (list.phase === 'ready' && !reportedNotFound) {
       reportedNotFound = true
