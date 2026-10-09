@@ -52,18 +52,20 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openConfigEditor' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'workspacesChanged' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: AppShortcutCode; shift: boolean; phase?: 'keyup' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: string; shift: boolean; mod?: boolean; alt?: boolean; phase?: 'keyup' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; event: 'turnDone' | 'needsInput' | 'turnError'; title: string; sessionId?: string; workspacePath?: string; shown?: boolean }
 
 /** Allowlisted keyboard shortcut codes forwarded from the iframe to Gaia. */
 export const APP_SHORTCUT_CODES = [
+  'KeyS',
   'KeyJ',
   'KeyE',
   'KeyL',
   'KeyK',
   'KeyD',
   'KeyZ',
+  'Tab',
   'KeyF',
   'KeyG',
   'KeyP',
@@ -76,12 +78,18 @@ export const APP_SHORTCUT_CODES = [
 /** Union type of all allowlisted app shortcut codes. */
 export type AppShortcutCode = typeof APP_SHORTCUT_CODES[number]
 
+/** Codes accepted for parent-registered app chords. */
+export const APP_CHORD_CODE_PATTERN = new RegExp(
+  '^(Key[A-Z]|Digit[0-9]|F([1-9]|1[0-2])|Tab|Space|Backquote|Minus|Equal|'
+    + 'BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash)$',
+)
+
 /**
  * Check whether a code and shift modifier match the app shortcut allowlist.
- * Shift is permitted only with KeyJ, KeyE and task dictation's KeyV.
+ * Shift is permitted only with KeyJ, KeyE, KeyP and task dictation's KeyV.
  */
 export function isAppShortcutCandidate(code: string, shift: boolean): code is AppShortcutCode {
-  if (shift) return code === 'KeyJ' || code === 'KeyE' || code === 'KeyV'
+  if (shift) return code === 'KeyJ' || code === 'KeyE' || code === 'KeyP' || code === 'KeyV'
   return (APP_SHORTCUT_CODES as readonly string[]).includes(code)
 }
 
@@ -125,6 +133,9 @@ export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; error: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openSettings' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openSession'; sessionId: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appChords'; chords: unknown[] }
+
+export interface AppChord { code: string; mod: boolean; alt: boolean; shift: boolean }
 
 /**
  * Validate that a session string conforms to the safe session identifier grammar.
@@ -150,6 +161,9 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
   }
 
   switch (msg.type) {
+    case 'appChords':
+      return Array.isArray(msg.chords) && msg.chords.length <= 32
+        && Object.keys(msg).every(key => ['source', 'v', 'type', 'chords'].includes(key))
     case 'readAloudState':
       return typeof msg.enabled === 'boolean'
         && (msg.autoRead === undefined || typeof msg.autoRead === 'boolean')

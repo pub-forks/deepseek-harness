@@ -45,6 +45,13 @@ describe('isGaiaIncomingMessage', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'openSettings' })).toBe(true)
   })
 
+  it('accepts bounded parent appChords registrations and rejects malformed envelopes', () => {
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'appChords', chords: [{ code: 'KeyV', mod: true, alt: true, shift: false }] })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'appChords', chords: [{ code: 'Bad', mod: true, alt: true, shift: false }] })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'appChords', chords: new Array(33).fill({}) })).toBe(false)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'appChords', chords: [], extra: true })).toBe(false)
+  })
+
   it('validates insertText messages with length bounds', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'insertText', text: 'Hello' })).toBe(true)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'insertText', text: 'a'.repeat(8192) })).toBe(true)
@@ -691,8 +698,8 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyE', shift: false })
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyE', shift: true })
 
-    // Other allowlisted keys: KeyL, KeyK, KeyD, KeyZ, KeyF, KeyG, KeyP, KeyA, KeyN (no shift)
-    const otherCodes = ['KeyL', 'KeyK', 'KeyD', 'KeyZ', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN', 'KeyR']
+    // Other allowlisted keys include the screenshot and focus-mode chords.
+    const otherCodes = ['KeyS', 'KeyL', 'KeyK', 'KeyD', 'KeyZ', 'Tab', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN']
     for (const code of otherCodes) {
       parentMessages = []
       const ev = new KeyboardEvent('keydown', { code, ctrlKey: true, altKey: true, cancelable: true })
@@ -701,13 +708,25 @@ describe('ui-embed client plugin', () => {
       expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code, shift: false }])
     }
 
-    // Rejected chords: shift with non-J/E/V, unlisted, repeat, both ctrl and meta
+    parentMessages = []
+    const pShift = new KeyboardEvent('keydown', { code: 'KeyP', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true })
+    window.dispatchEvent(pShift)
+    expect(pShift.defaultPrevented).toBe(true)
+    expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyP', shift: true }])
+
+    parentMessages = []
+    const altGraphJ = new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true, cancelable: true })
+    Object.defineProperty(altGraphJ, 'getModifierState', { value: (key: string) => key === 'AltGraph' })
+    window.dispatchEvent(altGraphJ)
+    expect(altGraphJ.defaultPrevented).toBe(true)
+    expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: false }])
+
+    // Rejected chords: shift outside J/E/P, unlisted, repeat, both ctrl and meta
     parentMessages = []
     const rejected = [
       new KeyboardEvent('keydown', { code: 'KeyN', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyL', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
-      new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
-      new KeyboardEvent('keydown', { code: 'KeyR', ctrlKey: true, altKey: true, shiftKey: true, cancelable: true }),
+      new KeyboardEvent('keydown', { code: 'KeyP', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyX', ctrlKey: true, altKey: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true, repeat: true, cancelable: true }),
       new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, metaKey: true, altKey: true, cancelable: true }),
@@ -715,6 +734,41 @@ describe('ui-embed client plugin', () => {
     rejected.forEach(event => window.dispatchEvent(event))
     expect(rejected.every(event => !event.defaultPrevented)).toBe(true)
     expect(parentMessages).toEqual([])
+  })
+
+  it('forwards only registered custom chords with exact modifiers and matching releases', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      origin: window.location.origin,
+      source: fakeParent,
+      data: { source: 'gaia-dsh', v: 1, type: 'appChords', chords: [
+        null,
+        { code: 'KeyX', mod: true, alt: false, shift: true, extra: true },
+        { code: 'KeyX', mod: true, alt: false, shift: true },
+        { code: 'KeyQ', mod: false, alt: false, shift: false },
+        { code: 'KeyJ', mod: false, alt: true, shift: false },
+      ] },
+    }))
+
+    const custom = new KeyboardEvent('keydown', { code: 'KeyX', metaKey: true, shiftKey: true, cancelable: true })
+    window.dispatchEvent(custom)
+    expect(custom.defaultPrevented).toBe(true)
+    expect(parentMessages.at(-1)).toEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyX', shift: true, mod: true, alt: false })
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX' }))
+    expect(parentMessages.at(-1)).toEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyX', shift: true, mod: true, alt: false, phase: 'keyup' })
+
+    parentMessages = []
+    const unregistered = new KeyboardEvent('keydown', { code: 'KeyY', ctrlKey: true, altKey: true, cancelable: true })
+    window.dispatchEvent(unregistered)
+    expect(unregistered.defaultPrevented).toBe(false)
+    expect(parentMessages).toEqual([])
+
+    const customOverridesFixed = new KeyboardEvent('keydown', { code: 'KeyJ', altKey: true, cancelable: true })
+    window.dispatchEvent(customOverridesFixed)
+    expect(customOverridesFixed.defaultPrevented).toBe(true)
+    expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: false, mod: false, alt: true }])
   })
 
   it('forwards drawer chords and appShortcut chords from full-shell mode without blocking navigation keys', () => {
@@ -742,6 +796,14 @@ describe('ui-embed client plugin', () => {
     setLocationSearch(`?gaia=${mode}&session=s-test-123`)
     const mock = createMockContext()
     const dispose = apply(mock.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      origin: window.location.origin,
+      source: fakeParent,
+      data: { source: 'gaia-dsh', v: 1, type: 'appChords', chords: [
+        { code: 'KeyV', mod: true, alt: true, shift: false },
+        { code: 'KeyV', mod: true, alt: true, shift: true },
+      ] },
+    }))
     for (const shift of [false, true]) {
       parentMessages = []
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
@@ -754,16 +816,15 @@ describe('ui-embed client plugin', () => {
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
       expect(parentMessages).toEqual([
-        { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift },
-        { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift: false, phase: 'keyup' },
+        { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift, mod: true, alt: true },
+        { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift, mod: true, alt: true, phase: 'keyup' },
       ])
     }
-    const altGraph = new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true })
+    const altGraph = new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true })
     Object.defineProperty(altGraph, 'getModifierState', { value: (key: string) => key === 'AltGraph' })
     parentMessages = []
     window.dispatchEvent(altGraph)
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyV' }))
-    expect(parentMessages).toEqual([])
+    expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: false }])
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV', ctrlKey: true, altKey: true }))
     await dispose?.()
     parentMessages = []

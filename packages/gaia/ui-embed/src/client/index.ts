@@ -25,6 +25,7 @@ import { IconClockOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { StarIcon } from './star-icon.tsx'
 import { RenameIcon } from './rename-icon.tsx'
 import {
+  APP_CHORD_CODE_PATTERN,
   isAppShortcutCandidate,
   isGaiaIncomingMessage,
   isValidSessionId,
@@ -462,13 +463,27 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
 
   // Intercept keyboard shortcuts that match Gaia app/drawer shortcuts or navigation chrome.
-  let voiceShortcutHeld = false
+  let registeredAppChords: Array<{ code: string; mod: boolean; alt: boolean; shift: boolean }> = []
+  let heldAppChord: { code: string; mod: boolean; alt: boolean; shift: boolean } | null = null
+  let legacyVoiceShortcutHeld = false
   const onKeyDown = (e: KeyboardEvent): void => {
     // Only closed drawer intents and allowlisted app shortcuts cross the bridge;
-    // never forward arbitrary key data. Requiring exactly one platform modifier also
-    // excludes AltGr and accidental Ctrl+Cmd combinations.
+    // never forward arbitrary key data. Requiring exactly one platform modifier
+    // excludes accidental Ctrl+Cmd combinations while allowing AltGraph layouts.
     const platformModifier = e.ctrlKey !== e.metaKey
-    if (!e.repeat && e.altKey && platformModifier && !e.getModifierState('AltGraph')) {
+    if (!e.repeat) {
+      const registered = registeredAppChords.find(chord => chord.code === e.code
+        && (e.ctrlKey || e.metaKey) === chord.mod && e.altKey === chord.alt && e.shiftKey === chord.shift)
+      if (registered) {
+        heldAppChord = registered
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: registered.code, shift: registered.shift, mod: registered.mod, alt: registered.alt })
+        return
+      }
+    }
+    if (!e.repeat && e.altKey && platformModifier) {
       if (!e.shiftKey && (e.code === 'KeyH' || e.code === 'KeyM')) {
         e.preventDefault()
         e.stopPropagation()
@@ -477,7 +492,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         return
       }
       if (isAppShortcutCandidate(e.code, e.shiftKey)) {
-        if (e.code === 'KeyV') voiceShortcutHeld = true
+        if (e.code === 'KeyV') legacyVoiceShortcutHeld = true
         e.preventDefault()
         e.stopPropagation()
         e.stopImmediatePropagation()
@@ -492,10 +507,17 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     }
   }
   const onKeyUp = (e: KeyboardEvent): void => {
-    // Releasing modifiers before V must still stop push-to-talk.
-    if (e.code !== 'KeyV' || !voiceShortcutHeld) return
-    voiceShortcutHeld = false
-    postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift: false, phase: 'keyup' })
+    // Releasing modifiers before the registered key still ends push-to-talk.
+    if (heldAppChord && e.code === heldAppChord.code) {
+      const chord = heldAppChord
+      heldAppChord = null
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: chord.code, shift: chord.shift, mod: chord.mod, alt: chord.alt, phase: 'keyup' })
+      return
+    }
+    if (e.code === 'KeyV' && legacyVoiceShortcutHeld) {
+      legacyVoiceShortcutHeld = false
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift: false, phase: 'keyup' })
+    }
   }
   window.addEventListener('keydown', onKeyDown, { capture: true })
   window.addEventListener('keyup', onKeyUp, { capture: true })
@@ -521,9 +543,28 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     window.addEventListener('message', onFullMessage)
   }
 
+  const onChordMessage = (event: MessageEvent): void => {
+    if (event.source !== window.parent || event.origin !== window.location.origin || !isGaiaIncomingMessage(event.data)) return
+    if (event.data.type !== 'appChords') return
+    registeredAppChords = event.data.chords.filter((value): value is { code: string; mod: boolean; alt: boolean; shift: boolean } => {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+      const chord = value as Record<string, unknown>
+      return typeof chord.code === 'string' && APP_CHORD_CODE_PATTERN.test(chord.code)
+        && typeof chord.mod === 'boolean' && typeof chord.alt === 'boolean' && typeof chord.shift === 'boolean'
+        && (chord.mod || chord.alt)
+        && Object.keys(chord).every(key => ['code', 'mod', 'alt', 'shift'].includes(key))
+    })
+    if (heldAppChord && !registeredAppChords.some(chord => chord.code === heldAppChord?.code
+      && chord.mod === heldAppChord.mod && chord.alt === heldAppChord.alt && chord.shift === heldAppChord.shift)) {
+      heldAppChord = null
+    }
+  }
+  window.addEventListener('message', onChordMessage)
+
   const commonDisposer = ctx.effect(() => () => {
     window.removeEventListener('keydown', onKeyDown, { capture: true })
     window.removeEventListener('keyup', onKeyUp, { capture: true })
+    window.removeEventListener('message', onChordMessage)
     unsubConnection?.()
     unsubFullNotifications?.()
     if (onFullMessage) window.removeEventListener('message', onFullMessage)
@@ -734,6 +775,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
     switch (event.data.type) {
       case 'readAloudState': break
+      case 'appChords': break
       case 'theme': break
       case 'openSettings': break
       case 'focus': {
