@@ -156,7 +156,10 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   useEffect(() => {
     const appeared = onboardingStepSeen.current === undefined && onboardingStep !== undefined
     onboardingStepSeen.current = onboardingStep
-    if (appeared && open) close()
+    // GAIA: A cold Harness frame can restore its main Session after Gaia has
+    // opened Settings. Keep that explicit request mounted while onboarding
+    // takes viewport ownership; the onboarding surface remains in front.
+    if (appeared && open && !document.documentElement.hasAttribute('data-gaia-full')) close()
   }, [onboardingStep, open, close])
 
   useLayoutEffect(() => {

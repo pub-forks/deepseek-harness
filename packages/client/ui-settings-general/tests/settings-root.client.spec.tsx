@@ -20,6 +20,7 @@ const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({
 
 afterEach(() => {
   cleanup()
+  document.documentElement.removeAttribute('data-gaia-full')
   vi.useRealTimers()
 })
 
@@ -435,6 +436,18 @@ describe('SettingsPanel navigation', () => {
     // The step's overlay marks only #root inert, and the panel is portalled beside it.
     setOnboardingActive(true)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('keeps an explicitly opened Gaia Settings panel mounted when startup onboarding appears', () => {
+    document.documentElement.setAttribute('data-gaia-full', '')
+    const { setOnboardingActive } = mount({ onboardingActive: false })
+    openPanel()
+    expect(screen.getByRole('dialog')).toBeDefined()
+
+    // Session restore can activate onboarding after Gaia's cold-open request.
+    setOnboardingActive(true)
+
+    expect(screen.getByRole('dialog')).toBeDefined()
   })
 
   it('keeps onboarding active before a main Session is retained', () => {
