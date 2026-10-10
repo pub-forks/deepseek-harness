@@ -58,8 +58,7 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
     flat['--dsw-alias-border-l4'] = mix(fg, 24, bg)
     flat['--dsw-alias-label-secondary'] = mix(fg, 80, bg)
   }
-  // Gaia's border is its accent line (orange on the default dark theme); it
-  // takes DSH's primary borders, while the faint l1 dividers stay neutral.
+  // Gaia's border is the neutral Cockpit divider; faint l1 dividers stay neutral too.
   if (border !== undefined) flat['--dsw-alias-border-l2'] = border
   if (bg !== undefined && fg !== undefined) flat['--dsw-alias-border-l1'] = mix(fg, 8, bg)
   if (fg !== undefined) {
