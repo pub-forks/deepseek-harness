@@ -12,6 +12,7 @@ import { markdownDefinition, MARKDOWN_BODY_ID } from '../src/client/markdown-def
 import { MarkdownBody } from '../src/client/MarkdownBody.tsx'
 import type { MarkdownBodyProps } from '../src/client/MarkdownBody.tsx'
 import { markdownSanitizeSchema } from '../src/client/MarkdownBody.tsx'
+import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 
 afterEach(cleanup)
 
@@ -53,7 +54,34 @@ describe('Gaia Markdown remark port', () => {
     const input = props('[[Notes/Plan|open plan]]', open)
     render(<MarkdownBody {...input} />)
     fireEvent.click(screen.getByRole('button', { name: 'open plan' }))
-    expect(open).toHaveBeenCalledWith('dsh-resource://file/absolute/workspace/docs/Notes/Plan.md')
+    expect(open).toHaveBeenCalledWith(sessionFileAddress('s1', '/workspace/docs/Notes/Plan.md'), { revealIfOpened: false })
+  })
+
+  it('opens relative Markdown links in fresh session file tabs', () => {
+    const open = vi.fn()
+    render(<MarkdownBody {...props('[first](docs/a.md) and [second](./b.md#heading)', open)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'first' }))
+    fireEvent.click(screen.getByRole('button', { name: 'second' }))
+    expect(open).toHaveBeenNthCalledWith(1, sessionFileAddress('s1', '/workspace/docs/docs/a.md'), { revealIfOpened: false })
+    expect(open).toHaveBeenNthCalledWith(2, sessionFileAddress('s1', '/workspace/docs/b.md'), { revealIfOpened: false })
+  })
+
+  it('keeps web links external and leaves unsafe or unknown schemes inert', () => {
+    const open = vi.fn()
+    render(<MarkdownBody {...props('[web](https://example.com) [bad](javascript:alert(1)) [data](data:text/plain,x) [unknown](custom:target)', open)} />)
+    const web = screen.getByRole('link', { name: 'web' })
+    expect(web.getAttribute('target')).toBe('_blank')
+    expect(web.getAttribute('rel')).toContain('noopener')
+    for (const label of ['bad', 'data', 'unknown']) {
+      expect(screen.getByText(label).closest('button')).toBeNull()
+      expect(screen.getByText(label).closest('a')?.hasAttribute('href')).toBe(false)
+    }
+    expect(open).not.toHaveBeenCalled()
+  })
+
+  it('keeps mailto links as plain links', () => {
+    render(<MarkdownBody {...props('[mail](mailto:a@example.com)')} />)
+    expect(screen.getByRole('link', { name: 'mail' }).getAttribute('href')).toBe('mailto:a@example.com')
   })
 
   it('renders frontmatter Properties above the body', () => {
@@ -142,6 +170,41 @@ describe('in-note navigation', () => {
     const { en, zh } = await import('../src/client/locales.ts')
     expect(en.label).toBe('Obsidian')
     expect(zh.label).toBe('Obsidian')
+  })
+})
+
+describe('Markdown viewer keyboard scrolling', () => {
+  it('is focusable and handles page, home, end, and space scrolling', () => {
+    render(<MarkdownBody {...props('A long note')} />)
+    const root = document.querySelector<HTMLElement>('[data-gaia-markdown]')!
+    expect(root.tabIndex).toBe(0)
+    root.style.overflowY = 'auto'
+    Object.defineProperty(root, 'clientHeight', { configurable: true, value: 400 })
+    Object.defineProperty(root, 'scrollHeight', { configurable: true, value: 1200 })
+    root.focus()
+
+    fireEvent.keyDown(root, { key: 'PageDown' })
+    expect(root.scrollTop).toBe(352)
+    fireEvent.keyDown(root, { key: 'PageUp' })
+    expect(root.scrollTop).toBe(0)
+    fireEvent.keyDown(root, { key: 'End' })
+    expect(root.scrollTop).toBe(1200)
+    fireEvent.keyDown(root, { key: 'Home' })
+    expect(root.scrollTop).toBe(0)
+    fireEvent.keyDown(root, { key: ' ' })
+    expect(root.scrollTop).toBe(400)
+    fireEvent.keyDown(root, { key: ' ', shiftKey: true })
+    expect(root.scrollTop).toBe(0)
+  })
+
+  it('does not intercept scrolling keys from editable fields', () => {
+    render(<MarkdownBody {...props('A note')} />)
+    const root = document.querySelector<HTMLElement>('[data-gaia-markdown]')!
+    const input = document.createElement('input')
+    root.append(input)
+    const event = new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true })
+    input.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
   })
 })
 

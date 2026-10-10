@@ -9,7 +9,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { AlertTriangle, Bug, Calendar, CalendarClock, CheckCircle2, CheckSquare, CircleHelp, CircleX, ClipboardList, Copy, Pencil, Quote, Flame, Hash, Info, List, ListChecks, Square, Tag, Type, Zap } from 'lucide-react'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import { absoluteFileAddress, isAbsoluteWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
+import { absoluteFileAddress, isAbsoluteWorkspacePath, parseFileAddress, sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import remarkObsidian from '../lib/markdown/remarkObsidian.ts'
 import { parseFrontmatter, type PropEntry, type PropScalar } from '../lib/markdown/frontmatter.ts'
 import { dirOf, joinPath, resolveWikiTarget } from '../lib/markdown/wikiLinks.ts'
@@ -139,8 +139,30 @@ function decodeAnchor(value: string): string {
 }
 
 function openTarget(target: string, dir: string | null, open: (path: string) => void): void {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(target)) return
   const path = resolveWikiTarget(dir, target)
   if (path) open(path)
+}
+
+function isEditable(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"]') !== null)
+}
+
+function scrollMarkdown(root: HTMLElement, key: string, shiftKey: boolean): void {
+  let scroller: HTMLElement | null = root
+  while (scroller) {
+    const { overflowY } = getComputedStyle(scroller)
+    if (/(?:auto|scroll|overlay)/u.test(overflowY) && scroller.scrollHeight > scroller.clientHeight) break
+    scroller = scroller.parentElement
+  }
+  scroller ??= document.scrollingElement as HTMLElement | null
+  if (!scroller) return
+  if (key === 'Home') scroller.scrollTop = 0
+  else if (key === 'End') scroller.scrollTop = scroller.scrollHeight
+  else {
+    const distance = key === ' ' ? scroller.clientHeight : Math.max(1, scroller.clientHeight - 48)
+    scroller.scrollTop += key === 'PageUp' || (key === ' ' && shiftKey) ? -distance : distance
+  }
 }
 
 /** Parse and render accumulated text with the same remark/sanitize order as Gaia. */
@@ -152,7 +174,13 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
   const { body, props } = useMemo(() => content.kind === 'text' ? parseFrontmatter(content.text) : { body: '', props: [] }, [content])
   const [copied, setCopied] = useState(false)
   const open = (path: string): void => {
-    if (isAbsoluteWorkspacePath(path)) tab.actions.openResource(absoluteFileAddress(path))
+    if (!isAbsoluteWorkspacePath(path)) return
+    const source = parseFileAddress(resourceAddress)
+    const address = source?.scope === 'session'
+      ? sessionFileAddress(source.sessionId, path)
+      : absoluteFileAddress(path)
+    // Each click creates a file resource tab, matching the file tree's open flow.
+    tab.actions.openResource(address, { revealIfOpened: false })
   }
   const components = useMemo<Components>(() => ({
     a: ({ href, children, title }) => {
@@ -175,9 +203,14 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
         return <a href={href} title={title} onClick={anchorClick(targetId)}>{children}</a>
       }
       if (/^(?:mailto:|tel:)/iu.test(href)) return <a href={href} title={title}>{children}</a>
+      // Only authored relative paths (plus same-document fragments above) become
+      // file links. Unknown schemes and protocol-relative URLs remain inert.
+      if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(href)) return <span>{children}</span>
       return <button type="button" className={css.inlineLink} onClick={() => {
         if (!dir) return
-        const target = href.split(/[?#]/u)[0] ?? href
+        const encodedTarget = href.split(/[?#]/u)[0] ?? href
+        let target = encodedTarget
+        try { target = decodeURIComponent(encodedTarget) } catch { return }
         open(isAbsoluteWorkspacePath(target) ? target : joinPath(dir, target))
       }}>{children}</button>
     },
@@ -274,7 +307,21 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
     mark: ({ children }) => <mark className={css.mark}>{children}</mark>,
   }), [absolutePath, copied, dir, open, t])
   if (content.kind !== 'text') return null
-  return <div className={css.root} data-gaia-markdown>
+  return <div className={css.root} data-gaia-markdown tabIndex={0}
+    onPointerDown={(event) => {
+      const target = event.target
+      if (target === event.currentTarget || !(target instanceof HTMLElement && target.closest('a, button, input, select, textarea, [tabindex]'))) {
+        event.currentTarget.focus()
+      }
+    }}
+    onKeyDown={(event) => {
+      if (isEditable(event.target) || !['Home', 'End', 'PageUp', 'PageDown', ' '].includes(event.key)) return
+      // Space activates a focused link or button; it only pages the viewer itself.
+      if (event.key === ' ' && event.target !== event.currentTarget) return
+      event.preventDefault()
+      event.stopPropagation()
+      scrollMarkdown(event.currentTarget, event.key, event.shiftKey)
+    }}>
     <Properties entries={props} dir={dir} open={open} t={t} />
     <ReactMarkdown remarkPlugins={[remarkGfm, remarkObsidian]} rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
       urlTransform={url => url.startsWith('obsidian://') ? url : defaultUrlTransform(url)} components={components}>
