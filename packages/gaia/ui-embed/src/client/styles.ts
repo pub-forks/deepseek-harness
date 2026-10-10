@@ -104,6 +104,7 @@ ${GAIA_FRAME} [data-gaia-appearance-desc] {
 `
 
 const GAIA_CONTROLS_SCOPE = `${GAIA_FRAME} :is([data-shortcut-modal="settings"], [data-dsh-modal])`
+const GAIA_BUTTON_GEOMETRY_TARGET = ':is([data-dsh-button]:not([data-dsh-modal-close]), button[class*="_danger"]:not([data-dsh-modal-close]), button[class*="_deleteConfirm"], button[class*="_addButton"], [data-dsh-modal-footer] :is(button, [data-dsh-button]), [data-dsh-size="sm"])'
 
 /** Controls inside Settings and Modal dialogs styled to match Gaia's shadcn design. */
 export const GAIA_CONTROLS_CSS = `
@@ -122,14 +123,22 @@ ${GAIA_CONTROLS_SCOPE} :is(button, [data-dsh-button], [data-dsh-select-trigger],
   box-sizing: border-box;
 }
 
-/* Base button defaults */
-${GAIA_CONTROLS_SCOPE} [data-dsh-button] {
+/* DSH buttons and explicit legacy controls use Gaia's compact geometry. */
+${GAIA_CONTROLS_SCOPE} ${GAIA_BUTTON_GEOMETRY_TARGET} {
   box-sizing: border-box;
+  width: auto;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 6px;
+  gap: 8px;
   font-weight: 500;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+${GAIA_CONTROLS_SCOPE} ${GAIA_BUTTON_GEOMETRY_TARGET} svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Button default: primary buttons */
@@ -138,15 +147,11 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"] {
   height: 32px;
   padding: 0 12px;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   background: var(--dsw-alias-button-primary-fill);
   color: var(--dsw-alias-label-primary-foreground);
   border: 1px solid transparent;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-}
-${GAIA_CONTROLS_SCOPE} form[data-gaia-auth-account-form] [data-dsh-button="primary"] {
-  height: 36px;
-  align-self: flex-end;
 }
 ${GAIA_CONTROLS_SCOPE} [data-dsh-button="primary"]:hover:not(:disabled) {
   background: var(--dsw-alias-button-primary-hover);
@@ -158,8 +163,8 @@ ${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="outline"], [data-dsh-button="toolba
   height: 32px;
   padding: 0 12px;
   font-size: 12px;
-  line-height: 18px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  line-height: 16px;
+  border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2));
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -174,7 +179,7 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-button="ghost"]:not([data-dsh-modal-close]) {
   height: 32px;
   padding: 0 12px;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--dsw-alias-label-primary);
@@ -189,7 +194,7 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-size="sm"] {
   height: 32px;
   padding: 0 12px;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   border-radius: 6px;
 }
 
@@ -199,7 +204,7 @@ ${GAIA_CONTROLS_SCOPE} :is([data-dsh-button="danger"], button[class*="_danger"]:
   height: 32px;
   padding: 0 12px;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   border-radius: 6px;
   font-weight: 500;
   background: var(--dsw-alias-state-error-primary);
@@ -230,7 +235,7 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-select-trigger] {
   box-sizing: border-box;
   height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2));
   border-radius: 6px;
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
@@ -253,7 +258,7 @@ ${GAIA_CONTROLS_SCOPE} :is(input:not([type="checkbox"]):not([type="radio"]):not(
   box-sizing: border-box;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2));
   background: transparent;
   padding: 0 12px;
   font-size: 14px;
@@ -272,7 +277,7 @@ ${GAIA_CONTROLS_SCOPE} span:has(> [data-dsh-input]) {
   box-sizing: border-box;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2));
   background: transparent;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   padding: 0 12px;
@@ -291,7 +296,7 @@ ${GAIA_CONTROLS_SCOPE} div[data-dsh-input] {
   font-size: 14px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2));
   background: transparent;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -338,7 +343,7 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button, [data-dsh-button]) {
   height: 32px;
   padding: 0 12px;
   font-size: 12px;
-  line-height: 18px;
+  line-height: 16px;
   border-radius: 6px;
   font-weight: 500;
 }
@@ -364,7 +369,7 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button[class*="_danger"], but
 }
 /* Modal footer: cancel / secondary buttons -> cancelOutline sm with amber hover */
 ${GAIA_CONTROLS_SCOPE} [data-dsh-modal-footer] :is(button, [data-dsh-button]):not([data-dsh-button="primary"]):not(:is(button[class*="_danger"], button[class*="_delete"], [data-dsh-button="danger"])) {
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2));
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);

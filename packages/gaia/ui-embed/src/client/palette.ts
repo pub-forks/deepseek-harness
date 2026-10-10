@@ -35,7 +35,7 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
   const flat: Record<string, string> = {}
   const {
     background: bg, foreground: fg, surface, border, mutedForeground: muted, accent,
-    primary, primaryForeground, destructive,
+    primary, primaryHover, primaryForeground, input, destructive,
   } = palette
   if (bg !== undefined) {
     flat['--dsw-alias-bg-base'] = bg
@@ -60,6 +60,7 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
   }
   // Gaia's border is the neutral Cockpit divider; faint l1 dividers stay neutral too.
   if (border !== undefined) flat['--dsw-alias-border-l2'] = border
+  if (input !== undefined) flat['--gaia-input-border'] = input
   if (bg !== undefined && fg !== undefined) flat['--dsw-alias-border-l1'] = mix(fg, 8, bg)
   if (fg !== undefined) {
     flat['--dsw-alias-label-primary'] = fg
@@ -86,7 +87,7 @@ export function paletteTokens(palette: GaiaPalette): ThemeTokenOverrides {
   }
   if (primary !== undefined) {
     flat['--dsw-alias-button-primary-fill'] = primary
-    flat['--dsw-alias-button-primary-hover'] = bg === undefined ? primary : mix(primary, 90, bg)
+    flat['--dsw-alias-button-primary-hover'] = primaryHover ?? (bg === undefined ? primary : mix(primary, 90, bg))
   }
   if (primaryForeground !== undefined) {
     flat['--dsw-alias-label-primary-foreground'] = primaryForeground

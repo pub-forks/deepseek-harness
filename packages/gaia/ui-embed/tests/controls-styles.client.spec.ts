@@ -34,12 +34,67 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('height: 32px')
     expect(GAIA_CONTROLS_CSS).toContain('padding: 0 12px')
     expect(GAIA_CONTROLS_CSS).toContain('font-size: 12px')
-    expect(GAIA_CONTROLS_CSS).toContain('line-height: 18px')
+    expect(GAIA_CONTROLS_CSS).toContain('line-height: 16px')
+    expect(GAIA_CONTROLS_CSS).toContain('gap: 8px')
+    expect(GAIA_CONTROLS_CSS).toContain('width: auto')
+    expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-button]:not([data-dsh-modal-close])')
+    expect(GAIA_CONTROLS_CSS).toContain('button[class*="_danger"]')
+    expect(GAIA_CONTROLS_CSS).toContain('button[class*="_deleteConfirm"]')
+    expect(GAIA_CONTROLS_CSS).toContain('button[class*="_addButton"]')
+    expect(GAIA_CONTROLS_CSS).not.toContain('button:not(nav button)')
+    expect(GAIA_CONTROLS_CSS).not.toContain(':has(> svg)')
+    expect(GAIA_CONTROLS_CSS).not.toContain('button[class*="_cardContent"]')
+    expect(GAIA_CONTROLS_CSS).not.toContain('[class*="_creditActions"] > button')
     const primaryButtonRule = GAIA_CONTROLS_CSS.match(/\/\* Button default: primary buttons \*\/([\s\S]*?)\n\}/)?.[1]
     expect(primaryButtonRule).not.toContain('height: 36px')
     expect(GAIA_CONTROLS_CSS).not.toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*padding:\s*0 16px/)
     expect(GAIA_CONTROLS_CSS).not.toMatch(/data-dsh-button="outline"[^}]*height:\s*36px/)
     expect(GAIA_CONTROLS_CSS).not.toMatch(/data-dsh-button="ghost"[^}]*height:\s*36px/)
+  })
+
+  it('limits compact geometry to DSH buttons and explicit legacy controls', () => {
+    const frame = document.createElement('div')
+    const settings = document.createElement('div')
+    settings.setAttribute('data-shortcut-modal', 'settings')
+    const plain = document.createElement('button')
+    plain.textContent = 'Save'
+    const primary = document.createElement('button')
+    primary.setAttribute('data-dsh-button', 'primary')
+    const outline = document.createElement('button')
+    outline.setAttribute('data-dsh-button', 'outline')
+    const svgText = document.createElement('button')
+    svgText.append(document.createElementNS('http://www.w3.org/2000/svg', 'svg'), document.createTextNode('Let the agent help me create a preset'))
+    const toggle = document.createElement('button')
+    toggle.setAttribute('role', 'switch')
+    toggle.append(document.createElement('span'))
+    const tablist = document.createElement('div')
+    tablist.setAttribute('role', 'tablist')
+    const tab = document.createElement('button')
+    tab.setAttribute('role', 'tab')
+    tablist.append(tab)
+    settings.append(plain, primary, outline, svgText, toggle, tablist)
+    frame.append(settings)
+    document.body.append(frame)
+
+    const previousEmbed = document.documentElement.getAttribute('data-gaia-embed')
+    document.documentElement.setAttribute('data-gaia-embed', '')
+    try {
+      const geometrySelector = GAIA_CONTROLS_CSS.match(/\/\* DSH buttons and explicit legacy controls use Gaia's compact geometry\. \*\/\s*([^\{]+)\{/u)?.[1]?.trim()
+      const geometryRule = GAIA_CONTROLS_CSS.match(/\/\* DSH buttons and explicit legacy controls use Gaia's compact geometry\. \*\/\s*[^\{]+\{([^}]+)\}/u)?.[1]
+      expect(geometrySelector).toBeDefined()
+      expect(geometryRule).toContain('height: 32px')
+      expect(geometryRule).toContain('padding: 0 12px')
+      expect(plain.matches(geometrySelector!)).toBe(false)
+      expect(primary.matches(geometrySelector!)).toBe(true)
+      expect(outline.matches(geometrySelector!)).toBe(true)
+      expect(svgText.matches(geometrySelector!)).toBe(false)
+      expect(toggle.matches(geometrySelector!)).toBe(false)
+      expect(tab.matches(geometrySelector!)).toBe(false)
+    } finally {
+      if (previousEmbed === null) document.documentElement.removeAttribute('data-gaia-embed')
+      else document.documentElement.setAttribute('data-gaia-embed', previousEmbed)
+      frame.remove()
+    }
   })
 
   it('includes close button styles with destructive hover', () => {
@@ -51,19 +106,20 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
   it('includes select trigger styles for outline dropdown presentation with 36px height unchanged', () => {
     expect(GAIA_CONTROLS_CSS).toContain('[data-dsh-select-trigger]')
     expect(GAIA_CONTROLS_CSS).toContain('height: 36px')
-    expect(GAIA_CONTROLS_CSS).toContain('border: 1px solid var(--dsw-alias-border-l2)')
+    expect(GAIA_CONTROLS_CSS).toContain('border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2))')
     expect(GAIA_CONTROLS_CSS).toMatch(/\[data-dsh-select-trigger\]\s*\{[^}]*height:\s*36px/)
   })
 
-  it('matches the add-account primary button height to embedded form controls', () => {
-    expect(GAIA_CONTROLS_CSS).toMatch(/form\[data-gaia-auth-account-form\] \[data-dsh-button="primary"\]\s*\{[^}]*height:\s*36px/)
-    expect(GAIA_CONTROLS_CSS).toMatch(/form\[data-gaia-auth-account-form\] \[data-dsh-button="primary"\]\s*\{[^}]*align-self:\s*flex-end/)
+  it('keeps the add-account primary button at 32px', () => {
+    expect(GAIA_CONTROLS_CSS).toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*height:\s*32px/)
+    expect(GAIA_CONTROLS_CSS).not.toContain('form[data-gaia-auth-account-form] [data-dsh-button="primary"]')
   })
 
   it('includes input and textarea styles with 36px height unchanged', () => {
     expect(GAIA_CONTROLS_CSS).toContain('span:has(> [data-dsh-input])')
     expect(GAIA_CONTROLS_CSS).toContain('textarea')
     expect(GAIA_CONTROLS_CSS).toMatch(/input:not\([^}]*height:\s*36px/)
+    expect(GAIA_CONTROLS_CSS).toContain('var(--gaia-input-border, var(--dsw-alias-border-l2))')
   })
 
   it('includes focus ring styling with link token and excludes automatic focus', () => {

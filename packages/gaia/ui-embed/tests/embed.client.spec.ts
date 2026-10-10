@@ -1612,7 +1612,8 @@ describe('Gaia palette', () => {
       expect(isSafeCssColor(bad)).toBe(false)
     }
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'hsl(0 0% 3.9%)' } })).toBe(true)
-    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { primary: '#ea580c', primaryForeground: '#ffffff', destructive: '#ef4444' } })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { primary: '#ea580c', primaryHover: '#c2410c', primaryForeground: '#ffffff', input: '#666666', destructive: '#ef4444' } })).toBe(true)
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { primaryHover: 'var(--brand-600)' } })).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { background: 'url(x)' } })).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { primary: 'url(x)' } })).toBe(false)
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'theme', mode: 'dark', palette: { destructive: 'red; evil: true' } })).toBe(false)
@@ -1627,7 +1628,9 @@ describe('Gaia palette', () => {
       border: 'hsl(20 80% 45%)',
       accent: 'oklch(70.5% 0.213 47.604)',
       primary: '#ea580c',
+      primaryHover: '#c2410c',
       primaryForeground: '#ffffff',
+      input: '#666666',
       destructive: '#ef4444',
     })
     expect(tokens['--dsw-alias-bg-base']).toEqual({ light: 'hsl(0 0% 3.9%)', dark: 'hsl(0 0% 3.9%)' })
@@ -1636,7 +1639,8 @@ describe('Gaia palette', () => {
     expect(tokens['--dsw-alias-link']?.dark).toBe('oklch(70.5% 0.213 47.604)')
     expect(tokens['--dsw-alias-bg-layer-2']?.dark).toContain('color-mix(')
     expect(tokens['--dsw-alias-button-primary-fill']?.dark).toBe('#ea580c')
-    expect(tokens['--dsw-alias-button-primary-hover']?.dark).toContain('color-mix(in srgb, #ea580c 90%')
+    expect(tokens['--dsw-alias-button-primary-hover']?.dark).toBe('#c2410c')
+    expect(tokens['--gaia-input-border']?.dark).toBe('#666666')
     expect(tokens['--dsw-alias-label-primary-foreground']?.dark).toBe('#ffffff')
     expect(tokens['--dsw-alias-state-error-primary']?.dark).toBe('#ef4444')
     expect(tokens['--dsw-alias-interactive-bg-hover-danger']?.dark).toContain('color-mix(in srgb, #ef4444 12%')
@@ -1646,6 +1650,7 @@ describe('Gaia palette', () => {
     const partial = paletteTokens({ primary: '#ea580c' })
     expect(partial['--dsw-alias-button-primary-fill']?.dark).toBe('#ea580c')
     expect(partial['--dsw-alias-button-primary-hover']?.dark).toBe('#ea580c')
+    expect(paletteTokens({ background: '#ffffff', primary: '#ea580c' })['--dsw-alias-button-primary-hover']?.dark).toContain('color-mix(in srgb, #ea580c 90%')
     expect(partial['--dsw-alias-label-primary-foreground']).toBeUndefined()
     expect(partial['--dsw-alias-state-error-primary']).toBeUndefined()
     expect(partial['--dsw-alias-interactive-bg-hover-danger']).toBeUndefined()
