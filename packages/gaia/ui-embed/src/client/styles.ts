@@ -246,11 +246,31 @@ ${GAIA_CONTROLS_SCOPE} [data-dsh-select-trigger] {
   transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 ${GAIA_CONTROLS_SCOPE} [data-dsh-select-trigger]:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+  background-color: var(--dsw-alias-interactive-bg-hover-solid);
 }
 ${GAIA_CONTROLS_SCOPE} select[data-dsh-select-trigger] {
+  appearance: none;
+  -webkit-appearance: none;
   padding-right: 32px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 15px, calc(100% - 11px) 15px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  color-scheme: inherit;
   cursor: pointer;
+}
+${GAIA_CONTROLS_SCOPE} select[data-dsh-select-trigger]:hover:not(:disabled) {
+  border-color: var(--dsw-alias-border-l2);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+}
+${GAIA_CONTROLS_SCOPE} select[data-dsh-select-trigger]:focus-visible:not([data-dsh-automatic-focus]) {
+  border-color: var(--dsw-alias-link);
+}
+
+/* Gaia Settings uses h-9 controls; keep compact auth buttons aligned with
+   the 36px select and input geometry in their form rows. */
+${GAIA_CONTROLS_SCOPE} [data-gaia-auth-account-form] :is(button, [data-dsh-button]) {
+  height: 36px;
 }
 
 /* Inputs and textareas */

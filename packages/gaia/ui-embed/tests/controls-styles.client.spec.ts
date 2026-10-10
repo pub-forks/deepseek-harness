@@ -108,11 +108,15 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('height: 36px')
     expect(GAIA_CONTROLS_CSS).toContain('border: 1px solid var(--gaia-input-border, var(--dsw-alias-border-l2))')
     expect(GAIA_CONTROLS_CSS).toMatch(/\[data-dsh-select-trigger\]\s*\{[^}]*height:\s*36px/)
+    expect(GAIA_CONTROLS_CSS).toMatch(/select\[data-dsh-select-trigger\]\s*\{[^}]*appearance:\s*none/)
+    expect(GAIA_CONTROLS_CSS).toContain('background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%)')
+    expect(GAIA_CONTROLS_CSS).toContain('color-scheme: inherit')
+    expect(GAIA_CONTROLS_CSS).toContain('select[data-dsh-select-trigger]:focus-visible:not([data-dsh-automatic-focus])')
   })
 
-  it('keeps the add-account primary button at 32px', () => {
+  it('keeps buttons compact but lines the account form button up with its 36px selects', () => {
     expect(GAIA_CONTROLS_CSS).toMatch(/\[data-dsh-button="primary"\]\s*\{[^}]*height:\s*32px/)
-    expect(GAIA_CONTROLS_CSS).not.toContain('form[data-gaia-auth-account-form] [data-dsh-button="primary"]')
+    expect(GAIA_CONTROLS_CSS).toMatch(/\[data-gaia-auth-account-form\]\s*:is\(button, \[data-dsh-button\]\)\s*\{[^}]*height:\s*36px/)
   })
 
   it('includes input and textarea styles with 36px height unchanged', () => {
