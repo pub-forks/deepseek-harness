@@ -79,9 +79,11 @@ export const APP_SHORTCUT_CODES = [
 export type AppShortcutCode = typeof APP_SHORTCUT_CODES[number]
 
 /** Codes accepted for parent-registered app chords. */
+// Twin: web/src/lib/harnessBridge.ts. Code set source: web/src/lib/voiceShortcuts.ts.
 export const APP_CHORD_CODE_PATTERN = new RegExp(
-  '^(Key[A-Z]|Digit[0-9]|F([1-9]|1[0-2])|Tab|Space|Backquote|Minus|Equal|'
-    + 'BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash)$',
+  '^(Key[A-Z]|Digit[0-9]|Numpad(?:[0-9]|Add|Subtract|Multiply|Divide|Decimal|Enter)|F([1-9]|1[0-9]|2[0-4])|'
+    + 'Tab|Space|Backspace|Enter|Escape|PageUp|PageDown|End|Home|Arrow(Up|Down|Left|Right)|Insert|Delete|'
+    + 'Backquote|Minus|Equal|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash)$',
 )
 
 /**

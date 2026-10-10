@@ -771,6 +771,37 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toEqual([{ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyJ', shift: false, mod: false, alt: true }])
   })
 
+  it('forwards registered numpad chords and their releases but ignores unregistered numpad keys', () => {
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      origin: window.location.origin,
+      source: fakeParent,
+      data: { source: 'gaia-dsh', v: 1, type: 'appChords', chords: [
+        { code: 'Numpad0', mod: true, alt: false, shift: false },
+      ] },
+    }))
+
+    const registered = new KeyboardEvent('keydown', { code: 'Numpad0', ctrlKey: true, cancelable: true })
+    window.dispatchEvent(registered)
+    expect(registered.defaultPrevented).toBe(true)
+    expect(parentMessages.at(-1)).toEqual({
+      source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'Numpad0', shift: false, mod: true, alt: false,
+    })
+
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Numpad0', ctrlKey: true }))
+    expect(parentMessages.at(-1)).toEqual({
+      source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'Numpad0', shift: false, mod: true, alt: false, phase: 'keyup',
+    })
+
+    parentMessages = []
+    const unregistered = new KeyboardEvent('keydown', { code: 'Numpad1', ctrlKey: true, cancelable: true })
+    window.dispatchEvent(unregistered)
+    expect(unregistered.defaultPrevented).toBe(false)
+    expect(parentMessages).toEqual([])
+  })
+
   it('forwards drawer chords and appShortcut chords from full-shell mode without blocking navigation keys', () => {
     setLocationSearch('?gaia=full')
     const mock = createMockContext()
