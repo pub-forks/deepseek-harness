@@ -123,6 +123,22 @@ describe('Gaia Markdown remark port', () => {
     expect(screen.getByRole('link', { name: 'mail' }).getAttribute('href')).toBe('mailto:a@example.com')
   })
 
+  it('centers image-only paragraphs, including linked images', () => {
+    const { container, rerender } = render(<MarkdownBody {...props('![image](https://example.com/image.png)')} />)
+    expect(container.querySelector('p')?.className).toContain('figure')
+
+    rerender(<MarkdownBody {...props('[![image](https://example.com/image.png)](https://example.com)')} />)
+    expect(container.querySelector('p')?.className).toContain('figure')
+  })
+
+  it('does not center inline images or document embeds', () => {
+    const { container, rerender } = render(<MarkdownBody {...props('Before ![image](https://example.com/image.png) after')} />)
+    expect(container.querySelector('p')?.className).not.toContain('figure')
+
+    rerender(<MarkdownBody {...props('![[note.md]]')} />)
+    expect(container.querySelector('p')?.className).not.toContain('figure')
+  })
+
   it('renders frontmatter Properties above the body', () => {
     const input = props('---\ntitle: Example\ntags:\n  - alpha\n  - beta\n---\nBody text')
     render(<MarkdownBody {...input} />)

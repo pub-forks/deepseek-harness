@@ -34,6 +34,39 @@ interface ReadAloudStore {
 
 type MarkdownInjected = { readAloud: ReadAloudStore | undefined }
 
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico'])
+
+type MarkdownHastNode = {
+  type?: string
+  tagName?: string
+  value?: string
+  properties?: Record<string, unknown>
+  children?: MarkdownHastNode[]
+}
+
+function isImageHast(node: MarkdownHastNode): boolean {
+  if (node.type !== 'element') return false
+  if (node.tagName === 'a') {
+    const children = (node.children ?? []).filter(child => !(child.type === 'text' && !(child.value ?? '').trim()))
+    return children.length === 1 && children.every(isImageHast)
+  }
+  if (node.tagName !== 'img') return false
+  const src = node.properties?.src
+  if (typeof src !== 'string') return false
+  if (!src.startsWith('obsidian://embed/')) return true
+  let target = ''
+  try { target = decodeURIComponent(src.slice('obsidian://embed/'.length)) } catch { return false }
+  const name = target.split(/[?#]/u)[0] ?? target
+  const extension = name.slice(name.lastIndexOf('.') + 1).toLowerCase()
+  return IMAGE_EXTENSIONS.has(extension)
+}
+
+function isImageOnlyParagraph(node: unknown): boolean {
+  const children = ((node as MarkdownHastNode | undefined)?.children ?? [])
+    .filter(child => !(child.type === 'text' && !(child.value ?? '').trim()))
+  return children.length > 0 && children.every(isImageHast)
+}
+
 const DISABLED_READ_ALOUD: ReadAloudSnapshot = { enabled: false, status: 'idle', sessionId: null, messageId: null }
 const subscribeNothing = (): (() => void) => () => {}
 const getDisabledReadAloud = (): ReadAloudSnapshot => DISABLED_READ_ALOUD
@@ -276,6 +309,7 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
     </Tag>
   }
   const components = useMemo<Components>(() => ({
+    p: ({ node, children }) => <p className={isImageOnlyParagraph(node) ? css.figure : undefined}>{children}</p>,
     a: ({ href, children, title }) => {
       if (!href) return <a title={title}>{children}</a>
       if (href.startsWith('obsidian://wiki/')) {

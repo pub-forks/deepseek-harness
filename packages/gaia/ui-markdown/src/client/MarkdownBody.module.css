@@ -41,6 +41,7 @@
 .root :global(h6) { margin: 12px 0 8px; font-size: 14px; line-height: 20px; }
 
 .root :global(p) { margin: 12px 0; line-height: 1.625; } /* my-3 leading-relaxed */
+.figure { text-align: center; }
 .root :global(ul) { margin: 12px 0; padding-left: 24px; list-style: disc outside; } /* my-3 pl-6 */
 .root :global(ol) { margin: 12px 0; padding-left: 24px; list-style: decimal outside; }
 .root :global(li) { margin: 4px 0; } /* my-1 */
