@@ -36,7 +36,7 @@ export interface GaiaReadAloudState {
 /** Closed requests from a Gaia iframe to its same-origin parent. */
 export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openChangesReview'; sessionId: string; seq: number; turn: number; index: number }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud' | 'autoReadAloud'; sessionId: string; messageId: string; text: string; workspacePath?: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud' | 'autoReadAloud'; sessionId: string; messageId: string; text: string; workspacePath?: string; label?: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'stopReadAloud'; sessionId: string; messageId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'cancelReadAloudSession'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloudSettings' }

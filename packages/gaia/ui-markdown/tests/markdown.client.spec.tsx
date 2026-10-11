@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
@@ -22,16 +22,55 @@ async function renderHtml(markdown: string): Promise<string> {
   return String(result)
 }
 
-function props(text: string, openResource = vi.fn()): MarkdownBodyProps {
+function props(text: string, openResource = vi.fn(), readAloud?: MarkdownBodyProps['readAloud']): MarkdownBodyProps {
   return {
     content: { kind: 'text', text, pages: [], eof: true }, resourceAddress: 'dsh-resource://file/session/s1/docs/readme.md',
     useResource: () => ({ status: 'ready', value: { absolutePath: '/workspace/docs/readme.md' } }),
     useTabInfo: () => ({ tab: { actions: { openResource } } }),
-    t: (key: string) => key,
+    t: (key: string) => ({ readSection: 'Read aloud', stopSection: 'Stop reading' } as Record<string, string>)[key] ?? key,
+    readAloud,
   } as unknown as MarkdownBodyProps
 }
 
 describe('Gaia Markdown remark port', () => {
+  it('reads one frontmatter-free heading section through Gaia and stops that same section', () => {
+    let snapshot: ReturnType<NonNullable<MarkdownBodyProps['readAloud']>['getSnapshot']> = { enabled: true, status: 'idle', sessionId: null, messageId: null }
+    const listeners = new Set<() => void>()
+    const readAloud = {
+      getSnapshot: () => snapshot,
+      subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    }
+    const parent = { postMessage: vi.fn() }
+    vi.spyOn(window, 'parent', 'get').mockReturnValue(parent as unknown as Window)
+    render(<MarkdownBody {...props('---\ntitle: Example\n---\n# Top\nbody\n## Sub\nsubbody\n# Next\nignored', vi.fn(), readAloud)} />)
+
+    const read = screen.getByRole('button', { name: 'Read aloud · readme.md · Top' })
+    fireEvent.click(read)
+    const [request, origin] = parent.postMessage.mock.calls[0] as [
+      { type: string; sessionId: string; messageId: string; text: string; label: string }, string,
+    ]
+    expect(origin).toBe(window.location.origin)
+    expect(request).toMatchObject({ source: 'gaia-dsh', v: 1, type: 'readAloud', text: '# Top\nbody\n## Sub\nsubbody', label: 'readme.md · Top' })
+    expect(request.sessionId).toMatch(/^doc-[a-z0-9]+$/u)
+    expect(request.messageId).toMatch(/^section-[a-z0-9-]+$/u)
+
+    snapshot = { enabled: true, status: 'speaking', sessionId: request.sessionId, messageId: request.messageId }
+    act(() => { for (const listener of listeners) listener() })
+    fireEvent.click(screen.getByRole('button', { name: 'Stop reading · readme.md · Top' }))
+    expect(parent.postMessage.mock.calls[1]?.[0]).toEqual({ source: 'gaia-dsh', v: 1, type: 'stopReadAloud', sessionId: request.sessionId, messageId: request.messageId })
+    vi.restoreAllMocks()
+  })
+
+  it('omits read-aloud controls when Gaia reports it disabled or no bridge is injected', () => {
+    const disabledSnapshot = { enabled: false, status: 'idle' as const, sessionId: null, messageId: null }
+    const readAloud = { getSnapshot: () => disabledSnapshot, subscribe: () => () => {} }
+    render(<MarkdownBody {...props('# Heading', vi.fn(), readAloud)} />)
+    expect(screen.queryByRole('button', { name: /Read aloud/u })).toBeNull()
+    cleanup()
+    render(<MarkdownBody {...props('# Heading')} />)
+    expect(screen.queryByRole('button', { name: /Read aloud/u })).toBeNull()
+  })
+
   it('converts wikilinks, image embeds, tags, and callouts into structured nodes', async () => {
     const html = await renderHtml('[[Notes/Plan|the plan]] ![[images/map.png]] #project/tag\n\n> [!warning]- Watch\n> Careful')
     expect(html).toContain('href="obsidian://wiki/Notes%2FPlan">the plan</a>')

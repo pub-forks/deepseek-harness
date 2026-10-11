@@ -1,12 +1,14 @@
 /** Read-only Gaia Markdown body for the DSH document preview slot. */
-import { Children, isValidElement, useEffect, useMemo, useState } from 'react'
+import { Children, isValidElement, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkParse from 'remark-parse'
+import { unified } from 'unified'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import { AlertTriangle, Bug, Calendar, CalendarClock, CheckCircle2, CheckSquare, CircleHelp, CircleX, ClipboardList, Copy, Pencil, Quote, Flame, Hash, Info, List, ListChecks, Square, Tag, Type, Zap } from 'lucide-react'
+import { AlertTriangle, Bug, Calendar, CalendarClock, CheckCircle2, CheckSquare, CircleHelp, CircleX, ClipboardList, Copy, Pencil, Quote, Flame, Hash, Info, List, ListChecks, Square, Tag, Type, Volume2, VolumeX, Zap } from 'lucide-react'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { absoluteFileAddress, isAbsoluteWorkspacePath, parseFileAddress, sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
@@ -18,7 +20,67 @@ import { markdownImageUrl } from './markdownImageUrl.ts'
 import type { MarkdownKey } from './locales.ts'
 import css from './MarkdownBody.module.css'
 
-export type MarkdownBodyProps = DocumentPreviewProps & PropsLocale<'gaiaMarkdown'>
+interface ReadAloudSnapshot {
+  enabled: boolean
+  status: 'idle' | 'preparing' | 'loading' | 'speaking' | 'paused'
+  sessionId: string | null
+  messageId: string | null
+}
+
+interface ReadAloudStore {
+  getSnapshot: () => ReadAloudSnapshot
+  subscribe: (listener: () => void) => () => void
+}
+
+type MarkdownInjected = { readAloud: ReadAloudStore | undefined }
+
+const DISABLED_READ_ALOUD: ReadAloudSnapshot = { enabled: false, status: 'idle', sessionId: null, messageId: null }
+const subscribeNothing = (): (() => void) => () => {}
+const getDisabledReadAloud = (): ReadAloudSnapshot => DISABLED_READ_ALOUD
+
+export type MarkdownBodyProps = DocumentPreviewProps & PropsLocale<'gaiaMarkdown'> & MarkdownInjected
+
+function stableId(value: string): string {
+  // FNV-1a keeps protocol ids short, deterministic, and within the bridge's
+  // alphanumeric/underscore/hyphen grammar.
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function sectionsByHeadingLine(source: string): Map<number, string> {
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(source)
+  const headings: Array<{ line: number; depth: number }> = []
+  type PositionedNode = {
+    type?: string | undefined
+    depth?: number | undefined
+    position?: { start?: { line?: number } | undefined } | undefined
+    children?: unknown[] | undefined
+  }
+  const visit = (node: PositionedNode): void => {
+    if (node.type === 'heading' && typeof node.depth === 'number' && typeof node.position?.start?.line === 'number') {
+      headings.push({ line: node.position.start.line, depth: node.depth })
+    }
+    for (const child of node.children ?? []) {
+      if (typeof child === 'object' && child !== null) visit(child)
+    }
+  }
+  visit(tree)
+  headings.sort((left, right) => left.line - right.line)
+  const lines = source.split('\n')
+  return new Map(headings.map(({ line, depth }, index) => {
+    const next = headings.slice(index + 1).find(heading => heading.depth <= depth)?.line
+    return [line, lines.slice(line - 1, next === undefined ? undefined : next - 1).join('\n')]
+  }))
+}
+
+function postReadAloud(message: Record<string, unknown>): void {
+  if (window.parent === window) return
+  window.parent.postMessage({ source: 'gaia-dsh', v: 1, ...message }, window.location.origin)
+}
 
 /** Gaia's raw-HTML sanitizer schema, extended for the remark plugin's nodes. */
 export const markdownSanitizeSchema: typeof defaultSchema = {
@@ -166,12 +228,17 @@ function scrollMarkdown(root: HTMLElement, key: string, shiftKey: boolean): void
 }
 
 /** Parse and render accumulated text with the same remark/sanitize order as Gaia. */
-export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo, t }: MarkdownBodyProps): ReactNode {
+export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo, t, readAloud }: MarkdownBodyProps): ReactNode {
   const resource = useResource<'file'>(resourceAddress).value
   const absolutePath = resource?.absolutePath
   const dir = useMemo(() => dirOf(absolutePath), [absolutePath])
   const tab = useTabInfo().tab
   const { body, props } = useMemo(() => content.kind === 'text' ? parseFrontmatter(content.text) : { body: '', props: [] }, [content])
+  const sections = useMemo(() => sectionsByHeadingLine(body), [body])
+  const readState = useSyncExternalStore(readAloud?.subscribe ?? subscribeNothing,
+    readAloud?.getSnapshot ?? getDisabledReadAloud, readAloud?.getSnapshot ?? getDisabledReadAloud)
+  const documentName = absolutePath?.split('/').filter(Boolean).at(-1) ?? t('label')
+  const documentId = `doc-${stableId(absolutePath ?? resourceAddress)}`
   const [copied, setCopied] = useState(false)
   const open = (path: string): void => {
     if (!isAbsoluteWorkspacePath(path)) return
@@ -181,6 +248,32 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
       : absoluteFileAddress(path)
     // Each click creates a file resource tab, matching the file tree's open flow.
     tab.actions.openResource(address, { revealIfOpened: false })
+  }
+  const renderHeading = (level: 1 | 2 | 3 | 4 | 5 | 6, children: ReactNode, node: unknown): ReactNode => {
+    const Tag = `h${level}` as const
+    const headingText = textOf(children).trim()
+    const position = typeof node === 'object' && node !== null ? (node as { position?: { start?: { line?: number } } }).position : undefined
+    const line = position?.start?.line
+    const sectionId = `section-${line ?? 0}-${stableId(headingText)}`
+    const reading = readState.status !== 'idle' && readState.sessionId === documentId && readState.messageId === sectionId
+    const ariaLabel = `${t(reading ? 'stopSection' : 'readSection')} · ${documentName} · ${headingText || t('label')}`
+    const text = typeof line === 'number' ? sections.get(line) ?? '' : ''
+    const tooLong = text.length > 200_000 || new TextEncoder().encode(text).length > 200_000
+    const onRead = (): void => {
+      if (reading) {
+        postReadAloud({ type: 'stopReadAloud', sessionId: documentId, messageId: sectionId })
+      } else if (readState.enabled && text.trim() && !tooLong) {
+        postReadAloud({ type: 'readAloud', sessionId: documentId, messageId: sectionId, text,
+          label: `${documentName} · ${headingText || t('label')}`.slice(0, 256) })
+      }
+    }
+    return <Tag id={slugify(headingText)} className={css.heading}>
+      <span className={css.headingText}>{children}</span>
+      {readState.enabled && <button type="button" className={css.readButton} aria-label={ariaLabel} title={ariaLabel}
+        aria-pressed={reading} disabled={tooLong || (!reading && !text.trim())} onClick={(event) => { event.stopPropagation(); onRead() }}>
+        {reading ? <VolumeX size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
+      </button>}
+    </Tag>
   }
   const components = useMemo<Components>(() => ({
     a: ({ href, children, title }) => {
@@ -296,16 +389,19 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
         </div>
       )
     },
-    h1: ({ children }) => <h1 id={slugify(textOf(children))}>{children}</h1>,
-    h2: ({ children }) => <h2 id={slugify(textOf(children))}>{children}</h2>,
-    h3: ({ children }) => <h3 id={slugify(textOf(children))}>{children}</h3>,
-    h4: ({ children }) => <h4 id={slugify(textOf(children))}>{children}</h4>,
-    h5: ({ children }) => <h5 id={slugify(textOf(children))}>{children}</h5>,
-    h6: ({ children }) => <h6 id={slugify(textOf(children))}>{children}</h6>,
+    h1: ({ children, node }) => renderHeading(1, children, node),
+    h2: ({ children, node }) => renderHeading(2, children, node),
+    h3: ({ children, node }) => renderHeading(3, children, node),
+    h4: ({ children, node }) => renderHeading(4, children, node),
+    h5: ({ children, node }) => renderHeading(5, children, node),
+    h6: ({ children, node }) => renderHeading(6, children, node),
     table: ({ children }) => <div className={css.tableWrap}><table>{children}</table></div>,
     pre: ({ children }) => <>{children}</>,
     mark: ({ children }) => <mark className={css.mark}>{children}</mark>,
-  }), [absolutePath, copied, dir, open, t])
+  }), [
+    absolutePath, body, copied, dir, documentId, documentName, open, sections,
+    readState.enabled, readState.messageId, readState.sessionId, readState.status, t,
+  ])
   if (content.kind !== 'text') return null
   return <div className={css.root} data-gaia-markdown tabIndex={0}
     onPointerDown={(event) => {

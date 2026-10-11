@@ -264,6 +264,8 @@ export function setupSessionNotifier(
 export function apply(ctx: Context): (() => void | Promise<void>) | void {
   if (typeof window === 'undefined') return
 
+  const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, autoRead: false, status: 'idle', sessionId: null, messageId: null })
+  ctx.provide('gaiaReadAloud', readAloud)
   const params = new URLSearchParams(window.location.search)
   const mode = params.get('gaia')
   const inGaiaFrame = (mode === 'embed' || mode === 'full') && window.parent !== window
@@ -277,7 +279,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     scope.effect(() => scope.commandUi.face({ name: 'rename', icon: RenameIcon }))
   })
   ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
-  const readAloud = createSnapshotStore<GaiaReadAloudState>({ enabled: false, autoRead: false, status: 'idle', sessionId: null, messageId: null })
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay', id: 'gaia-auto-read', order: 20,
     inject: (sessionId): AutoReadInjected => ({

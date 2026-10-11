@@ -26,6 +26,13 @@
 
 /* Headings: font-bold, scroll-mt-4; h1/h2 carry a bottom border. */
 .root :global(:is(h1, h2, h3, h4, h5, h6)) { color: var(--dsw-alias-label-primary); font-weight: 700; scroll-margin-top: 16px; }
+.root :global(:is(h1, h2, h3, h4, h5, h6)).heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.headingText { min-width: 0; flex: 1; }
+.readButton { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: var(--md-muted-fg); cursor: pointer; opacity: 0; transition: opacity .15s, background-color .15s, color .15s; }
+.root :global(:is(h1, h2, h3, h4, h5, h6)):hover .readButton, .root :global(:is(h1, h2, h3, h4, h5, h6)):focus-within .readButton, .readButton:focus-visible, .readButton[aria-pressed="true"] { opacity: 1; }
+.readButton:hover:not(:disabled) { background: var(--md-muted); color: var(--dsw-alias-label-primary); }
+.readButton:focus-visible { outline: 2px solid var(--md-accent); outline-offset: 1px; }
+.readButton:disabled { cursor: not-allowed; }
 .root :global(h1) { margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--md-border); font-size: 30px; line-height: 36px; }
 .root :global(h2) { margin: 24px 0 12px; padding-bottom: 4px; border-bottom: 1px solid var(--md-border); font-size: 24px; line-height: 32px; }
 .root :global(h3) { margin: 16px 0 8px; font-size: 20px; line-height: 28px; }

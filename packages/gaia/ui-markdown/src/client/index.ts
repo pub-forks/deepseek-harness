@@ -11,7 +11,7 @@ import { markdownDefinition } from './markdown-definition.ts'
 import { MarkdownBody } from './MarkdownBody.tsx'
 
 export const name = 'gaia-ui-markdown'
-export const inject = ['locale', 'slots', 'documentPreviews'] as const
+export const inject = ['locale', 'slots', 'documentPreviews', 'gaiaReadAloud'] as const
 
 /** Register a higher-priority document definition and its keyed renderer body. */
 export function apply(ctx: Context): void {
@@ -19,6 +19,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register('gaiaMarkdown', { en, zh }), 'gaia-markdown: dictionaries')
   ctx.effect(() => ctx.documentPreviews.register(markdownDefinition(() => t('label'))), 'gaia-markdown: metadata')
   ctx.effect(() => ctx.slots.inject('sidebar.right.tab.document', () => ctx.slots.register(
-    { name: 'sidebar.right.tab.document', key: MARKDOWN_BODY_ID, locale: 'gaiaMarkdown' }, MarkdownBody,
+    { name: 'sidebar.right.tab.document', key: MARKDOWN_BODY_ID, locale: 'gaiaMarkdown',
+      inject: () => ({ readAloud: ctx.get('gaiaReadAloud') as import('./MarkdownBody.tsx').MarkdownBodyProps['readAloud'] }) }, MarkdownBody,
   )), 'gaia-markdown: body')
 }
