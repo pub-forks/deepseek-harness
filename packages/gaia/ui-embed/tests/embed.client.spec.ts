@@ -699,7 +699,7 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyE', shift: true })
 
     // Other allowlisted keys include the screenshot and focus-mode chords.
-    const otherCodes = ['KeyS', 'KeyL', 'KeyK', 'KeyD', 'KeyZ', 'Tab', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN']
+    const otherCodes = ['KeyS', 'KeyL', 'KeyK', 'KeyD', 'KeyZ', 'Tab', 'KeyF', 'KeyG', 'KeyP', 'KeyA', 'KeyN', 'KeyC']
     for (const code of otherCodes) {
       parentMessages = []
       const ev = new KeyboardEvent('keydown', { code, ctrlKey: true, altKey: true, cancelable: true })

@@ -71,6 +71,7 @@ export const APP_SHORTCUT_CODES = [
   'KeyP',
   'KeyA',
   'KeyN',
+  'KeyC',
   'KeyV',
   'KeyR',
 ] as const
