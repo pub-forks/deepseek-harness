@@ -56,7 +56,7 @@ for (const mode of ['embed', 'full']) {
       await client.flush()
       act(() => {
         composer().focus()
-        window.getSelection()!.collapse(composer().firstElementChild!.firstChild!, 0)
+        window.getSelection()!.collapse(composer().firstElementChild!.firstChild, 0)
         fireEvent(document, new Event('selectionchange'))
       })
       await client.flush()

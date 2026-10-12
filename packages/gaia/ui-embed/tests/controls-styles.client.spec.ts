@@ -79,8 +79,12 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     const previousEmbed = document.documentElement.getAttribute('data-gaia-embed')
     document.documentElement.setAttribute('data-gaia-embed', '')
     try {
-      const geometrySelector = GAIA_CONTROLS_CSS.match(/\/\* DSH buttons and explicit legacy controls use Gaia's compact geometry\. \*\/\s*([^\{]+)\{/u)?.[1]?.trim()
-      const geometryRule = GAIA_CONTROLS_CSS.match(/\/\* DSH buttons and explicit legacy controls use Gaia's compact geometry\. \*\/\s*[^\{]+\{([^}]+)\}/u)?.[1]
+      const geometrySelector = GAIA_CONTROLS_CSS.match(
+        /\/\* DSH buttons and explicit legacy controls use Gaia's compact geometry\. \*\/\s*([^\{]+)\{/u,
+      )?.[1]?.trim()
+      const geometryRule = GAIA_CONTROLS_CSS.match(
+        /\/\* DSH buttons and explicit legacy controls use Gaia's compact geometry\. \*\/\s*[^\{]+\{([^}]+)\}/u,
+      )?.[1]
       expect(geometrySelector).toBeDefined()
       expect(geometryRule).toContain('height: 32px')
       expect(geometryRule).toContain('padding: 0 12px')

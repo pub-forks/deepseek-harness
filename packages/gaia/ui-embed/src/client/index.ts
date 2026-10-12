@@ -50,6 +50,7 @@ import { GaiaReadAloudActions, type ReadAloudInjected } from './read-aloud-actio
 import { en as readAloudLabels } from './read-aloud-locales.ts'
 import type { GaiaReadAloudState } from './bridge.ts'
 import { GaiaAutoReadLifecycle, type AutoReadInjected } from './auto-read-lifecycle.tsx'
+import { notificationRecap } from './notification-recap.ts'
 import { observeCompletedAnswers } from './auto-read-aloud.ts'
 import { GaiaMessageHistoryLifecycle, type MessageHistoryInjected } from './message-history-lifecycle.tsx'
 import { observeMessageHistory } from './message-history.ts'
@@ -197,6 +198,7 @@ export function setupSessionNotifier(
       if (prevRunning === true && !running) {
         // undefined: no turn/end entry found yet; null: a user abort, which never notifies.
         let turnEvent: 'turnDone' | 'turnError' | null | undefined
+        let recap: string | undefined
         const binding = ctx.sessions.binding(id)
         const entries = binding?.eventSource.getSnapshot().entries
         if (entries) {
@@ -210,6 +212,7 @@ export function setupSessionNotifier(
                 turnEvent = null
               } else {
                 turnEvent = 'turnDone'
+                recap = notificationRecap(entries, i, entry.event.data.turn)
               }
               break
             }
@@ -228,6 +231,7 @@ export function setupSessionNotifier(
             v: 1,
             type: 'notify',
             event: turnEvent,
+            ...(recap ? { recap } : {}),
             title,
             ...about(id),
           })

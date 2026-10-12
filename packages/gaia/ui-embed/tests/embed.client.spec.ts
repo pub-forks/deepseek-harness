@@ -1442,6 +1442,52 @@ describe('ui-embed client plugin', () => {
       if (typeof dispose === 'function') await dispose()
     })
 
+    it.each([
+      { text: '  Final answer  ', expected: 'Final answer' },
+      { text: 'Final answer', priorTurn: 2, expected: 'Final answer' },
+      { text: 'Interrupted', priorTurn: 2, interrupted: true, expected: 'Previous turn' },
+      { text: '', priorTurn: 2, expected: undefined },
+      { text: 'a'.repeat(2001), expected: 'a'.repeat(2000) },
+      { text: ' \x00A\x07\r\nB\tC\x7f\x85 ', expected: 'A\nB\tC' },
+      { text: ' \x00 ', expected: undefined },
+      { text: '', expected: undefined },
+      { text: 'Interrupted', interrupted: true, expected: undefined },
+      { text: 'Other turn', turn: 1, expected: undefined },
+      { text: 'Failed answer', reason: 'error', expected: undefined },
+    ])('emits a bounded recap only for completed answers: $text', async ({ text, expected, interrupted = false, turn = 2, priorTurn = 1, reason = 'completed' }) => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      mock.setSessionBinding(SessionId('s-test-123'), {
+        eventSource: {
+          getSnapshot: () => ({ entries: [
+            { type: 'event', event: { type: 'assistant/message', data: {
+              turn: priorTurn, message: { content: [{ type: 'text', text: 'Previous turn' }] },
+            } } },
+            { type: 'event', event: { type: 'assistant/message', data: {
+              turn, interrupted, message: { content: [
+                { type: 'text', text: text.slice(0, 2) },
+                { type: 'reasoning', text: 'Private reasoning' },
+                { type: 'text', text: text.slice(2) },
+              ] },
+            } } },
+            { type: 'event', event: { type: 'turn/end', data: { turn: 2, reason: { kind: reason } } } },
+            { type: 'event', event: { type: 'assistant/message', data: {
+              turn: 3, message: { content: [{ type: 'text', text: 'Later turn' }] },
+            } } },
+          ] }),
+        },
+      })
+      const dispose = apply(mock.ctx)
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'approval' })
+      expect(parentMessages.find(m => m.type === 'notify' && m.event === 'needsInput')).not.toHaveProperty('recap')
+      mock.setSessionStatus(SessionId('s-test-123'), false)
+      const notification = parentMessages.find(m => m.type === 'notify' && m.event !== 'needsInput')
+      expect(notification).toMatchObject({ event: reason === 'error' ? 'turnError' : 'turnDone' })
+      if (expected === undefined) expect(notification).not.toHaveProperty('recap')
+      else expect(notification).toHaveProperty('recap', expected)
+      if (typeof dispose === 'function') await dispose()
+    })
+
     it('emits turnError when the turn ended with an error event', async () => {
       setLocationSearch('?gaia=embed&session=s-test-123')
       const mock = createMockContext()

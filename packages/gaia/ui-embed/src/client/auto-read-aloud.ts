@@ -1,6 +1,7 @@
 /** Completion-only narration driven by synchronous live event deltas, never by historical message mounts. */
 import type { SessionEventLikeEntry, SessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId, SessionEvent } from '@deepseek-ai/dsh-session/types'
+import { assistantMessageText } from './assistant-text.ts'
 import { MAX_CHAT_SPEECH_BYTES, narrationWorkspace, postToParent } from './bridge.ts'
 
 /**
@@ -29,7 +30,7 @@ export function observeCompletedAnswers(
       } else if (event.type === 'assistant/message') {
         if (turn === undefined) turn = event.data.turn
         if (turn !== event.data.turn) continue
-        const text = event.data.message.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('')
+        const text = assistantMessageText(event.data.message)
         answer = !event.data.interrupted && text.trim() && text.length <= MAX_CHAT_SPEECH_BYTES
           && new TextEncoder().encode(text).length <= MAX_CHAT_SPEECH_BYTES
           ? { messageId: event.data.message.id, text } : undefined

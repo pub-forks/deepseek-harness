@@ -14,7 +14,7 @@ function bench(initial: readonly SessionEventLikeEntry[] = [], override?: (sourc
   const replace = vi.fn((next: string, _fresh: boolean) => { text = next; hasCheckpoint = true; revision++; return true })
   const restore = vi.fn(() => { text = 'unsent draft'; hasCheckpoint = false; revision++; return true })
   const unlisten = vi.fn(() => { listener = undefined })
-  const dispose = observeMessageHistory(override?.(source) ?? source, handle => { listener = handle; return unlisten })
+  const dispose = observeMessageHistory(override?.(source) ?? source, (handle) => { listener = handle; return unlisten })
   onTestFinished(dispose)
   const request = (direction: 'up' | 'down'): InputHistoryRequest => ({ direction, draftRev: revision, hasCheckpoint, replace, restore })
   return { source, replace, restore, dispose, unlisten, request,

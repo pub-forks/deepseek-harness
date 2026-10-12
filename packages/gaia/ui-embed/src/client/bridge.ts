@@ -11,6 +11,9 @@ export const GAIA_BRIDGE_SOURCE = 'gaia-dsh' as const
 /** Maximum byte length for insertText messages (8 KB). */
 export const MAX_INSERT_TEXT_BYTES = 8192
 
+// Twin: web/src/lib/harnessBridge.ts in Gaia.
+export const MAX_HARNESS_RECAP_LENGTH = 2000
+
 /** Maximum UTF-8 bytes in a complete chat narration request. */
 export const MAX_CHAT_SPEECH_BYTES = 200_000
 
@@ -54,7 +57,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: string; shift: boolean; mod?: boolean; alt?: boolean; phase?: 'keyup' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; event: 'turnDone' | 'needsInput' | 'turnError'; title: string; sessionId?: string; workspacePath?: string; shown?: boolean }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; recap?: string; event: 'turnDone' | 'needsInput' | 'turnError'; title: string; sessionId?: string; workspacePath?: string; shown?: boolean }
 
 /** Allowlisted keyboard shortcut codes forwarded from the iframe to Gaia. */
 export const APP_SHORTCUT_CODES = [
