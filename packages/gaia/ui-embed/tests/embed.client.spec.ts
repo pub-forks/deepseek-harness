@@ -1586,6 +1586,19 @@ describe('ui-embed client plugin', () => {
       if (typeof dispose === 'function') await dispose()
     })
 
+    it('emits inputResolved once when a pending interaction disappears', async () => {
+      setLocationSearch('?gaia=embed&session=s-test-123')
+      const mock = createMockContext()
+      const dispose = apply(mock.ctx)
+      mock.setSessionStatus(SessionId('s-test-123'), true, { key: 'approval-1' })
+      mock.setSessionStatus(SessionId('s-test-123'), true)
+      mock.setSessionStatus(SessionId('s-test-123'), true)
+      expect(parentMessages.filter(m => m.type === 'inputResolved')).toEqual([
+        { source: 'gaia-dsh', v: 1, type: 'inputResolved', sessionId: 's-test-123' },
+      ])
+      if (typeof dispose === 'function') await dispose()
+    })
+
     it('keeps one needsInput notification through question expiry and late reply, including reload', async () => {
       setLocationSearch('?gaia=embed&session=s-test-123')
       const mock = createMockContext()

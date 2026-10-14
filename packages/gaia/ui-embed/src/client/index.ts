@@ -156,6 +156,7 @@ export function setupSessionNotifier(
 ): () => void {
   const lastRunningBySession = new Map<SessionId, boolean>()
   const seenInteractionKeys = new Set<string>()
+  const pendingSessions = new Set<SessionId>()
 
   const initialSnapshot = ctx.uiSession.sessionStatus.getSnapshot()
   if (targetSessionId !== undefined) {
@@ -164,6 +165,7 @@ export function setupSessionNotifier(
       lastRunningBySession.set(targetSessionId, status.running)
     }
     if (status?.pendingInteraction) {
+      pendingSessions.add(targetSessionId)
       seenInteractionKeys.add(status.pendingInteraction.key)
     }
   } else {
@@ -172,6 +174,7 @@ export function setupSessionNotifier(
         lastRunningBySession.set(id, s.running)
       }
       if (s.pendingInteraction) {
+        pendingSessions.add(id)
         seenInteractionKeys.add(s.pendingInteraction.key)
       }
     }
@@ -187,7 +190,7 @@ export function setupSessionNotifier(
 
   const check = (): void => {
     const snapshot = ctx.uiSession.sessionStatus.getSnapshot()
-    const sessionIds = targetSessionId !== undefined ? [targetSessionId] : [...snapshot.keys()]
+    const sessionIds = targetSessionId !== undefined ? [targetSessionId] : [...new Set([...snapshot.keys(), ...pendingSessions])]
 
     for (const id of sessionIds) {
       const status = snapshot.get(id)
@@ -239,6 +242,10 @@ export function setupSessionNotifier(
       }
 
       const pending = status?.pendingInteraction
+      if (pending) pendingSessions.add(id)
+      else if (pendingSessions.delete(id)) {
+        postToParent({ source: 'gaia-dsh', v: 1, type: 'inputResolved', sessionId: id })
+      }
       if (pending && !seenInteractionKeys.has(pending.key)) {
         seenInteractionKeys.add(pending.key)
         const rawTitle = getTitle ? getTitle(id) : undefined

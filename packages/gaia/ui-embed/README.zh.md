@@ -13,6 +13,8 @@ kind: "package-reference"
 
 两种模式的 `turnDone` 通知均可包含可选的 `recap`：按顺序拼接该轮最后一条未中断的助手消息中的文本块，去除换行和制表符以外的控制字符，去除首尾空白，并截断至 2,000 个字符。空文本省略此字段；`needsInput` 和 `turnError` 不携带摘要。Gaia 验证该字段后，在项目名称上方显示纯文本节选，不发起额外的模型请求。
 
+两种模式都会在会话的待处理交互消失时发送 `{ source: 'gaia-dsh', v: 1, type: 'inputResolved', sessionId }`。Gaia 使用此消息清除持续显示的输入请求指示器。
+
 ## 目录
 
 - [使用本包](#use-this-package)

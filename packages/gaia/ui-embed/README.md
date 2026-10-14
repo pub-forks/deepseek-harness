@@ -13,6 +13,8 @@ This private client plugin supports two Gaia iframe modes. Both receive Gaia's t
 
 Both modes include an optional `recap` in `turnDone` notifications: the final non-interrupted assistant message's text blocks for that turn, joined in order, stripped of control characters except newline/tab, trimmed and capped at 2,000 characters. Empty text is omitted; `needsInput` and `turnError` carry no recap. Gaia validates the field and displays a plain excerpt above the project name, without another model request.
 
+Both modes post `{ source: 'gaia-dsh', v: 1, type: 'inputResolved', sessionId }` when a session's pending interaction disappears. Gaia uses this to clear persistent input-required indicators.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

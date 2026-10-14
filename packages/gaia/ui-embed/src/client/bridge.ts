@@ -57,6 +57,7 @@ export type GaiaOutgoingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'drawerShortcut'; action: 'toggle' | 'maximize' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appShortcut'; code: string; shift: boolean; mod?: boolean; alt?: boolean; phase?: 'keyup' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openGaiaSettings'; section: 'appearance' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'inputResolved'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'notify'; recap?: string; event: 'turnDone' | 'needsInput' | 'turnError'; title: string; sessionId?: string; workspacePath?: string; shown?: boolean }
 
 /** Allowlisted keyboard shortcut codes forwarded from the iframe to Gaia. */
