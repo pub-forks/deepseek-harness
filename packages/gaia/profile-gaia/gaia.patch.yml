@@ -19,6 +19,16 @@
 # GAIA: no llm-pi-ai row here. An overlay outranks the profile layer that
 # Settings → Models writes, which made every provider read-only. The bridge
 # seeds the openai-codex route into the user's profile once instead.
+# GAIA: no native desktop opening. Session paths would open on the machine
+# running the runtime, not the browser's; on WSL the uid-dropped runtime has no
+# interop either, so these controls only failed. nativeOpen: false removes the
+# document preview's Open / Show file location; the host open-in-app row serves
+# the header's Open in Files application list, which reads as empty without it.
+- id: session-controller
+  config:
+    nativeOpen: false
+- id: open-in-app
+  disabled: true
 - id: hmr
   disabled: true
 - id: client-hmr
