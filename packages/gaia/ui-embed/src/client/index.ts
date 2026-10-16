@@ -37,6 +37,7 @@ import { lineParam, resolveFileAddress } from './open-file.ts'
 import { resolveChangesReview } from './open-changes-review.ts'
 import { GaiaDocumentAction } from './document-action.ts'
 import { GaiaFileActions } from './file-actions.ts'
+import { GaiaWorkspaceAction } from './workspace-action.ts'
 import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
 import { GaiaBrandName, GaiaMark } from './brand.ts'
 import { GAIA_PALETTE_LAYER, paletteTokens } from './palette.ts'
@@ -290,6 +291,20 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     scope.effect(() => scope.commandUi.face({ name: 'rename', icon: RenameIcon }))
   })
   ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
+
+  // "Open in Files" and the document preview's Open / Show file location call
+  // the native desktop opener on the machine running the harness, which a
+  // browser framed by Gaia cannot see. In both Gaia frames, shadow those
+  // entries (same slot and id, lower priority renders) with Gaia actions that
+  // send the absolute path to the parent's Explorer or editor.
+  ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+    name: 'conversation.session.header.utilities', id: 'open-in-app', order: -10, priority: -1, locale: 'open-in-app',
+  }, GaiaWorkspaceAction))
+  for (const name of ['sidebar.right.tab.document.actions', 'sidebar.right.tab.document.unpreviewable'] as const) {
+    ctx.slots.inject(name, () => ctx.slots.register({
+      name, id: 'open-in-app', order: -10, priority: -1, locale: 'open-in-app',
+    }, GaiaFileActions))
+  }
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay', id: 'gaia-auto-read', order: 20,
     inject: (sessionId): AutoReadInjected => ({
@@ -645,23 +660,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   ctx.layout.toggleSidebar = () => {}
   ctx.layout.openRightbar = () => {}
 
-
-  // "Open in Files" launches a file manager on the machine running the
-  // harness, which a drawer tab in a browser cannot use. Shadow its header
-  // entry (same slot and id, lower priority renders) with nothing; the full
-  // shell outside the embed keeps it.
-  ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
-    name: 'conversation.session.header.utilities', id: 'open-in-app', order: -10, priority: -1,
-  }, HiddenEntry))
-
-  // The document preview actions normally call the Host's native desktop
-  // routes. In an embedded browser, replace both path-action slots with Gaia
-  // actions that send their already-resolved absolute path to the parent.
-  for (const name of ['sidebar.right.tab.document.actions', 'sidebar.right.tab.document.unpreviewable'] as const) {
-    ctx.slots.inject(name, () => ctx.slots.register({
-      name, id: 'open-in-app', order: -10, priority: -1, locale: 'open-in-app',
-    }, GaiaFileActions))
-  }
 
   // Track title, existence, and session opening.
   let openedSession = false

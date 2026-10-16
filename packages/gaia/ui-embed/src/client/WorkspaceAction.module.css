@@ -1,0 +1,21 @@
+/* Sized like the document header's other 24px utility controls. */
+.button {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 3px 5px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: var(--dsw-radius-sm);
+  background: none;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+
+.button:hover,
+.button:focus-visible {
+  background: var(--dsw-alias-interactive-bg-hover);
+}

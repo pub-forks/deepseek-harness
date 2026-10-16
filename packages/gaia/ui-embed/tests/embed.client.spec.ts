@@ -415,6 +415,7 @@ describe('ui-embed client plugin', () => {
     expect(mock.layout.closeRightbar).not.toHaveBeenCalled()
     expect(mock.registeredCommands).toHaveLength(0)
     expect(mock.slotRegistrations.map(({ name }) => name)).toEqual([
+      'conversation.session.header.utilities', 'sidebar.right.tab.document.actions', 'sidebar.right.tab.document.unpreviewable',
       'conversation.input.overlay', 'conversation.input.overlay', 'conversation.chat.assistant-actions', 'sidebar.session.row.decoration', 'settings.action', 'settings.general.item', 'settings.general.item', 'settings.launcher', 'sidebar.brand.mark', 'sidebar.brand.name',
       'conversation.hero.brand.mark',
     ])
@@ -1774,6 +1775,26 @@ describe('embed integration of the palette and header entries', () => {
       origin: window.location.origin, source: window.parent,
     }))
     expect(overrideTokens).toHaveBeenCalledWith('gaia-embed-palette', expect.objectContaining({ '--dsw-alias-bg-base': { light: 'hsl(0 0% 3.9%)', dark: 'hsl(0 0% 3.9%)' } }))
+  })
+})
+
+describe('full-mode file actions', () => {
+  it('replaces the desktop file actions in the full Harness shell too', () => {
+    Object.defineProperty(window, 'location', { value: new URL('http://localhost:3000/?gaia=full'), writable: true, configurable: true })
+    const ctx = new Context()
+    ctx.provide('locale', new LocaleRuntime(ctx))
+    const registrations: { name: string; id: string; priority?: number; locale?: string }[] = []
+    ctx.provide('layout', { selectPanel: vi.fn(), closeRightbar: vi.fn(), toggleSidebar: vi.fn(), openRightbar: vi.fn(), layoutInfo: { getSnapshot: () => ({ viewportWidth: 1400, narrowExpanded: true, sidebar: 240 }) } })
+    ctx.provide('uiWorkspace', { openSession: vi.fn() })
+    ctx.provide('connection', { state: { getSnapshot: () => 'connected', subscribe: () => () => {} } })
+    ctx.provide('uiSession', { sessionStatus: { getSnapshot: () => new Map(), subscribe: () => () => {} } })
+    ctx.provide('sessions', { list: { getSnapshot: () => ({ phase: 'ready', byId: {} }), subscribe: () => () => {} }, scope: () => undefined })
+    ctx.provide('theme', { register: vi.fn(() => () => {}), setTheme: vi.fn(), overrideTokens: vi.fn(() => () => {}) })
+    ctx.provide('slots', { inject: (_n: string, f: () => () => void) => f(), register: (o: { name: string; id: string; priority?: number }) => { registrations.push(o); return () => {} } })
+    apply(ctx)
+    for (const name of ['conversation.session.header.utilities', 'sidebar.right.tab.document.actions', 'sidebar.right.tab.document.unpreviewable']) {
+      expect(registrations).toContainEqual(expect.objectContaining({ name, id: 'open-in-app', priority: -1, locale: 'open-in-app' }))
+    }
   })
 })
 
