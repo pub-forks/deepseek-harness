@@ -1,5 +1,6 @@
 /** Copy for the Gaia sign-in settings section. */
 export type AuthorizationKey = keyof typeof en
+/** English copy for Gaia authorization settings. */
 export const en = {
   nav: 'Sign-in', title: 'Sign-in', intro: 'Connect a provider to use its models.',
   loading: 'Loading sign-in options…', empty: 'No OAuth sign-in flows are available.', failed: 'Sign-in options are unavailable.',
@@ -14,6 +15,7 @@ export const en = {
   accountKind: 'Account type', oauthAccount: 'OAuth account', apiKeyAccount: 'API-key account', apiKey: 'API key', changeKey: 'Change key',
   removeTitle: 'Remove account?', removeDescription: 'Remove this account route and its stored sign-in?',
 } as const
+/** Chinese copy for Gaia authorization settings. */
 export const zh: Record<AuthorizationKey, string> = {
   nav: '登录', title: '登录', intro: '连接服务提供方以使用其模型。',
   loading: '正在加载登录选项…', empty: '没有可用的 OAuth 登录流程。', failed: '无法加载登录选项。',

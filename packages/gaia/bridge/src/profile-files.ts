@@ -12,7 +12,10 @@ export const PROFILE_FILE_NAMES = ['cordis.patch.yml', 'cordis.yml', 'package.js
 
 let writes = Promise.resolve()
 
-/** Compute lowercase SHA-256 for UTF-8 text. @param text - file contents. @returns hexadecimal digest. */
+/** Compute lowercase SHA-256 for UTF-8 text.
+ * @param text - file contents.
+ * @returns hexadecimal digest.
+ */
 export function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex')
 }

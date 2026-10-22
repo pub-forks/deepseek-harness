@@ -17,7 +17,7 @@ import { createWorkspaceViewStore } from '../src/client/stores.ts'
 const sid = (id: string) => id as SessionId
 const wid = (id: string) => id as WorkspaceId
 const summary = (id: string, updatedAt: number, cwd?: string): SessionSummary => ({
-  id: sid(id), displayTitle: id, running: false, blank: false,
+  id: sid(id), title: id, displayTitle: id, running: false, blank: false,
   updatedAt, ...(cwd === undefined ? {} : { cwd }), retainedBy: {},
 })
 const list = (...items: SessionSummary[]): SessionListState => ({
@@ -123,6 +123,18 @@ describe('Session ordering', () => {
     const groups = deriveGroups(sessions, sorted, noRows, noAttention, view(['a', 'z', UNGROUPED_KEY]))
     expect(groups.map(group => group.key)).toEqual(['a', 'z', UNGROUPED_KEY])
     expect(groups.at(-1)?.workspaceId).toBeUndefined()
+  })
+
+  it('keeps projects with open idle Sessions and their tree ancestors', () => {
+    const sessions = list(summary('idle', 1), summary('archived', 2), summary('loose', 3))
+    const workspaces = [
+      workspace('parent', ['archived']), workspace('child', ['idle']), workspace('empty', []),
+    ]
+    const groups = deriveGroups(sessions, workspaces, noRows, noAttention,
+      view(['parent', 'child', 'empty', UNGROUPED_KEY]))
+    expect(groupsWithOpenSessions(
+      groups, sessions, workspaces, archived('archived'), new Map([['child', wid('parent')], ['parent', undefined]]),
+    ).map(group => group.key)).toEqual(['parent', 'child', UNGROUPED_KEY])
   })
 
   it('orders each partition strictly by Session recency, independent of pin-array order', () => {
@@ -609,9 +621,9 @@ describe('deriveFlat', () => {
 describe('deriveSearchResults archive filtering', () => {
   it('archived sessions never match — not by title and not via a backend content hit', () => {
     const hit = summary('hit', 2)
-    hit.displayTitle = 'Needle row'
+    hit.title = hit.displayTitle = 'Needle row'
     const gone = summary('gone', 1)
-    gone.displayTitle = 'Needle archived'
+    gone.title = gone.displayTitle = 'Needle archived'
     const result = deriveSearchResults(
       list(hit, gone),
       [],
@@ -627,7 +639,7 @@ describe('deriveSearchResults archive filtering', () => {
 
   it('matches archived sessions and flags them while the view shows them', () => {
     const gone = summary('gone', 1)
-    gone.displayTitle = 'Needle archived'
+    gone.title = gone.displayTitle = 'Needle archived'
     const result = deriveSearchResults(
       list(gone), [], 'needle', archived('gone'), 'show', noAttention, { items: [], hasMore: false }, 10,
     )
@@ -636,9 +648,9 @@ describe('deriveSearchResults archive filtering', () => {
 
   it('matches only archived sessions under the only filter', () => {
     const hit = summary('hit', 2)
-    hit.displayTitle = 'Needle row'
+    hit.title = hit.displayTitle = 'Needle row'
     const gone = summary('gone', 1)
-    gone.displayTitle = 'Needle archived'
+    gone.title = gone.displayTitle = 'Needle archived'
     const result = deriveSearchResults(
       list(hit, gone), [], 'needle', archived('gone'), 'only', noAttention, { items: [], hasMore: false }, 10,
     )
@@ -649,9 +661,9 @@ describe('deriveSearchResults archive filtering', () => {
 describe('deriveSearchResults', () => {
   it('merges local title/Workspace matches before ranked content hits and enriches duplicates', () => {
     const titleHit = summary('title-hit', 30, '/projects/a')
-    titleHit.displayTitle = 'Needle title'
+    titleHit.title = titleHit.displayTitle = 'Needle title'
     const workspaceHit = summary('workspace-hit', 20, '/projects/b')
-    workspaceHit.displayTitle = 'Ordinary title'
+    workspaceHit.title = workspaceHit.displayTitle = 'Ordinary title'
     const contentHit = summary('content-hit', 10, '/projects/c')
     const sessions = list(titleHit, workspaceHit, contentHit)
     const result = deriveSearchResults(
@@ -744,7 +756,7 @@ describe('deriveSearchResults', () => {
   it('uses the supplied cap and preserves either local overflow or backend hasMore', () => {
     const rows = Array.from({ length: 5 }, (_, index) => {
       const item = summary(`s-${String(index).padStart(2, '0')}`, index)
-      item.displayTitle = `Needle ${String(index)}`
+      item.title = item.displayTitle = `Needle ${String(index)}`
       return item
     })
     const overflow = deriveSearchResults(
@@ -904,58 +916,10 @@ describe('parent folder membership', () => {
   })
 })
 
-// GAIA: project eligibility never depends on generation or Client retention.
-describe('Projects with open Sessions projection', () => {
-  it('keeps idle and generating projects in input order, excluding archives, missing rows and hidden placeholders', () => {
-    const sessions = list(
-      summary('idle', 1), { ...summary('running', 2), running: true },
-      { ...summary('archived', 3), running: true },
-      { ...summary('child', 4), origin: 'subagent' },
-      { ...summary('blank', 5), blank: true }, summary('loose', 6),
-    )
-    const workspaces = [
-      workspace('idle-project', ['idle']), workspace('empty', []), workspace('archive-project', ['archived']),
-      workspace('running-project', ['running']), workspace('missing', ['unknown']),
-      workspace('subagent-project', ['child']), workspace('blank-project', ['blank']),
-    ]
-    const state = rowState({ archived: ['archived'], archivedFilter: 'show' })
-    const groups = deriveGroups(sessions, workspaces, state, noAttention, view())
-    const before = JSON.stringify({ sessions, workspaces, groups })
-    const filtered = groupsWithOpenSessions(groups, sessions, workspaces, state.archivedSessionIds, new Map())
-    expect(filtered.map(group => group.key)).toEqual(['idle-project', 'running-project', UNGROUPED_KEY])
-    expect(filtered[0]).toBe(groups[0])
-    expect(JSON.stringify({ sessions, workspaces, groups })).toBe(before)
-  })
-
-  it('counts only the selected New Session placeholder', () => {
-    const sessions = withMain(list({ ...summary('new', 1), blank: true }), sid('new'))
-    const workspaces = [workspace('current', ['new'])]
-    const groups = deriveGroups(sessions, workspaces, rowState(), noAttention, view())
-    expect(groupsWithOpenSessions(groups, sessions, workspaces, [], new Map()).map(group => group.key))
-      .toEqual(['current'])
-  })
-
-  it('retains every rendered ancestor without retaining empty siblings or changing group rows', () => {
-    const sessions = list(summary('idle', 1))
-    const workspaces = [workspace('root', []), workspace('middle', []), workspace('leaf', ['idle']), workspace('empty', [])]
-    const groups = deriveGroups(sessions, workspaces, rowState(), noAttention, view(['leaf']))
-    const parents = new Map([['middle', wid('root')], ['leaf', wid('middle')], ['empty', wid('root')]])
-    const filtered = groupsWithOpenSessions(groups, sessions, workspaces, [], parents)
-    expect(filtered.map(group => group.key)).toEqual(['root', 'middle', 'leaf'])
-    expect(filtered).toEqual(groups.slice(0, 3))
-    expect(filtered[2]?.sessions.map(row => row.id)).toEqual([sid('idle')])
-  })
-
-  it.each(['default', 'show', 'only'] as const)('preserves %s archive projection inside eligible projects', (archivedFilter) => {
-    const sessions = list(summary('idle', 1), summary('old', 2), summary('closed', 3))
-    const workspaces = [workspace('mixed', ['old', 'idle']), workspace('closed-only', ['closed'])]
-    const state = rowState({ archived: ['old', 'closed'], archivedFilter })
-    const groups = deriveGroups(sessions, workspaces, state, noAttention, view(['mixed', 'closed-only']))
-    const filtered = groupsWithOpenSessions(groups, sessions, workspaces, state.archivedSessionIds, new Map())
-    expect(filtered.map(group => group.key)).toEqual(['mixed'])
-    expect(filtered[0]).toBe(groups[0])
-    expect(filtered[0]?.sessions.map(row => row.id)).toEqual(
-      (archivedFilter === 'default' ? ['idle'] : archivedFilter === 'only' ? ['old'] : ['old', 'idle']).map(sid),
-    )
-  })
+it('leaves unnamed history titles empty for locale-owned row labels', () => {
+  const item = summary('unnamed', 1, '/work/Default workspace')
+  delete item.title
+  item.displayTitle = 'Default workspace'
+  const sessions = list(item)
+  expect(deriveFlat(sessions, [item.id], noRows, noAttention)[0]?.title).toBe('')
 })

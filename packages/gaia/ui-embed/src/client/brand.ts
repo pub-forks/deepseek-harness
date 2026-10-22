@@ -13,10 +13,11 @@ const GAIA_MARK_PATHS = [
 
 /**
  * Brand mark filling the sidebar and conversation hero brand slots.
- * @param props.size - requested square edge in pixels.
+ * @param props - requested mark dimensions and optional CSS class.
  * @returns a decorative svg element.
  */
-export function GaiaMark({ size }: { size: number; className?: string | undefined }): ReactElement {
+export function GaiaMark(props: { size: number; className?: string | undefined }): ReactElement {
+  const { size } = props
   return createElement(
     'svg',
     { width: size, height: size, viewBox: '0 0 30 30', 'aria-hidden': true, 'data-gaia-mark': '' },
@@ -24,7 +25,9 @@ export function GaiaMark({ size }: { size: number; className?: string | undefine
   )
 }
 
-/** Sidebar brand name shared by the full shell and drawer embed. */
+/** Render the brand name shared by the full shell and drawer embed.
+ * @returns the Gaia Harness brand label.
+ */
 export function GaiaBrandName(): ReactElement {
   return createElement('span', null, 'Gaia Harness')
 }

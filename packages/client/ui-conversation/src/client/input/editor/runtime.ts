@@ -9,10 +9,12 @@ import {
 import { registerPlainText } from '@lexical/plain-text'
 import { createEmptyHistoryState, registerHistory } from '@lexical/history'
 import { mergeRegister } from '@lexical/utils'
-import type { Occurrence, ReferenceInsert } from '../../contract/draft-editor.ts'
+import type { DraftReference, ReferenceInsert } from '../../contract/draft-editor.ts'
+import type { CommandClaim } from '../../contract/input.ts'
 import { registerReferenceActivation } from './reference-activation.ts'
 import { ReferenceChipNode, $createReferenceChipNode } from './chip-node.tsx'
-import { refreshClaimDecoration, registerClaimDecoration } from './claim-decor.ts'
+import { CommandChipNode, $createCommandChipNode, registerCommandChipSeat } from './command-chip-node.tsx'
+import { registerCommandChipSelection } from './command-chip-selection.ts'
 import { registerTextRefDecoration, rescanTextRefs, TextRefNode } from './text-ref.ts'
 import type { EditorProjection } from './projection.ts'
 import { $composerLayout, $projectComposer, detectOffsetOfClipboardOffset } from './projection.ts'
@@ -26,7 +28,6 @@ interface DraftEditorRuntimeDeps {
   /** GAIA: Commit tags distinguish recall from external content edits. */
   readonly onUpdate: (tags: ReadonlySet<string>) => void
   readonly openReference: (source: string | undefined, reference: Pick<ReferenceInsert, 'ref' | 'appearance'>) => boolean
-  readonly activeClaimToken: () => string | null
   readonly lexicon: () => Lexicon
   readonly resolveLexicon: () => ObservableSnapshot<Lexicon> | undefined
 }
@@ -49,18 +50,21 @@ export const HISTORY_RECALL_TAG = 'gaia-input-history'
 export class DraftEditorRuntime {
   /** The editor bound by the Composer's contenteditable host. */
   readonly editor: LexicalEditor
-  private projected: EditorProjection = { detectText: '', clipboardText: '', occurrences: [], selection: null, caret: null }
+  private projected: EditorProjection = {
+    detectText: '', clipboardText: '', occurrences: [], selection: null, caret: null, command: undefined,
+  }
   /** Stable occurrence ids per chip NodeKey (undo restores keys, so ids survive it too). */
   private readonly occurrenceIds = new Map<NodeKey, number>()
   private occurrenceSeq = 0
   /** Live lexicon subscription disposer; undefined until the controller resolves. */
   private lexiconOff: (() => void) | undefined
+  private lexiconSource: ObservableSnapshot<Lexicon> | undefined
 
   /** @param deps - model callbacks used by editor listeners and transforms. */
   constructor(private readonly deps: DraftEditorRuntimeDeps) {
     this.editor = createEditor({
       namespace: 'dsh-composer',
-      nodes: [ReferenceChipNode, TextRefNode],
+      nodes: [ReferenceChipNode, CommandChipNode, TextRefNode],
       onError: (error) => { throw error },
     })
   }
@@ -92,9 +96,14 @@ export class DraftEditorRuntime {
       registerHistory(this.editor, createEmptyHistoryState(), HISTORY_MERGE_DELAY_MS),
       // GAIA: History checkpoints survive only owner-tagged recall commits.
       this.editor.registerUpdateListener(({ tags }) => { this.deps.onUpdate(tags) }),
-      registerClaimDecoration(this.editor, () => this.deps.activeClaimToken()),
-      registerTextRefDecoration(this.editor, () => this.deps.lexicon(), () => this.deps.activeClaimToken()),
-      () => { this.lexiconOff?.() },
+      registerCommandChipSeat(this.editor),
+      registerCommandChipSelection(this.editor),
+      registerTextRefDecoration(this.editor, () => this.deps.lexicon()),
+      () => {
+        this.lexiconOff?.()
+        this.lexiconOff = undefined
+        this.lexiconSource = undefined
+      },
     )
     return () => {
       unregister()
@@ -149,16 +158,16 @@ export class DraftEditorRuntime {
   }
 
   /**
-   * Subscribe the text-ref re-scan to the controller's lexicon once the
-   * controller resolves. The deps thunk cannot resolve at construction (the
-   * shell is created inside the sessions provide materialization), so the
-   * first interactive updates retry until it can.
+   * Reconnect decorations when the optional trigger provider changes.
+   * The rescan reads the current editor and does not replace its content.
    */
-  private ensureLexiconSubscription(): void {
-    if (this.lexiconOff !== undefined) return
+  refreshLexiconSubscription(): void {
     const lexicon = this.deps.resolveLexicon()
-    if (lexicon === undefined) return
-    this.lexiconOff = lexicon.subscribe(() => { rescanTextRefs(this.editor) })
+    if (lexicon === this.lexiconSource) return
+    this.lexiconOff?.()
+    this.lexiconSource = lexicon
+    this.lexiconOff = lexicon?.subscribe(() => { rescanTextRefs(this.editor) })
+    rescanTextRefs(this.editor)
   }
 
   /**
@@ -166,7 +175,6 @@ export class DraftEditorRuntime {
    * @returns the projection preceding this read.
    */
   refreshProjection(): EditorProjection {
-    this.ensureLexiconSubscription()
     const prev = this.projected
     this.projected = this.editor.getEditorState().read(() =>
       $projectComposer(key => this.occurrenceIdOf(key)))
@@ -190,10 +198,12 @@ export class DraftEditorRuntime {
    */
   setDraft(text: string, historyDirection?: 'up' | 'down'): void {
     const clean = text.replace(REFERENCE_PLACEHOLDER_RE, '')
-    if (historyDirection === undefined && clean === this.projection.clipboardText) return
-    // GAIA: Apply within the current key command instead of deferring a nested update.
+    if (clean === this.projection.clipboardText && this.projection.occurrences.length === 0) return
     this.applyEdit(() => {
-      if (historyDirection !== undefined) $addUpdateTag(HISTORY_RECALL_TAG)
+      if (historyDirection !== undefined) {
+        $addUpdateTag(HISTORIC_TAG)
+        $addUpdateTag(HISTORY_RECALL_TAG)
+      }
       const root = $getRoot()
       root.clear()
       for (const line of clean.split('\n')) {
@@ -204,7 +214,7 @@ export class DraftEditorRuntime {
       // GAIA: Consecutive recalls stay at a safe document edge.
       if (historyDirection === 'up') root.selectStart()
       else root.selectEnd()
-    }, historyDirection === undefined ? HISTORY_MERGE_TAG : HISTORIC_TAG)
+    }, historyDirection === undefined ? HISTORY_MERGE_TAG : undefined)
   }
 
   /**
@@ -289,6 +299,28 @@ export class DraftEditorRuntime {
   }
 
   /**
+   * Replace a span with a command chip followed by the claim token's
+   * argument separator, unless the separator already follows.
+   * @param span - detect-coordinate range.
+   * @param claim - the command claim the chip anchors.
+   * @param tail - the character following the range before editing.
+   * @param mergeHistory - merge into the previous history entry (a restored
+   * draft's chip is part of its seed, not an undoable step).
+   * @returns whether the range mapped and the edit applied.
+   */
+  insertCommand(span: DetectSpan, claim: CommandClaim, tail: string, mergeHistory = false): boolean {
+    const separator = claim.token.slice(claim.token.trimEnd().length)
+    let applied = false
+    this.applyEdit(() => {
+      const nodes = separator === '' || tail === separator.charAt(0)
+        ? [$createCommandChipNode(claim)]
+        : [$createCommandChipNode(claim), $createTextNode(separator)]
+      applied = $replaceDetectSpanWithNodes(span, nodes)
+    }, mergeHistory ? HISTORY_MERGE_TAG : undefined)
+    return applied
+  }
+
+  /**
    * Insert an ordered file-reference batch after the live selection without deleting it.
    * @param references - validated references in source order.
    * @returns whether the live insertion position accepted the batch.
@@ -305,11 +337,6 @@ export class DraftEditorRuntime {
       applied = $replaceDetectSpanWithNodes({ start: at, end: at }, nodes)
     }, PASTE_TAG)
     return applied
-  }
-
-  /** Refresh claim-token decoration after the model's claim changes. */
-  refreshClaimDecoration(): void {
-    refreshClaimDecoration(this.editor)
   }
 
   /**
@@ -333,18 +360,18 @@ export class DraftEditorRuntime {
   }
 
   /**
-   * Rebuild one model-selected failure snapshot, creating fresh reference nodes.
+   * Import semantic content or a model-selected failure snapshot with fresh reference nodes.
    * @param draft - clipboard text.
    * @param occurrences - reference occurrences in clipboard order.
    */
-  restoreDraft(draft: string, occurrences: readonly Occurrence[]): void {
+  restoreDraft(draft: string, occurrences: readonly DraftReference[]): void {
     this.editor.update(() => {
       const root = $getRoot()
       root.clear()
       let paragraph = $createParagraphNode()
       root.append(paragraph)
       const appendText = (text: string): void => {
-        const lines = text.split('\n')
+        const lines = text.replace(REFERENCE_PLACEHOLDER_RE, '').split('\n')
         for (let i = 0; i < lines.length; i += 1) {
           const line = lines[i]
           if (line !== '') paragraph.append($createTextNode(line))

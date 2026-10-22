@@ -612,17 +612,23 @@ function injectStyle(id: string, css: string): () => void {
   return () => { styleEl.remove() }
 }
 
-/** Inject shared Gaia skin rules. */
+/** Inject shared Gaia skin rules.
+ * @returns disposer that removes the injected style element.
+ */
 export function injectGaiaSkin(): () => void {
   return injectStyle(GAIA_SKIN_STYLE_ID, GAIA_SKIN_CSS)
 }
 
-/** Inject embed-only chrome rules. */
+/** Inject embed-only chrome rules.
+ * @returns disposer that removes the injected style element.
+ */
 export function injectEmbedChrome(): () => void {
   return injectStyle(GAIA_EMBED_STYLE_ID, GAIA_EMBED_CHROME_CSS)
 }
 
-/** Backward-compatible helper that installs the skin and embed chrome together. */
+/** Install the shared skin and embed chrome together.
+ * @returns disposer that removes both style elements.
+ */
 export function injectEmbedStyles(): () => void {
   const removeSkin = injectGaiaSkin()
   const removeChrome = injectEmbedChrome()

@@ -21,6 +21,7 @@ type LayoutState = {
   layoutInfo: LayoutInfo
 }
 
+/** Current measured or saved dimensions used to place the client panels. */
 export type LayoutInfo = {
   sidebar: number
   /** Last positive frame measurement; window width bootstraps the first render. */

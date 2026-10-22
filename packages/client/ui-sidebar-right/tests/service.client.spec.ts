@@ -103,20 +103,6 @@ describe('SidebarRightController — opening', () => {
     } finally { release() }
   })
 
-  it('lets an interceptor claim an open before the seat is consulted, until it is disposed', () => {
-    const { controller } = harness()
-    const seen: string[] = []
-    const dispose = controller.setOpenInterceptor((address) => {
-      seen.push(address)
-      return address.startsWith('dsh-resource://file/')
-    })
-    controller.openResource('dsh-resource://file/session/s-test/a.txt', { params: undefined })
-    controller.openResourceIn(SESSION, 'dsh-resource://file/session/s-test/b.txt')
-    expect(seen).toEqual(['dsh-resource://file/session/s-test/a.txt', 'dsh-resource://file/session/s-test/b.txt'])
-    dispose()
-    expect(() => { controller.openResource('dsh-resource://file/session/s-test/a.txt') }).toThrow('no session surface is mounted')
-  })
-
   it('refuses every write while no Session is on screen', () => {
     const { controller } = harness()
     expect(() => { controller.openResource('dsh-resource://file/session/s-test/a.txt') }).toThrow('no session surface is mounted')
@@ -655,6 +641,21 @@ describe('SidebarRightController — the readable slice', () => {
     publish()
     expect(Object.values(layout().tabs).filter(tab => tab.contentId === 'dsh-resource://file/session/s-test/a.txt')).toHaveLength(1)
     expect(controller.active()?.contentId).toBe('dsh-resource://file/session/s-test/a.txt')
+  })
+})
+
+describe('SidebarRightController — resource interception', () => {
+  it('offers root and Session-targeted resource opens to the host before placing them', () => {
+    const h = harness()
+    const address = 'dsh-resource://file/session/s-test/a.txt'
+    const intercept = vi.fn(() => true)
+    const dispose = h.controller.setOpenInterceptor(intercept)
+    h.controller.openResource(address)
+    h.controller.openResourceIn(SESSION, address)
+    expect(intercept).toHaveBeenNthCalledWith(1, address, {})
+    expect(intercept).toHaveBeenNthCalledWith(2, address, {})
+    expect(h.titles()).toEqual([])
+    dispose()
   })
 })
 

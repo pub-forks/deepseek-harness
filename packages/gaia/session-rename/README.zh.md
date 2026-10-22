@@ -25,6 +25,7 @@ Gaia overlay 将此 Host 插件与命令和工具服务一起挂载。插件没�
 
 `rename_session` 工具只接受 `title`。标题服务会规范化有效文本，并拒绝不含可见字符的标题。工具调用要求当前活动的顶层 agent 在本轮收到用户来源的消息，因此自主续接轮次和子 agent 不能重命名会话。工具使用注册表的独占执行模式，不添加权限覆盖。
 
+<a id="dev-note"></a>
 ## 开发备注
 
 [`src/index.ts`](src/index.ts) 注册 Host 命令和模型工具。服务依赖列在 [`tests/cordis.yml`](tests/cordis.yml) 中。此包不拥有可变状态或独立派生的观测值，因此不发布运行时不变式入口。
@@ -36,9 +37,19 @@ Gaia overlay 将此 Host 插件与命令和工具服务一起挂载。插件没�
 
 #### 模型看到的内容
 
-工具说明要求模型仅在用户以任意措辞明确要求重命名或命名当前会话，或确认模型提出的标题时使用 `rename_session`。工具不接受会话标识符。调用成功后会返回标题服务接受的标题。
+工具说明限制 `rename_session` 只能响应用户的明确请求或确认，参数 schema 只接受标题。
 
-不带标题的 `/rename` 命令会添加一条普通用户 follow-up，要求 agent 根据对话提出简洁标题，并通过该工具应用。
+##### 工具输入
+
+```markdown
+Use `rename_session` only when the user explicitly asks to rename or title this session, or confirms a proposed title. The tool accepts one required string field, `title`, and no session identifier.
+```
+
+##### 空命令 follow-up
+
+```markdown
+Propose a concise title for this session based on our conversation, then apply it with `rename_session`.
+```
 
 #### Token 影响
 

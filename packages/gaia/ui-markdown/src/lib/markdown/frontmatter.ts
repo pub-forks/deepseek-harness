@@ -1,6 +1,9 @@
 // Ported from gaia web/src/lib/markdown/frontmatter.ts — keep in sync.
+/** One scalar value supported in Markdown frontmatter. */
 export type PropScalar = string | number | boolean | null;
+/** A scalar or flat scalar list supported in frontmatter. */
 export type PropValue = PropScalar | PropScalar[];
+/** One parsed frontmatter property. */
 export type PropEntry = { key: string; value: PropValue };
 
 const INT_RE = /^-?\d+$/;
@@ -48,6 +51,10 @@ function splitFlowList(inner: string): string[] {
 // Number of raw lines consumed by a leading `---`/`...` frontmatter block
 // (0 if the document has none). Body line N (1-based, as reported by
 // remark's `position.start.line`) corresponds to raw line N + offset.
+/** Count lines consumed by a leading frontmatter block.
+ * @param text - complete Markdown document.
+ * @returns frontmatter line count, or zero when absent.
+ */
 export function frontmatterLineOffset(text: string): number {
   const lines = text.split(/\r?\n/);
   if (lines[0] !== "---") return 0;
@@ -57,6 +64,10 @@ export function frontmatterLineOffset(text: string): number {
   return 0;
 }
 
+/** Parse supported frontmatter properties and return the remaining Markdown.
+ * @param text - complete Markdown document.
+ * @returns parsed properties and body text.
+ */
 export function parseFrontmatter(text: string): { props: PropEntry[]; body: string } {
   const lines = text.split(/\r?\n/);
   if (lines[0] !== "---") return { props: [], body: text };

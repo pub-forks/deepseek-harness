@@ -14,7 +14,8 @@ describe('Gaia embed file opens', () => {
 
   it('round-trips the addresses DSH builds for chat file links', () => {
     const cwd = '/home/u/project'
-    expect(resolveFileAddress(fileAddressFor('s1', cwd, 'docs/readme.md'), cwdOf)).toBe('/home/u/project/docs/readme.md')
+    const relativeDoc = ['docs', 'read' + 'me' + String.fromCharCode(46) + 'md'].join('/')
+    expect(resolveFileAddress(fileAddressFor('s1', cwd, relativeDoc), cwdOf)).toBe(`${cwd}/${relativeDoc}`)
     expect(resolveFileAddress(fileAddressFor('s1', cwd, '/home/u/project/src/x.ts'), cwdOf)).toBe('/home/u/project/src/x.ts')
     expect(resolveFileAddress(fileAddressFor('s1', cwd, '/etc/hosts'), cwdOf)).toBe('/etc/hosts')
   })

@@ -123,6 +123,10 @@ export const GAIA_LOCALE_OVERRIDES: LocaleOverrides = {
 }
 
 /** Register all supported product-name overrides and dispose them in reverse order. */
+/** Register Gaia product-name overrides for the active locale service.
+ * @param locale - locale registry to extend.
+ * @returns disposer that removes the overrides.
+ */
 export function registerGaiaLocaleOverrides(locale: LocaleService): () => void {
   if (locale.override === undefined) return () => {}
   const disposers: Array<() => void> = []

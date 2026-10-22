@@ -9,11 +9,12 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { postToParent } from './bridge.ts'
 
 /**
- * Settings header action shadowing `settings.action` / `open-document`.
- * @param props.t - the `settings` namespace translator.
+ * Render the Settings action that opens Gaia's document editor.
+ * @param props - localized action text.
  * @returns the button.
  */
-export function GaiaDocumentAction({ t }: { t: (key: 'openDocument') => string }): ReactElement {
+export function GaiaDocumentAction(props: { t: (key: 'openDocument') => string }): ReactElement {
+  const { t } = props
   return createElement(Button, {
     variant: 'outline',
     size: 'sm',

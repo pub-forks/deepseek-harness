@@ -6,6 +6,14 @@ export const en = {
   unavailable: 'This response has no readable text or is too large to read aloud.',
 } satisfies Record<string, string>
 
+/** Simplified Chinese narration controls. */
+export const zh = {
+  reading: '正在朗读',
+  read: '朗读', stop: '停止朗读', settings: '朗读说明',
+  disabled: '朗读功能已关闭或不可用。请在 Gaia 语音设置中启用。',
+  unavailable: '此回答没有可朗读的文本，或文本过长。',
+} satisfies Record<keyof typeof en, string>
+
 /** Typed narration labels. */
 export type ReadAloudKey = keyof typeof en
 

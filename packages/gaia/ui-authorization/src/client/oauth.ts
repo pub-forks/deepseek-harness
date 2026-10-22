@@ -9,6 +9,8 @@ import type { FlowView } from '@deepseek-ai/dsh-gaia-api-authorization/types'
 
 /**
  * Check whether a flow represents an OAuth-connected provider.
+ * @param flow - authorization flow to inspect.
+ * @returns whether the flow is an active OAuth sign-in.
  */
 export function isOAuthFlow(flow: FlowView): boolean {
   return (
@@ -19,8 +21,10 @@ export function isOAuthFlow(flow: FlowView): boolean {
 }
 
 /**
- * Determine the authentication kind ('oauth' | 'api-key' | undefined)
- * for a provider from authorization flows.
+ * Determine the authentication kind for a provider from authorization flows.
+ * @param provider - route identifier.
+ * @param flows - registered flow metadata.
+ * @returns OAuth, API-key, or no recognized authentication.
  */
 export function determineFlowAuthKind(
   provider: string,

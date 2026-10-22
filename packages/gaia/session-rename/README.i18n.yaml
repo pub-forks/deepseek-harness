@@ -16,7 +16,7 @@
   zh: b3c2adb1ea6301a6
 /deepseek-ai-dsh-gaia-session-rename/use-this-package:
   en: c04292fea18a6ac8
-  zh: 1aaace3f09502ae0
+  zh: 00180566629a8bec
 /deepseek-ai-dsh-gaia-session-rename/dev-note:
   en: 0995b980ac931b07
   zh: d22093d5cbf2b8f1
@@ -27,8 +27,14 @@
   en: 845a74666a607731
   zh: 5350addad60b7113
 /deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/what-the-model-sees:
-  en: 1dd6767b3beac07a
-  zh: 1cd8505aa427f7ff
+  en: 968f218303f26b78
+  zh: 2a20242177e9a240
+/deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/what-the-model-sees/tool-input:
+  en: b7c1a17f38641cfd
+  zh: aa69acb2a4c0f3f2
+/deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/what-the-model-sees/empty-command-follow-up:
+  en: 9eb23531920eea3a
+  zh: 42009f24fadc305b
 /deepseek-ai-dsh-gaia-session-rename/model-experience/explicit-session-rename/token-effect:
   en: 6d6ba312c6962817
   zh: b3f28f74b3b220e9

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Gaia launches the shipped `web` profile with `--patch` pointing to `gaia.patch.yml`. The overlay binds the host to loopback, prints the tokenized URL without opening a browser, disables HMR and product telemetry, and mounts the Gaia control bridge, authorization Remote, and browser Sign-in section. The base bundle already stores session JSONL beneath `$DSH_HOME/sessions`. The overlay leaves the `llm-pi-ai` row alone because an overlay outranks the profile patch that Settings → Models edits; the bridge instead seeds the stored-OAuth `openai-codex` route into the profile once, when the profile declares no pi-ai providers. The bridge also seeds session-log upload off in the user's profile when `enabled` is unset. To re-enable uploads, set `enabled: true` on the `session-log-deepseek` row in `$DSH_HOME/profiles/<name>/cordis.patch.yml`; the Plugins page does not expose this row's configuration.
+Launch DSH's `web` profile with Gaia branding, browser sign-in, and the control bridge enabled. The patch binds to loopback and leaves model-provider settings under the user's profile so Settings → Models can edit them. The bridge seeds an OAuth `openai-codex` route only when no pi-ai routes exist and disables session-log uploads unless the profile enables them.
 
 ## Table of Contents
 

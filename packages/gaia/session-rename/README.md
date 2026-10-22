@@ -36,9 +36,19 @@ The `rename_session` tool accepts only `title`. The title service normalizes acc
 
 #### What the model sees
 
-The tool description directs the model to use `rename_session` only when the user explicitly asks to rename or title the current session in any wording, or confirms a proposed title. The tool takes no session identifier. A successful call returns the service-accepted title.
+The tool description limits `rename_session` to an explicit request or confirmation, and the schema accepts only a title.
 
-When `/rename` has no title, the command adds one ordinary user follow-up asking the agent to propose a concise title from the conversation and apply it through the tool.
+##### Tool input
+
+```markdown
+Use `rename_session` only when the user explicitly asks to rename or title this session, or confirms a proposed title. The tool accepts one required string field, `title`, and no session identifier.
+```
+
+##### Empty command follow-up
+
+```markdown
+Propose a concise title for this session based on our conversation, then apply it with `rename_session`.
+```
 
 #### Token effect
 

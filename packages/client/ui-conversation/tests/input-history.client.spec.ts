@@ -20,8 +20,8 @@ function bench(draft = 'unsent\nsecond line', provider = true) {
     onTestFinished(() => { dispose() })
   }
   shell.setDraft(draft)
-  const start = () => shell.editor.update(() => { $getRoot().selectStart() }, { discrete: true })
-  const end = () => shell.editor.update(() => { $getRoot().selectEnd() }, { discrete: true })
+  const start = () => { shell.editor.update(() => { $getRoot().selectStart() }, { discrete: true }) }
+  const end = () => { shell.editor.update(() => { $getRoot().selectEnd() }, { discrete: true }) }
   onTestFinished(() => { shell.dispose() })
   return { ctx, shell, listener, start, end }
 }
@@ -59,6 +59,20 @@ it('restores exact editor structure, whitespace, formatting and selection after 
   expect(restored.toJSON()).toEqual(original.toJSON())
   expect(selectionOf(restored)).toEqual(selectionOf(original))
   expect(b.shell.snapshot.draft).toBe('  draft  \n\n second ')
+})
+
+it('restores reference-chip nodes losslessly across composer history', () => {
+  const b = bench('draft')
+  expect(b.shell.insertReference({
+    source: 'files', ref: 'file-1', label: 'notes.txt', appearance: 'file', clipboardText: '@notes.txt',
+  }, { start: 5, end: 5, draftRev: b.shell.snapshot.draftRev })).toBe(true)
+  b.start()
+  const original = b.shell.editor.getEditorState()
+  const originalDraft = b.shell.snapshot.draft
+  expect(b.shell.navigateHistory('up')).toBe(true)
+  expect(b.shell.navigateHistory('down')).toBe(true)
+  expect(b.shell.editor.getEditorState().toJSON()).toEqual(original.toJSON())
+  expect(b.shell.snapshot.draft).toBe(originalDraft)
 })
 
 it('uses live nested-command selection and rejects content edits still in progress', () => {
@@ -107,12 +121,12 @@ it('exits traversal on content edits but retains it through selection-only commi
 it('expires callbacks synchronously and rejects callbacks after revision changes', () => {
   const b = bench('draft', false)
   let saved: InputHistoryRequest | undefined
-  const disposeSave = b.ctx.on('conversation/input-history', request => { saved = request; return undefined })
+  const disposeSave = b.ctx.on('conversation/input-history', (request) => { saved = request; return undefined })
   onTestFinished(() => { disposeSave() })
   b.start(); expect(b.shell.navigateHistory('up')).toBe(false)
   expect(saved!.replace('late', true)).toBe(false)
   expect(saved!.restore()).toBe(false)
-  const disposeEdit = b.ctx.on('conversation/input-history', request => {
+  const disposeEdit = b.ctx.on('conversation/input-history', (request) => {
     b.shell.setDraft('external edit')
     expect(request.replace('stale', true)).toBe(false)
     return undefined

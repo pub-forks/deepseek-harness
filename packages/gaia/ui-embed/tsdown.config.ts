@@ -1,2 +1,2 @@
 import { clientBundle } from '../../client/tsdown.client.ts'
-export default clientBundle('@deepseek-ai/dsh-gaia-ui-embed', ['lib/types/index.js'])
+export default clientBundle(import.meta.dirname, ['lib/types/index.js'])

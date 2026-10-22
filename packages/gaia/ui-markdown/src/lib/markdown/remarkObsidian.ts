@@ -317,6 +317,7 @@ function walk(nodes: Array<RootContent | PhrasingContent>): void {
   }
 }
 
+/** Transform Obsidian-style links and embeds in a Markdown syntax tree. */
 const remarkObsidian: Plugin<[], Root> = () => (tree: Root) => {
   walk(tree.children);
 };

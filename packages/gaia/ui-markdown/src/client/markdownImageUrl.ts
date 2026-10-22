@@ -1,6 +1,12 @@
 /** Local Markdown image destinations served by DSH's authenticated file route. */
 import { fileMediaUrl, isAbsoluteWorkspacePath, pathPartsOf } from '@deepseek-ai/dsh-util-workspace-path'
 
+/** Resolve a local Markdown image through DSH's authenticated file route.
+ * @param base - authenticated file-media base URL.
+ * @param documentPath - absolute path of the Markdown document.
+ * @param destination - image URL or relative path from the document.
+ * @returns authenticated image URL, or undefined for invalid destinations.
+ */
 export function markdownImageUrl(base: string, documentPath: string | undefined, destination: string): string | undefined {
   const suffix = destination.search(/[?#]/u)
   let path: string

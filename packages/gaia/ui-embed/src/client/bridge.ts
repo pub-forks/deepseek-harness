@@ -12,6 +12,7 @@ export const GAIA_BRIDGE_SOURCE = 'gaia-dsh' as const
 export const MAX_INSERT_TEXT_BYTES = 8192
 
 // Twin: web/src/lib/harnessBridge.ts in Gaia.
+/** Maximum text length included in a completion recap. */
 export const MAX_HARNESS_RECAP_LENGTH = 2000
 
 /** Maximum UTF-8 bytes in a complete chat narration request. */
@@ -94,6 +95,9 @@ export const APP_CHORD_CODE_PATTERN = new RegExp(
 /**
  * Check whether a code and shift modifier match the app shortcut allowlist.
  * Shift is permitted only with KeyJ, KeyE, KeyP and task dictation's KeyV.
+ * @param code - keyboard event code.
+ * @param shift - whether Shift is held.
+ * @returns whether the code is an accepted app shortcut.
  */
 export function isAppShortcutCandidate(code: string, shift: boolean): code is AppShortcutCode {
   if (shift) return code === 'KeyJ' || code === 'KeyE' || code === 'KeyP' || code === 'KeyV'
@@ -142,6 +146,7 @@ export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openSession'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'appChords'; chords: unknown[] }
 
+/** One validated parent-registered application shortcut. */
 export interface AppChord { code: string; mod: boolean; alt: boolean; shift: boolean }
 
 /**

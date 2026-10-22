@@ -18,6 +18,8 @@ interface Attempt { key: FlowView['key']; controller: AbortController; prompts: 
 /**
  * One-line, bounded reason for a failed attempt. Flow errors describe the
  * provider exchange (status, OAuth error code), not credential values.
+ * @param error - rejected value from the authorization provider.
+ * @returns a bounded, credential-free diagnostic.
  */
 export function failureDetail(error: unknown): string {
   const code = error instanceof AuthorizationError ? error.code : undefined
@@ -49,7 +51,9 @@ export class GaiaAuthorizationController extends TypertRemoteService {
   /** @param ctx - Host with the authorization and credential services. */
   constructor(ctx: Context) { super(ctx, 'gaiaAuthorizationController', { namespace: 'gaiaAuthorization' }) }
 
-  /** @returns Public flow and stored-record presence facts. */
+  /** List provider flows and whether each has a stored credential.
+   * @returns public flow and stored-record presence facts.
+   */
   @Remote
   async listFlows(): Promise<FlowView[]> {
     const profile = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai')?.value as { providers?: Record<string, { catalogProvider?: string }> } | undefined
@@ -61,7 +65,9 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     }))
   }
 
-  /** Create an independently keyed OAuth route alias in the live settings profile. */
+  /** Create an independently keyed account alias in the live settings profile.
+   * @param request - source provider, account identity, display label, and optional API key.
+   */
   @Remote
   async createAccount(request: CreateAccountRequest): Promise<void> {
     const accountId = request.accountId.trim()
@@ -111,7 +117,9 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     }
   }
 
-  /** Delete one account alias and its independent credential. */
+  /** Delete one account alias and its independent credential.
+   * @param request - alias credential key to remove.
+   */
   @Remote
   async removeAccount(request: RemoveAccountRequest): Promise<void> {
     const entry = this.ctx.authorization.list().find(flow => flow.key === request.key)
@@ -126,6 +134,7 @@ export class GaiaAuthorizationController extends TypertRemoteService {
   }
 
   /**
+   * Start a registered provider authorization flow and stream interaction requests.
    * @param request - registered flow and selected method.
    * @param signal - stream lifetime.
    * @returns attempt events until settlement or cancellation.
@@ -208,7 +217,10 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     })
   }
 
-  /** @param request - active attempt, live prompt, and answer. @returns true once accepted. */
+  /** Resolve one active prompt with its submitted value.
+   * @param request - active attempt, live prompt, and answer.
+   * @returns true when the answer was accepted.
+   */
   @Remote
   answer(request: AnswerRequest): boolean {
     const pending = this.attempts.get(request.attemptId)?.prompts.get(request.promptId)
@@ -217,7 +229,10 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     return true
   }
 
-  /** @param request - active attempt. @returns true if cancellation was requested. */
+  /** Request cancellation of an active sign-in attempt.
+   * @param request - active attempt identifier.
+   * @returns true when cancellation was requested.
+   */
   @Remote
   cancel(request: CancelRequest): boolean {
     const attempt = this.attempts.get(request.attemptId)
@@ -226,7 +241,10 @@ export class GaiaAuthorizationController extends TypertRemoteService {
     return true
   }
 
-  /** @param request - registered flow key. @returns after its stored record is deleted. */
+  /** Delete a provider flow's stored credential.
+   * @param request - registered flow key.
+   * @returns after its stored record is deleted.
+   */
   @Remote
   async signOut(request: SignOutRequest): Promise<void> {
     const entry = this.ctx.authorization.list().find(flow => flow.key === request.key)

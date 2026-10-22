@@ -47,7 +47,7 @@ import { GaiaAppearanceRow } from './appearance-row.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { GaiaSessionReadAloud, type SessionReadAloudInjected } from './session-read-aloud.tsx'
 import { GaiaReadAloudActions, type ReadAloudInjected } from './read-aloud-actions.tsx'
-import { en as readAloudLabels } from './read-aloud-locales.ts'
+import { en as readAloudEnglishLabels, zh as readAloudChineseLabels } from './read-aloud-locales.ts'
 import type { GaiaReadAloudState } from './bridge.ts'
 import { GaiaAutoReadLifecycle, type AutoReadInjected } from './auto-read-lifecycle.tsx'
 import { notificationRecap } from './notification-recap.ts'
@@ -100,7 +100,9 @@ export const inject = ['layout', 'uiWorkspace', 'sessions', 'connection', 'uiSes
 const GAIA_TITLE = 'Gaia Harness'
 const GAIA_FAVICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30"><path fill="#ea580c" d="M14.217 19.707l-1.112 2.547c-.427.979-1.782.979-2.21 0l-1.112-2.547c-.99-2.267-2.771-4.071-4.993-5.057L1.73 13.292c-.973-.432-.973-1.848 0-2.28l2.965-1.316C6.974 8.684 8.787 6.813 9.76 4.47l1.126-2.714c.418-1.007 1.81-1.007 2.228 0L14.24 4.47c.973 2.344 2.786 4.215 5.065 5.226l2.965 1.316c.973.432.973 1.848 0 2.28l-3.061 1.359c-2.221.986-4.003 2.79-4.992 5.056zM24.481 27.796l-.339.777c-.248.569-1.036.569-1.284 0l-.339-.777c-.604-1.385-1.693-2.488-3.051-3.092l-1.044-.464c-.565-.251-.565-1.072 0-1.323l.986-.438c1.393-.619 2.501-1.763 3.095-3.195l.348-.84c.243-.585 1.052-.585 1.294 0l.348.84c.594 1.432 1.702 2.576 3.095 3.195l.986.438c.565.251.565 1.072 0 1.323l-1.044.464c-1.358.604-2.447 1.707-3.051 3.092z"/></svg>'
 
-/** Set Gaia's browser title while retaining DSH session titles as a prefix. */
+/** Set Gaia's browser title while retaining DSH session titles as a prefix.
+ * @returns disposer that restores the original document title.
+ */
 export function setGaiaDocumentTitle(): () => void {
   const originalTitle = document.title
   const applyTitle = (): void => {
@@ -121,7 +123,9 @@ export function setGaiaDocumentTitle(): () => void {
   }
 }
 
-/** Replace page icon links with the fixed-color Gaia mark and restore on dispose. */
+/** Replace page icon links with the fixed-color Gaia mark and restore on dispose.
+ * @returns disposer that restores the previous icon links.
+ */
 export function setGaiaFavicon(): () => void {
   const previous = [...document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')]
     .map(link => ({ link, nextSibling: link.nextSibling }))
@@ -289,7 +293,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     // GAIA: /rename is a Host command; this client face supplies its menu glyph.
     scope.effect(() => scope.commandUi.face({ name: 'rename', icon: RenameIcon }))
   })
-  ctx.effect(() => ctx.locale.register('gaia.readAloud', 'en', readAloudLabels), 'gaia-ui-embed: narration labels')
+  ctx.effect(() => ctx.locale.register('gaia.readAloud', { zh: readAloudChineseLabels, en: readAloudEnglishLabels }), 'gaia-ui-embed: narration labels')
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay', id: 'gaia-auto-read', order: 20,
     inject: (sessionId): AutoReadInjected => ({

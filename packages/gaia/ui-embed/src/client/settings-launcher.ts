@@ -8,12 +8,15 @@ import { createElement, useEffect, type ReactElement } from 'react'
 import { IconSettingsOutlineMedium, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 
+/** Runtime and localized props of the Gaia Settings launcher. */
 export type GaiaSettingsLauncherProps = PropsRuntime<'settings.launcher'> & PropsLocale<'settings'>
 
 let capturedOpenSettings: (() => void) | undefined
 let pendingOpenSettings = false
 
-/** Set the active openSettings handler. Dispatches any pending open request. */
+/** Set the active openSettings handler and dispatch any queued open request.
+ * @param fn - current Settings opener, or undefined when unmounted.
+ */
 export function setCapturedOpenSettings(fn: (() => void) | undefined): void {
   capturedOpenSettings = fn
   if (fn !== undefined && pendingOpenSettings) {
@@ -22,7 +25,9 @@ export function setCapturedOpenSettings(fn: (() => void) | undefined): void {
   }
 }
 
-/** Open the DSH Settings panel if the handler is captured, or queue the request. */
+/** Open the DSH Settings panel or queue the request until its handler mounts.
+ * @returns whether the panel was opened immediately.
+ */
 export function openSettings(): boolean {
   if (capturedOpenSettings !== undefined) {
     capturedOpenSettings()
@@ -39,8 +44,9 @@ export function resetCapturedSettings(): void {
 }
 
 /**
- * Settings launcher contribution for the `settings.launcher` slot.
- * Renders the sidebar trigger button matching the shell's stock trigger and captures openSettings.
+ * Render the Gaia Settings trigger for the `settings.launcher` slot.
+ * @param props - slot runtime, state, callback, and localized copy.
+ * @returns the accessible Settings launcher.
  */
 export function GaiaSettingsLauncher(props: GaiaSettingsLauncherProps): ReactElement {
   const { wide, settingsOpen, settingsShortcut, openSettings: handler, t } = props

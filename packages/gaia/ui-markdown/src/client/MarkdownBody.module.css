@@ -4,6 +4,9 @@
  * Gaia frames: bg-layer-2 = muted, border-l2 = border, link = accent.
  */
 .root {
+  /* GAIA: Markdown tables and code blocks scroll on the elevated document surface. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
   --md-accent: var(--dsw-alias-link, #ea580c);
   /* Same derivation as the Gaia palette mapping (bg-layer-2 = 7% foreground). */
   --md-muted: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);

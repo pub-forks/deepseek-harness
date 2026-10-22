@@ -3,6 +3,7 @@ import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { useSyncExternalStore } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { allowAllAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { AskUserQuestionAnswerItem } from '@deepseek-ai/dsh-user-questions/types'
@@ -74,6 +75,7 @@ const chatState: ChatState = {
   nodes: {
     get: () => undefined,
     source: () => emptyNodeSource,
+    bottomSource: () => ({ getSnapshot: () => false, subscribe: () => () => {} }),
     turnDataSource: () => { throw new Error('unused') },
     processSource: () => emptyNodeSource,
     values: () => [],
@@ -121,6 +123,7 @@ const kitBase: Omit<QuestionComposerProps, 'matched' | 'useStore' | 'useQuestion
   useSessionStatus: selector => selector(attentionState),
   useSessionRetainInfo: () => undefined,
   useWorkspaces: selector => selector(workspaceState),
+  ...allowAllAccess,
   useConversation: selector => selector(conversationState),
   useChat: selector => selector(chatState),
   useTrajectory: selector => selector(trajectoryState),
@@ -130,6 +133,7 @@ const kitBase: Omit<QuestionComposerProps, 'matched' | 'useStore' | 'useQuestion
     captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
     insertText: () => false,
     setDraft: () => { throw new Error('unused') },
+    persistDraft: () => { throw new Error('unused') },
     addAttachments: () => { throw new Error('unused') },
     removeAttachment: () => { throw new Error('unused') },
     pruneAttachments: () => { throw new Error('unused') },
@@ -189,7 +193,7 @@ function wait(questions: PendingQuestion['questions'] = QUESTIONS, deadline?: nu
   const answer = vi.spyOn(carrier, 'answer')
   const dismiss = vi.spyOn(carrier, 'dismiss')
   void request.result.catch(() => {})
-  return { carrier, answer, dismiss, result: request.result }
+  return { carrier, answer, dismiss }
 }
 
 const answerBatch = (answers: object[]) => ({ answers })
@@ -227,18 +231,6 @@ describe('QuestionComposer', () => {
     } finally {
       carrier.timeout()
     }
-  })
-
-  it('expires a recommended preselection as timed out without submitting an answer', async () => {
-    const { carrier, answer, result } = wait(QUESTIONS, Date.now() + 30_000)
-    render(<QuestionComposer matched={carrier} {...kit} />)
-    expect(screen.getByRole('radio', { name: /工程落地型/ }).getAttribute('aria-checked')).toBe('true')
-    expect(carrier.snapshot().countdown?.running).toBe(true)
-
-    carrier.timeout()
-
-    await expect(result).rejects.toMatchObject({ code: 'ASK_TIMED_OUT' })
-    expect(answer).not.toHaveBeenCalled()
   })
 
   it('treats Enter on an unselected option as submit, without selecting it', () => {

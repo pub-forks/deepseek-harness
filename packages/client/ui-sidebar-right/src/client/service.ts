@@ -37,7 +37,7 @@ import { sidebarTargetFromElement, type SidebarRightTarget } from './focus.ts'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { FloatRect, PaneId, TabId, TabRecord } from '@deepseek-ai/dsh-client-ui-dockkit'
-import { activeDockPaneId, canSplit, findContentTab, dockPaneIds, findTabPane, getPane } from '@deepseek-ai/dsh-client-ui-dockkit'
+import { activeDockPaneId, canSplit, findContentTab, findPaneContentTab, dockPaneIds, findTabPane, getPane } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SidebarRightNavigationParams, SidebarRightResourceParams, SidebarRightTabParamsFor } from './contract/params.ts'
@@ -201,6 +201,12 @@ export interface ISidebarRight {
    */
   readonly mounted: ObservableSnapshot<SessionId | undefined>
   /**
+   * GAIA: Let an embedding host open selected resources before the Sidebar places them.
+   * @param interceptor - returns true when the host handled the resource.
+   * @returns a disposer that clears this interceptor if it is still current.
+   */
+  setOpenInterceptor(interceptor: SidebarRightOpenInterceptor): () => void
+  /**
    * Open a resource: claim it, place it, reveal the column, record the navigation.
    *
    * Without `options.kind` the registry ranks the types whose globs and
@@ -272,9 +278,9 @@ export class SidebarRightController implements ISidebarRight {
   readonly mounted: ObservableSnapshot<SessionId | undefined>
   private readonly adopted: ReadonlyMap<SessionId, Adoption>
   private readonly rooms: ReadonlyMap<SessionId, RoomRule>
-  // GAIA: set by the Gaia drawer embed, which hides this column and opens files in Gaia's editor.
-  private openInterceptor: SidebarRightOpenInterceptor | undefined
   private readonly closeHandlers = new Map<string, SidebarRightCloseHandler>()
+  /** GAIA: optional embedding host for resources opened from hidden sidebar layouts. */
+  private openInterceptor: SidebarRightOpenInterceptor | undefined
 
   /**
    * Register resource cleanup before explicit removal. Failure preserves the tab.
@@ -462,8 +468,11 @@ export class SidebarRightController implements ISidebarRight {
     }, (tabId) => { this.tabDomain.navigate(sessionId, tabId, { address, params }) }) }
     const layout = surface?.layout
     const replaced = placement.replaceTab === undefined ? undefined : layout?.tabs[placement.replaceTab]
-    const revealed = layout === undefined || placement.revealIfOpened === false
-      ? undefined : findContentTab(layout, claim.contentId, claim.kind)
+    const replacementPane = replaced === undefined || layout === undefined ? undefined : findTabPane(layout, replaced.id)
+    const revealed = layout === undefined ? undefined
+      : claim.contentId === pageAddress(claim.kind)
+        ? findPaneContentTab(layout, replacementPane?.host === 'dock' ? replacementPane.id : placement.paneId ?? activeDockPaneId(layout), claim.contentId, claim.kind)
+        : placement.revealIfOpened === false ? undefined : findContentTab(layout, claim.contentId, claim.kind)
     if (replaced === undefined || replaced.id === revealed) { commit(); return }
     this.removeAfterCleanup(sessionId, replaced, commit)
   }

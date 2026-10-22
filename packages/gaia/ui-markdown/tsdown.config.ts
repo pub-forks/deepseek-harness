@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path'
 import type { UserConfig } from 'tsdown'
 import { clientBundle } from '../../client/tsdown.client.ts'
 
-const bundle = clientBundle('@deepseek-ai/dsh-gaia-ui-markdown', ['lib/types/index.js'])
+const bundle = clientBundle(import.meta.dirname, ['lib/types/index.js'])
 
 /**
  * vfile maps `#minpath`/`#minproc`/`#minurl` to node builtins under the `node`

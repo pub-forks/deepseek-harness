@@ -2,7 +2,11 @@ import type { AuthorizationEntry } from '@deepseek-ai/dsh-authorization/types'
 import type { CredentialRecordInfo } from '@deepseek-ai/dsh-credentials'
 import type { FlowView } from './types.ts'
 
-/** Explicit public-field projection; record payloads are never read. */
+/** Project public flow details and credential presence without reading record payloads.
+ * @param entry - registered provider flow.
+ * @param record - credential presence metadata.
+ * @returns browser-safe flow view.
+ */
 export function projectFlow(entry: AuthorizationEntry, record: CredentialRecordInfo): FlowView {
   return {
     key: entry.key,

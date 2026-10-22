@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This Gaia overlay plugin replaces DSH's builtin `.md` and `.markdown` document preview with Gaia's read-only Obsidian-flavored renderer. It uses GFM, Gaia's remark plugin and frontmatter parser, Gaia's sanitization schema, Prism highlighting, and Mermaid diagrams rendered by the Gaia parent frame. Wikilinks, relative file links and image embeds resolve from the current document; file navigation uses the Sidebar resource action.
+Preview Markdown files with Gaia's read-only Obsidian-style renderer, including GFM, wikilinks, frontmatter, syntax highlighting, and Mermaid diagrams. It replaces DSH's built-in Markdown preview only in the Gaia overlay; file reads and image requests stay with the DSH host, and navigation uses Sidebar resource actions.
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ This package has no service invariant companion: its definition and keyed body a
 
 #### What the model sees
 
-No direct contribution. The plugin only changes browser rendering of files opened in the document Sidebar.
+No direct contribution. The plugin renders Markdown opened through a `dsh-resource://file/...` address and does not add prompt context.
 
 #### Token effect
 

@@ -29,10 +29,15 @@ export type AttemptPayload = (
   /** `detail` is the underlying failure, one line and bounded; never a credential. */
   | { type: 'error'; message: string; detail?: string }
 )
+/** One authorization stream item tagged with its attempt id. */
 export type AttemptItem = { attemptId: AttemptId } & AttemptPayload
+/** Start an authorization flow with one of its registered methods. */
 export interface StartRequest { key: CredentialKey; method: string }
+/** Supply a value for a live authorization prompt. */
 export interface AnswerRequest { attemptId: AttemptId; promptId: PromptId; value: string }
+/** Cancel an active authorization attempt. */
 export interface CancelRequest { attemptId: AttemptId }
+/** Remove the stored credential for a provider flow. */
 export interface SignOutRequest { key: CredentialKey }
 /** Create one independent alias of an installed OAuth route. */
 export interface CreateAccountRequest { source: string; accountId: string; label: string; apiKey?: string }

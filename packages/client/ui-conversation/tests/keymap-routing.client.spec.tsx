@@ -143,7 +143,7 @@ describe('keymap keydown routing', () => {
   })
 
   it('recalls only unmodified non-repeated arrows after menu arbitration and composition grace', async () => {
-    const editor = createEditor({ namespace: 'history-keymap', onError: error => { throw error } })
+    const editor = createEditor({ namespace: 'history-keymap', onError: (error) => { throw error } })
     const root = document.createElement('div')
     const nextRoot = document.createElement('div')
     document.body.append(root, nextRoot)
@@ -156,7 +156,10 @@ describe('keymap keydown routing', () => {
       canSubmit: () => false, submit: () => {}, intakeFiles: () => {}, pasteText: () => {},
     })
     onTestFinished(() => { off(); plainOff(); editor.setRootElement(null); root.remove(); nextRoot.remove() })
-    for (const modifiers of [{ shiftKey: true }, { altKey: true }, { ctrlKey: true }, { metaKey: true }, { repeat: true }, { keyCode: 229 }, { isComposing: true }]) {
+    for (const modifiers of [
+      { shiftKey: true }, { altKey: true }, { ctrlKey: true }, { metaKey: true },
+      { repeat: true }, { keyCode: 229 }, { isComposing: true },
+    ]) {
       fireEvent.keyDown(root, { key: 'ArrowUp', keyCode: 38, ...modifiers })
       expect(navigateHistory).not.toHaveBeenCalled()
     }

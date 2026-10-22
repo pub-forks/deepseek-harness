@@ -9,6 +9,7 @@
     { "path": "../../credentials/credentials" },
     { "path": "../../client/locale/tsconfig.client.json" },
     { "path": "../../client/ui-settings/tsconfig.client.json" },
+    { "path": "../../client/ui-settings-models" },
     { "path": "../../client/ui-renderer" },
     { "path": "../../client/ui-slots" },
     { "path": "../../client/ui-primitives" },

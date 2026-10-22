@@ -36,6 +36,10 @@ for (const [alias, id] of Object.entries(ALIASES)) {
   if (grammar && !Prism.languages[alias]) Prism.languages[alias] = grammar
 }
 
+/** Resolve a Prism grammar by language id or registered alias.
+ * @param lang - code-fence language label.
+ * @returns normalized id and grammar, or undefined when unsupported.
+ */
 export function getPrismLanguage(lang: string | undefined): { id: string; grammar: Prism.Grammar } | undefined {
   if (!lang) return undefined
   const id = lang.toLowerCase()

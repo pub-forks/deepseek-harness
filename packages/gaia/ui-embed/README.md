@@ -9,11 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This private client plugin supports two Gaia iframe modes. Both receive Gaia's theme, palette and visual skin through the validated postMessage bridge, and both use the Gaia mark and **Gaia Harness** name in the sidebar, hero, document title, favicon and product-name locale copy. Embed mode additionally presents one session as a drawer chat and hides shell chrome; full mode keeps the complete DSH shell, including its navigation and settings.
-
-Both modes include an optional `recap` in `turnDone` notifications: the final non-interrupted assistant message's text blocks for that turn, joined in order, stripped of control characters except newline/tab, trimmed and capped at 2,000 characters. Empty text is omitted; `needsInput` and `turnError` carry no recap. Gaia validates the field and displays a plain excerpt above the project name, without another model request.
-
-Both modes post `{ source: 'gaia-dsh', v: 1, type: 'inputResolved', sessionId }` when a session's pending interaction disappears. Gaia uses this to clear persistent input-required indicators.
+Embed a DSH session as a Gaia drawer or show the complete Harness shell in a Gaia iframe. Both modes apply Gaia branding and exchange validated theme, workspace, and notification messages with the parent. Drawer mode also adds session history, narration controls, file actions, and review navigation while retaining DSH's host-owned reads and session state.
 
 ## Table of Contents
 

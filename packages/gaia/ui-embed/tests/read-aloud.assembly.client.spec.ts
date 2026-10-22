@@ -20,6 +20,7 @@ mountedTest('validated parent playback decorates the speaking row in the loaded 
   remote.session.list.mockResolvedValue({ ok: true, value: { items: ['s1', 's2'].map(id => ({
     sessionId: SessionId(id), agentAvailable: false, updatedAt: 0, running: false, blank: false,
   })) } })
+  remote.schedule.catalog.mockResolvedValue({ ok: true, value: [] })
   try {
     const client = await start()
     await client.flush()
@@ -36,10 +37,10 @@ mountedTest('validated parent playback decorates the speaking row in the loaded 
     await send(playback, window)
     expect(ui.queryByRole('img', { name: 'Reading aloud' })).toBeNull()
     await send(playback)
-    expect(ui.getByRole('img', { name: 'Reading aloud' }).closest('[role="treeitem"]')?.textContent).toContain('s1')
+    expect(ui.getByRole('img', { name: 'Reading aloud' }).closest('[data-row-key="session:s1"]')).not.toBeNull()
     await send({ ...playback, status: 'paused', sessionId: 's2' })
     const indicator = ui.getByRole('img', { name: 'Reading aloud' })
-    expect(indicator.closest('[role="treeitem"]')?.textContent).toContain('s2')
+    expect(indicator.closest('[data-row-key="session:s2"]')).not.toBeNull()
     expect(indicator.hasAttribute('data-playing')).toBe(false)
     await send({ ...playback, status: 'idle', sessionId: null, messageId: null })
     expect(ui.queryByRole('img', { name: 'Reading aloud' })).toBeNull()

@@ -33,7 +33,7 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-.trigger:focus-visible {
+.trigger:focus-visible:not([data-selection-focus]) {
   box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
 }
 
@@ -172,109 +172,150 @@
   cursor: pointer;
 }
 
-.groups {
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.group + .group {
-  margin-top: 3px;
-}
-
 .searchRow {
-  flex: 0 0 auto;
+  position: relative;
+  flex-shrink: 0;
+  margin: 2px 0 3px;
+}
+
+/* GAIA: Keep provider collapse controls beside upstream search and retain the compact drawer grouping. */
+.searchControls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 2px 2px 6px;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 2px;
 }
 
-.search {
+.searchControls .searchRow {
   flex: 1 1 auto;
   min-width: 0;
-  margin: 0;
-  padding: 6px 9px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: var(--dsw-radius-md);
-  outline: none;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.search::placeholder {
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.search:focus-visible {
-  border-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
 }
 
 .collapseAll {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: var(--dsw-radius-md);
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font: inherit;
-  font-size: 12px;
-  line-height: 18px;
-  white-space: nowrap;
+  font-size: 11px;
   cursor: pointer;
 }
 
 .collapseAll:hover:not(:disabled) {
-  color: var(--dsw-alias-label-primary);
-  border-color: var(--dsw-alias-border-l3);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .collapseAll:disabled {
+  color: var(--dsw-alias-label-dimmed);
   cursor: default;
-  opacity: 0.5;
 }
 
-.collapseAllIcon {
-  width: 12px;
-  height: 12px;
-  color: var(--dsw-alias-menu-icon);
+.searchRow .search {
+  display: flex;
+  height: auto;
+  padding: 5px 7px;
+  border: 0 solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
 }
 
-/* GAIA: provider header is larger than model rows, semibold, and full primary foreground color */
+.searchRow .searchWithQuery {
+  padding-right: 34px;
+}
+
+.searchClear {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.searchClear:hover,
+.searchClear:focus-visible {
+  outline: none;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.searchRow .search:focus-within {
+  border-color: transparent;
+}
+
+.searchRow .search input {
+  padding: 0;
+  font-size: 12px;
+  line-height: normal;
+}
+
+.searchRow .search input::placeholder {
+  color: var(--dsw-alias-label-caption);
+}
+
+.groups {
+  min-height: 0;
+  overflow-y: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.group {
+  position: relative;
+}
+
+.groupStart {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
 .groupTitle {
-  box-sizing: border-box;
+  position: sticky;
+  z-index: 1;
+  top: -4px;
   display: flex;
   align-items: center;
   gap: 5px;
   width: 100%;
+  min-height: 30px;
   padding: 5px 7px;
-  border: none;
+  border: 0;
   border-radius: var(--dsw-radius-sm);
-  background: transparent;
+  background: var(--dsw-alias-bg-module-platform);
   color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 600;
   text-align: left;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.groupTitle:hover {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-hover);
+.groupTitle[data-stuck] {
+  background: var(--dsw-alias-bg-module-platform);
+}
+
+.groupTitle:disabled {
+  cursor: default;
 }
 
 .groupChevron {
   flex: 0 0 auto;
   width: 12px;
   height: 12px;
-  color: var(--dsw-alias-menu-icon);
   transition: transform 120ms ease;
 }
 
@@ -321,8 +362,9 @@
   padding-left: 24px;
 }
 
-.option:hover:not(:disabled),
-.option:focus-visible {
+.option:not(.modelOption):hover:not(:disabled),
+.option:focus-visible,
+.optionActive:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
@@ -385,9 +427,11 @@
   line-height: 20px;
   cursor: pointer;
   text-align: left;
+  outline: none;
 }
 
-.cell:hover {
+.cell:hover,
+.cell:focus-visible {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 

@@ -562,6 +562,57 @@ export class LocaleRuntime {
 /** Public locale service shape; `override` is optional for compatible mocks/providers. */
 export interface LocaleService extends Pick<LocaleRuntime,
   'getLocale' | 'resolveText' | 'getSnapshot' | 'subscribe' | 'setLocale' | 'addLanguage' | 'register' | 'bind'> {
+  /** GAIA: Keep inherited LocaleRuntime members visible to the source API catalog. */
+  /** Read the active locale and its registered language options.
+   * @returns the immutable current locale snapshot.
+   */
+  getLocale(): LocaleSnapshot
+  /** Resolve localized text using the active locale fallback chain.
+   * @param text - localized value with English and optional Chinese text.
+   * @returns text in the active locale or its fallback.
+   */
+  resolveText(text: LocalizedText): string
+  /** Read the observable locale snapshot.
+   * @returns the current snapshot, stable until it changes.
+   */
+  getSnapshot(): LocaleSnapshot
+  /** Subscribe to locale and dictionary changes.
+   * @param fn - change callback.
+   * @returns disposer for the subscription.
+   */
+  subscribe(fn: () => void): () => void
+  /** Change the active language preference.
+   * @param id - registered locale id.
+   */
+  setLocale(id: string): void
+  /** Register one selectable language and its fallback.
+   * @param input - locale id, display label, and fallback id.
+   * @returns disposer for the language registration.
+   */
+  addLanguage(input: LanguageRegistration): () => void
+  /** Register dictionaries for a declared namespace.
+   * @param ns - namespace in LocaleNamespaceMap.
+   * @param dicts - complete built-in locale dictionaries.
+   * @returns disposer for these dictionaries.
+   */
+  register<N extends Extract<keyof LocaleNamespaceMap, string>>(ns: N, dicts: Record<BuiltInLocaleId, LocaleDictOf<N>>): () => void
+  /** Register one dictionary for a dynamic namespace.
+   * @param ns - namespace.
+   * @param locale - locale id.
+   * @param dict - dictionary entries.
+   * @returns disposer for this dictionary.
+   */
+  register(ns: string, locale: string, dict: LocaleDict): () => void
+  /** Bind a declared namespace to a typed translation function.
+   * @param ns - namespace in LocaleNamespaceMap.
+   * @returns stable translation function.
+   */
+  bind<N extends Extract<keyof LocaleNamespaceMap, string>>(ns: N): TranslateNS<N>
+  /** Bind a dynamic namespace to an untyped translation function.
+   * @param ns - namespace.
+   * @returns stable translation function.
+   */
+  bind(ns: string): Translate
   /** Gaia-only overlay seam; omitted by legacy locale providers and test doubles. */
   override?: (ns: string, locale: string, dict: Partial<LocaleDict>) => () => void
 }

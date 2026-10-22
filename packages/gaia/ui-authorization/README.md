@@ -9,9 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This private client plugin registers a localized Sign-in section in Settings. It lists only registered flows that offer OAuth, with API-key providers configured in Models. OAuth sign-ins support notices, device codes, prompts, cancellation, and confirmed sign-out. The section keeps secret answers in its input state and sends them only through `answer`.
-
-The section can create an independent account route from an installed OAuth provider using a display label and safe route id. Each alias appears as its own sign-in card; signing out removes only that grant, while removing the account also deletes its alias profile. Account creation/removal controls are localized in English and Chinese.
+Manage OAuth sign-ins from a localized Settings section. It lists registered OAuth flows, keeps secret answers in input state, and supports device codes, prompts, cancellation, and confirmed sign-out. Users can create independent account routes for installed OAuth providers; each route keeps its own grant and profile.
 
 ## Table of Contents
 

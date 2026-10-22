@@ -2,7 +2,12 @@ import type { SessionEventLikeEntry } from '@deepseek-ai/dsh-api-session-control
 import { assistantMessageText } from './assistant-text.ts'
 import { MAX_HARNESS_RECAP_LENGTH } from './bridge.ts'
 
-/** Read the final non-interrupted answer before this turn's end; omit empty text. */
+/** Read the final non-interrupted answer before this turn's end; omit empty text.
+ * @param entries - ordered session entries.
+ * @param endIndex - exclusive end of the turn.
+ * @param turn - turn identifier to match.
+ * @returns bounded answer text or undefined when the turn has no text.
+ */
 export function notificationRecap(entries: readonly SessionEventLikeEntry[], endIndex: number, turn: number): string | undefined {
   for (let i = endIndex - 1; i >= 0; i--) {
     const entry = entries[i]

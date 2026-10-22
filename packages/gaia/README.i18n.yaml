@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/README.md
+/:
+  en: 1b0170b165664da6
+  zh: 84c7d995147e4ae2
+/gaia-packages:
+  en: b2749ea6a074dc5c
+  zh: 1f160a3ce86f8293
+/gaia-packages/summary:
+  en: a0d8df8598156f91
+  zh: 8dd9d23fd5464cd5
+/gaia-packages/table-of-contents:
+  en: d9ccfbd3a01bebde
+  zh: 52b4a631020e87fb
+/gaia-packages/packages:
+  en: ec944b0cc63eb778
+  zh: 2f557f4bd4e23f95
+/gaia-packages/related-documentation:
+  en: 00aca994a54e2df9
+  zh: 461c13ffbb695d73
+/gaia-packages/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

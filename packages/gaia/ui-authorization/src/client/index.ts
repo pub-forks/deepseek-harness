@@ -1,6 +1,8 @@
 /** Gaia sign-in Settings contribution. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: use the Models section's declared auth-provider slot contract.
+import type {} from '@deepseek-ai/dsh-client-ui-settings-models/src/client/slot-contract.ts'
 import remoteContribution from '@deepseek-ai/dsh-gaia-api-authorization/remote'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -12,9 +14,6 @@ import { determineFlowAuthKind } from './oauth.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap { 'settings.gaiaAuthorization': AuthorizationKey }
-  interface SlotMap {
-    'settings.models.auth-provider': { kind: 'single'; scope: 'root' }
-  }
 }
 export const inject = ['remote', 'slots', 'locale']
 /** @param ctx - browser context with the Remote carrier and Settings slots. @returns after registration. */
