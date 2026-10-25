@@ -39,12 +39,13 @@ export interface GaiaReadAloudState {
 
 /** Closed requests from a Gaia iframe to its same-origin parent. */
 export type GaiaOutgoingMessage =
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'targetedInsertTextResult'; requestId: string; ok: boolean; error?: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'openChangesReview'; sessionId: string; seq: number; turn: number; index: number }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloud' | 'autoReadAloud'; sessionId: string; messageId: string; text: string; workspacePath?: string; label?: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'stopReadAloud'; sessionId: string; messageId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'cancelReadAloudSession'; sessionId: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'readAloudSettings' }
-  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'ready' }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'ready'; capabilities?: { targetedInsertText?: boolean } }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'status'; connected: boolean; reconnecting: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'turn'; running: boolean }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'title'; title: string; explicit: boolean }
@@ -79,6 +80,7 @@ export const APP_SHORTCUT_CODES = [
   'KeyC',
   'KeyV',
   'KeyR',
+  'KeyY',
 ] as const
 
 /** Union type of all allowlisted app shortcut codes. */
@@ -94,7 +96,7 @@ export const APP_CHORD_CODE_PATTERN = new RegExp(
 
 /**
  * Check whether a code and shift modifier match the app shortcut allowlist.
- * Shift is permitted only with KeyJ, KeyE, KeyP and task dictation's KeyV.
+ * Shift is permitted with KeyJ, KeyE, KeyP and task dictation's KeyV.
  * @param code - keyboard event code.
  * @param shift - whether Shift is held.
  * @returns whether the code is an accepted app shortcut.
@@ -139,6 +141,7 @@ export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'theme'; mode: 'light' | 'dark'; palette?: GaiaPalette }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'focus' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'insertText'; text: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'targetedInsertText'; sessionId: string; requestId: string; text: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'clear' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; sessions: ResumeSessionRow[] }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; error: string }
@@ -204,6 +207,11 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
       if (typeof msg.text !== 'string') return false
       return new TextEncoder().encode(msg.text).length <= MAX_INSERT_TEXT_BYTES
     }
+    case 'targetedInsertText':
+      return typeof msg.sessionId === 'string' && isValidSessionId(msg.sessionId)
+        && typeof msg.requestId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(msg.requestId)
+        && typeof msg.text === 'string' && new TextEncoder().encode(msg.text).length <= MAX_INSERT_TEXT_BYTES
+        && Object.keys(msg).every(key => ['source', 'v', 'type', 'sessionId', 'requestId', 'text'].includes(key))
     case 'clear':
       return true
     case 'resumeSessions': {

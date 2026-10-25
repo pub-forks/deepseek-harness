@@ -59,6 +59,14 @@ describe('isGaiaIncomingMessage', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'insertText', text: 123 })).toBe(false)
   })
 
+  it('validates targetedInsertText as its own bounded session-addressed protocol', () => {
+    const valid = { source: 'gaia-dsh', v: 1, type: 'targetedInsertText', sessionId: 'session-1', requestId: 'reply-1', text: 'draft' }
+    expect(isGaiaIncomingMessage(valid)).toBe(true)
+    for (const patch of [{ sessionId: '' }, { sessionId: 'bad:id' }, { sessionId: 'x'.repeat(129) }, { requestId: '!' }, { requestId: 'x'.repeat(65) }, { text: 'x'.repeat(8193) }, { extra: true }]) {
+      expect(isGaiaIncomingMessage({ ...valid, ...patch })).toBe(false)
+    }
+  })
+
   it('validates resumeSessions messages with session rows and errors', () => {
     const validRow = { sessionId: 's-123', title: 'My session', archived: false, open: true, updatedAt: 1000 }
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'resumeSessions', reqId: 'req-1', sessions: [validRow] })).toBe(true)
@@ -453,7 +461,9 @@ describe('ui-embed client plugin', () => {
     vi.useFakeTimers()
     setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed&session=s-test-123')
     const mock = createMockContext()
+    expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'targetedInsertText', sessionId: 'other-session', requestId: 'reply-1', text: 'draft reply' })).toBe(true)
     apply(mock.ctx)
+    expect(window.parent).toBe(fakeParent)
     mock.setWorkspaceList({ phase: 'ready', items: [{ workspaceId: 'w1', path: '/tmp/one', title: 'One' }] })
     mock.setWorkspaceList({ phase: 'ready', items: [{ workspaceId: 'w1', path: '/tmp/one', title: 'Renamed' }] })
     await vi.advanceTimersByTimeAsync(499)
@@ -760,7 +770,7 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages.at(-1)).toEqual({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyX', shift: true, mod: true, alt: false, phase: 'keyup' })
 
     parentMessages = []
-    const unregistered = new KeyboardEvent('keydown', { code: 'KeyY', ctrlKey: true, altKey: true, cancelable: true })
+    const unregistered = new KeyboardEvent('keydown', { code: 'KeyB', ctrlKey: true, altKey: true, cancelable: true })
     window.dispatchEvent(unregistered)
     expect(unregistered.defaultPrevented).toBe(false)
     expect(parentMessages).toEqual([])
@@ -833,6 +843,7 @@ describe('ui-embed client plugin', () => {
       data: { source: 'gaia-dsh', v: 1, type: 'appChords', chords: [
         { code: 'KeyV', mod: true, alt: true, shift: false },
         { code: 'KeyV', mod: true, alt: true, shift: true },
+        { code: 'KeyY', mod: true, alt: true, shift: false },
       ] },
     }))
     for (const shift of [false, true]) {
@@ -851,6 +862,13 @@ describe('ui-embed client plugin', () => {
         { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift, mod: true, alt: true, phase: 'keyup' },
       ])
     }
+    parentMessages = []
+    const replyChord = new KeyboardEvent('keydown', { code: 'KeyY', metaKey: true, altKey: true, cancelable: true })
+    window.dispatchEvent(replyChord)
+    expect(replyChord.defaultPrevented).toBe(true)
+    expect(parentMessages).toEqual([
+      { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyY', shift: false, mod: true, alt: true },
+    ])
     const altGraph = new KeyboardEvent('keydown', { code: 'KeyJ', ctrlKey: true, altKey: true })
     Object.defineProperty(altGraph, 'getModifierState', { value: (key: string) => key === 'AltGraph' })
     parentMessages = []
@@ -869,7 +887,7 @@ describe('ui-embed client plugin', () => {
     const mock = createMockContext()
     apply(mock.ctx)
 
-    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'ready' })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'ready', capabilities: { targetedInsertText: true } })
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'status', connected: true, reconnecting: false })
     expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'turn', running: false })
 
@@ -1149,6 +1167,34 @@ describe('ui-embed client plugin', () => {
       },
     })
     expect(parentMessages.some(m => m.type === 'error' && m.code === 'insert_unsupported')).toBe(false)
+  })
+
+  it.each(['embed', 'full'] as const)('targeted reply inserts into the explicit session and acknowledges in %s mode', (mode) => {
+    setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed&session=s-test-123')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    expect(parentMessages).toContainEqual(expect.objectContaining({ type: 'ready', capabilities: { targetedInsertText: true } }))
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'targetedInsertText', sessionId: 'other-session', requestId: 'reply-1', text: 'draft reply' },
+    }))
+    expect(mock.sessions.scope).toHaveBeenCalledWith('other-session')
+    expect(mock.insertTextSpy).toHaveBeenCalledWith({ text: 'draft reply', span: { start: 14, end: 14, draftRev: 2 } })
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'targetedInsertTextResult', requestId: 'reply-1', ok: true })
+  })
+
+  it('acknowledges an unavailable targeted session with an error and does not navigate', () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    mock.sessions.scope.mockImplementation(id => id === 'missing-session' ? undefined as never : mock.sessionCtx)
+    apply(mock.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'targetedInsertText', sessionId: 'missing-session', requestId: 'reply-2', text: 'draft reply' },
+    }))
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'targetedInsertTextResult', requestId: 'reply-2', ok: false, error: 'The target session composer is unavailable.' })
   })
 
   it('reports insert_unsupported error when insert text event is rejected or unhandled', () => {

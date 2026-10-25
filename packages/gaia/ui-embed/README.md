@@ -39,7 +39,9 @@ In embed mode, document preview actions use the resolved absolute file path to a
 
 Agent embeds route turn changes-review resources into a read-only Gaia editor tab using bounded session, event, turn and selected-file coordinates. Gaia reads the original summary and comparison hunks through its session-bound runtime proxy; it does not substitute the current Git diff. Full mode keeps the native Harness review sidebar.
 
-Both iframe modes forward Gaia's allowlisted, non-repeating `Ctrl/Cmd+Alt` application chords through the same-origin bridge, including `V` for dictation, `Shift+V` for task dictation and `R` for read aloud. Only J, E and V permit Shift; AltGraph and simultaneous Ctrl+Cmd are rejected. Dictation uses the sending iframe's composer without moving focus. A V release following a forwarded press sends `phase: 'keyup'` even if modifiers were released first, preserving push-to-talk; keydown messages omit phase. H and M send closed Harness drawer toggle/maximize intents in both modes. Listeners are removed on disposal.
+Both iframe modes forward Gaia's allowlisted, non-repeating `Ctrl/Cmd+Alt` application chords through the same-origin bridge, including `V` for dictation, `Shift+V` for task dictation and `R` for read aloud. J, E, P and V permit Shift; AltGraph and simultaneous Ctrl+Cmd are rejected. Dictation uses the sending iframe's composer without moving focus. A V release following a forwarded press sends `phase: 'keyup'` even if modifiers were released first, preserving push-to-talk; keydown messages omit phase. H and M send closed Harness drawer toggle/maximize intents in both modes. Listeners are removed on disposal.
+
+The bridge advertises `targetedInsertText` in `ready` when supported. Gaia may then send `{ type: 'targetedInsertText', sessionId, requestId, text }`; both embed and full frames insert into that explicit session's composer and answer with `targetedInsertTextResult` carrying the same `requestId`, `ok`, and an optional error. This preserves the draft and never submits or navigates to another session.
 
 -----
 

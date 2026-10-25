@@ -448,10 +448,24 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       readAloud.set({ enabled, autoRead: autoRead === true, status, sessionId, messageId })
     } else if (event.data.type === 'openSettings') {
       openSettings()
+    } else if (event.data.type === 'targetedInsertText') {
+      const { sessionId: targetId, requestId, text } = event.data
+      const target = ctx.sessions.scope(SessionId(targetId))
+      const conversation = target?.get('conversation')
+      const input = target && conversation ? conversation.input.for(target) : undefined
+      let applied = false
+      if (target && input) {
+        const snapshot = input.state.getSnapshot()
+        const at = snapshot.draft.length
+        const span: TokenSpan = { start: at, end: at, draftRev: snapshot.draftRev }
+        applied = target.bail(target, 'slash/input-insert-text', { text, span }) === true
+      }
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'targetedInsertTextResult', requestId, ok: applied,
+        ...(applied ? {} : { error: 'The target session composer is unavailable.' }) })
     }
   }
   window.addEventListener('message', onIncomingMessage)
-  postToParent({ source: 'gaia-dsh', v: 1, type: 'ready' })
+  postToParent({ source: 'gaia-dsh', v: 1, type: 'ready', capabilities: { targetedInsertText: true } })
 
   // Both frame modes report the connection, so Gaia's drawer and embeds
   // show a live status dot.
@@ -794,6 +808,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       case 'appChords': break
       case 'theme': break
       case 'openSettings': break
+      case 'targetedInsertText': break // handled by the frame-mode-independent bridge listener above
       case 'focus': {
         const session = getSessionInput()
         session?.input.focus()
