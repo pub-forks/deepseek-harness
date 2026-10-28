@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/gaia/ui-markdown/README.md
 /:
-  en: 9946c5c1c5288ef8
-  zh: 34f791ea7c4566c7
+  en: 5e791e329d85f85a
+  zh: 15db896029e71c1e
 /deepseek-ai-dsh-gaia-ui-markdown:
   en: b2c93b2bab18bf7d
   zh: 8c2d21b0b93552ad
 /deepseek-ai-dsh-gaia-ui-markdown/summary:
-  en: 0ca5cd805a80133e
-  zh: 1b68d7c6d5a8d902
+  en: 56623c202300e18f
+  zh: 1c30b1d6d6abfb76
 /deepseek-ai-dsh-gaia-ui-markdown/table-of-contents:
   en: 134c9b5c374e0e8e
   zh: 5241e0a95877c9de
 /deepseek-ai-dsh-gaia-ui-markdown/use-this-package:
-  en: c41d6f62f30871f3
-  zh: b1fbc4d77a09ceae
+  en: d25c997193739172
+  zh: 6663d4da27031ee6
 /deepseek-ai-dsh-gaia-ui-markdown/dev-note:
   en: 68b76adbd630b532
   zh: ee3c5a272a7a6589
@@ -36,5 +36,5 @@
   en: 8ad497ee1947660e
   zh: 6c61827846174a9c
 /deepseek-ai-dsh-gaia-ui-markdown/known-limitations-and-deferred-work:
-  en: fd566f5a3ac6ec26
-  zh: bafed532f4347bd4
+  en: 8707b6cc16ec0438
+  zh: 19c30ec458dcc860

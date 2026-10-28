@@ -524,6 +524,8 @@
     { "path": "./packages/gaia/command-starred" },
     { "path": "./packages/gaia/session-rename" },
     { "path": "./packages/gaia/api-authorization" },
+    // GAIA: compile the `.tasks` Host Remote on the Host face.
+    { "path": "./packages/gaia/ui-markdown/tsconfig.host.json" },
     { "path": "./packages/gaia/profile-gaia" },
     { "path": "./packages/host/open-in-app" },
     { "path": "./packages/host/plugin-inventory" },

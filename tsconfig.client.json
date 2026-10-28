@@ -70,7 +70,8 @@
     // GAIA: iframe embed plugin.
     { "path": "./packages/gaia/ui-embed" },
     // GAIA: Markdown document preview plugin.
-    { "path": "./packages/gaia/ui-markdown" },
+    // GAIA: keep the Markdown client renderer on the Client face.
+    { "path": "./packages/gaia/ui-markdown/tsconfig.client.json" },
     // Shared leaf: web e2e boots the real host webserver (fixture + real-host
     // smoke policy). webserver has zero workspace deps and no cordis merge,
     // so it cannot drag host-side Context augmentation into this program.

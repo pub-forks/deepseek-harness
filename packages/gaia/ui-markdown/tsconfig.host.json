@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib/types", "types": ["node"] },
+  "include": ["src/index.ts", "src/types.ts"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../api/workspace-files/tsconfig.host.json" },
+    { "path": "../../fs/fs" },
+    { "path": "../../sandbox/sandbox-policy" },
+    { "path": "../../core/session" },
+    { "path": "../../typert/protocol" }
+  ]
+}

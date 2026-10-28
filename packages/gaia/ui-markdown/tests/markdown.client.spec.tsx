@@ -186,8 +186,10 @@ describe('plugin activation', () => {
       locale: { bind: () => (key: string) => key, register: () => () => {} },
       slots: { inject: () => () => {}, register: () => () => {} },
       documentPreviews: { register: () => () => {} },
+      remote: { $mount: async () => async () => {} },
+      inject: () => {},
     }
-    const allowed = new Set<string>([...inject, 'effect'])
+    const allowed = new Set<string>([...inject, 'effect', 'inject'])
     const ctx = new Proxy({ effect: (run: () => unknown) => run() }, {
       get(target, key) {
         if (typeof key !== 'string') return undefined
@@ -195,7 +197,7 @@ describe('plugin activation', () => {
         return key === 'effect' ? target.effect : services[key]
       },
     })
-    expect(() => { apply(ctx as never) }).not.toThrow()
+    await expect(apply(ctx as never)).resolves.toBeTypeOf('function')
   })
 })
 
