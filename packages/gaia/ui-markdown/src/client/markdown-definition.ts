@@ -14,7 +14,7 @@ export function markdownDefinition(title: () => string): DocumentPreviewDefiniti
   return { id: MARKDOWN_BODY_ID, extensions: ['md', 'markdown'], priority: 'extension', title, loading: 'text-pages', wrap: false }
 }
 
-/** Build the Gaia `.tasks` renderer definition. */
+/** Build the Gaia `.tasks` renderer definition; it loads the complete file because a partial JSON document cannot be parsed. */
 export function tasksDefinition(title: () => string): DocumentPreviewDefinition {
-  return { id: TASKS_BODY_ID, extensions: ['tasks'], priority: 'extension', title, loading: 'text-pages', wrap: false }
+  return { id: TASKS_BODY_ID, extensions: ['tasks'], priority: 'extension', title, loading: 'bytes-complete', wrap: false }
 }

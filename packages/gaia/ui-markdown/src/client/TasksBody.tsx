@@ -1,7 +1,11 @@
-/** Editable Gaia `.tasks` body for the DSH document preview slot. */
-import { useEffect, useMemo, useState } from 'react'
+/** Editable Gaia `.tasks` body for the DSH document preview slot, styled after Gaia's Cockpit task list. */
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Plus, Star, Trash2 } from 'lucide-react'
+import {
+  Check, CheckCircle2, ChevronRight, Circle, CircleDashed, CircleSlash, ClipboardList, Code2, Eye,
+  MessagesSquare, PauseCircle, Plus, Star, Trash2,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -41,11 +45,20 @@ interface ParsedTasks {
 }
 type ParseResult = { value: ParsedTasks; error: false } | { value: null; error: true }
 type Operation = (data: Record<string, unknown>) => Record<string, unknown>
+type Translate = TasksBodyProps['t']
 
 const STATUSES: TaskStatus[] = ['todo', 'to-debate', 'to-plan', 'to-implement', 'in-progress', 'to-review', 'on-hold', 'done', 'canceled']
-const STATUS_KEYS: Partial<Record<TaskStatus, MarkdownKey>> = {
-  'to-debate': 'statusToDebate', 'to-plan': 'statusToPlan', 'to-implement': 'statusToImplement',
-  'in-progress': 'statusInProgress', 'to-review': 'statusToReview', 'on-hold': 'statusOnHold', canceled: 'statusCanceled',
+/** Same labels, icons, and colors as Gaia's `TASK_STATUSES`. */
+const STATUS_META: Record<TaskStatus, { key: MarkdownKey; icon: LucideIcon; color: string }> = {
+  todo: { key: 'statusTodo', icon: Circle, color: 'var(--tasks-muted-fg)' },
+  'to-debate': { key: 'statusToDebate', icon: MessagesSquare, color: '#ec4899' },
+  'to-plan': { key: 'statusToPlan', icon: ClipboardList, color: '#8b5cf6' },
+  'to-implement': { key: 'statusToImplement', icon: Code2, color: '#f97316' },
+  'in-progress': { key: 'statusInProgress', icon: CircleDashed, color: '#3b82f6' },
+  'to-review': { key: 'statusToReview', icon: Eye, color: '#0ea5e9' },
+  'on-hold': { key: 'statusOnHold', icon: PauseCircle, color: '#f59e0b' },
+  done: { key: 'statusDone', icon: CheckCircle2, color: '#10b981' },
+  canceled: { key: 'statusCanceled', icon: CircleSlash, color: '#ef4444' },
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,6 +89,14 @@ export function parseTasksText(text: string): ParseResult {
   try { parsed = text.trim() ? JSON.parse(text) : { version: 1, tasks: [] } } catch { return { value: null, error: true } }
   if (!isRecord(parsed) || !Array.isArray(parsed.tasks)) return { value: null, error: true }
   return { value: { raw: parsed, ...(typeof parsed.title === 'string' ? { title: parsed.title } : {}), tasks: parsed.tasks.map(parseTask) }, error: false }
+}
+
+/** The complete file text: bytes from a `bytes-complete` load, or text pages (only whole once `eof`). */
+function contentText(content: TasksBodyProps['content']): string | undefined {
+  if (content.kind === 'bytes') {
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(content.data) } catch { return undefined }
+  }
+  return content.kind === 'text' ? content.text : undefined
 }
 
 function displayName(path: string | undefined, fallback: string): string {
@@ -116,25 +137,85 @@ function taskOperation(id: string, operation: (task: Record<string, unknown>) =>
   return data => editById(data, id, operation)
 }
 
-function TaskCheck({ completed, onClick, label }: { completed: boolean; onClick?: (() => void) | undefined; label?: string }): ReactNode {
-  const check = <span className={`${css.check} ${completed ? css.checkCompleted : ''}`} aria-hidden="true">{completed && <span className={css.checkMark} />}</span>
-  return onClick ? <button className={css.iconButton} type="button" onClick={onClick} title={label} aria-label={label}>{check}</button> : check
+/** Gaia's `RoundCheck`: an orange disc with a check mark once completed. */
+function RoundCheck({ completed, onClick, label, small }: { completed: boolean; onClick?: (() => void) | undefined; label: string; small?: boolean }): ReactNode {
+  const className = `${css.check} ${small ? css.checkSmall : ''} ${completed ? css.checkCompleted : ''}`
+  const mark = completed && <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path d="M2.5 6.5L5 9l4.5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  return onClick
+    ? <button className={className} type="button" role="checkbox" aria-checked={completed} title={label} aria-label={label} onClick={(event) => { event.stopPropagation(); onClick() }}>{mark}</button>
+    : <span className={className} role="checkbox" aria-checked={completed} aria-label={label} aria-readonly="true">{mark}</span>
+}
+
+function StatusIcon({ status }: { status: TaskStatus }): ReactNode {
+  const { icon: Icon, color } = STATUS_META[status]
+  return <Icon size={14} style={{ color }} aria-hidden="true" />
+}
+
+/** Gaia's icon-variant `StatusPicker`: the status icon opens a menu of every status. */
+function StatusMenu({ status, onChange, t }: { status: TaskStatus; onChange?: ((status: TaskStatus) => void) | undefined; t: Translate }): ReactNode {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (event: Event): void => {
+      if (event instanceof KeyboardEvent ? event.key === 'Escape' : !rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close) }
+  }, [open])
+  const label = t(STATUS_META[status].key)
+  if (!onChange) return <span className={css.statusIcon} title={label} aria-label={label} role="img"><StatusIcon status={status} /></span>
+  return <span className={css.statusMenuRoot} ref={rootRef} onClick={(event) => { event.stopPropagation() }}>
+    <button className={css.iconButton} type="button" title={label} aria-label={`${t('changeStatus')}: ${label}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen(value => !value) }}>
+      <StatusIcon status={status} />
+    </button>
+    {open && <span className={css.statusMenu} role="menu">
+      {STATUSES.map(value => <button key={value} className={css.statusMenuItem} type="button" role="menuitemradio" aria-checked={value === status} onClick={() => { setOpen(false); if (value !== status) onChange(value) }}>
+        <span className={css.statusMenuLabel}><StatusIcon status={value} />{t(STATUS_META[value].key)}</span>
+        {value === status && <Check size={14} className={css.accent} aria-hidden="true" />}
+      </button>)}
+    </span>}
+  </span>
+}
+
+/** Inline title: a plain label; a double click edits it, committed on Enter or blur and reverted on Escape. */
+function TaskTitle({ task, onRename, t }: { task: PreviewTask; onRename?: ((title: string) => void) | undefined; t: Translate }): ReactNode {
+  const [editing, setEditing] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (editing) inputRef.current?.select() }, [editing])
+  const className = `${css.taskTitle} ${task.completed ? css.taskTitleCompleted : ''} ${task.title ? '' : css.untitled}`
+  if (!editing || !onRename) {
+    return <span className={className} onDoubleClick={onRename ? (event) => { event.stopPropagation(); setEditing(true) } : undefined}>{task.title || t('untitledTask')}</span>
+  }
+  const commit = (value: string): void => { setEditing(false); if (value !== task.title) onRename(value) }
+  return <input ref={inputRef} className={`${css.titleInput} ${task.completed ? css.taskTitleCompleted : ''}`} aria-label={t('editTitle')} defaultValue={task.title} placeholder={t('untitledTask')}
+    onClick={(event) => { event.stopPropagation() }}
+    onBlur={(event) => { commit(event.currentTarget.value) }}
+    onKeyDown={(event) => {
+      if (event.key === 'Enter') { event.preventDefault(); commit(event.currentTarget.value) }
+      else if (event.key === 'Escape') { event.preventDefault(); setEditing(false) }
+    }} />
 }
 
 /** Render and edit a parsed task list; invalid JSON remains a read-only raw view. */
 export function TasksBody({ content, resourceAddress, useResource, t, tasksRemote }: TasksBodyProps): ReactNode {
   const resource = useResource<'file'>(resourceAddress).value
   const absolutePath = resource?.absolutePath
-  const source = content.kind === 'text' ? content.text : ''
-  const [text, setText] = useState(source)
+  const source = contentText(content)
+  // A text-pages load holds only its first pages until `eof`; a partial file is not invalid, just incomplete.
+  const partial = content.kind === 'text' && !content.eof
+  const [text, setText] = useState(source ?? '')
   const [version, setVersion] = useState(resource?.version ?? '')
   const [error, setError] = useState('')
-  useEffect(() => { setText(source); setVersion(resource?.version ?? ''); setError('') }, [source, resource?.version])
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  useEffect(() => { setText(source ?? ''); setVersion(resource?.version ?? ''); setError('') }, [source, resource?.version])
   const result = useMemo(() => parseTasksText(text), [text])
-  if (content.kind !== 'text') return null
+  if (source === undefined) return null
   const fileTitle = displayName(absolutePath, resourceAddress)
   const today = localDate()
-  const editable = Boolean(tasksRemote && absolutePath && version && !result.error)
+  const editable = Boolean(tasksRemote && absolutePath && version && !result.error && !partial)
   const sessionId = SessionId(decodeURIComponent(/^dsh-resource:\/\/file\/session\/([^/]+)/u.exec(resourceAddress)?.[1] ?? ''))
 
   const perform = async (operation: Operation): Promise<void> => {
@@ -161,73 +242,97 @@ export function TasksBody({ content, resourceAddress, useResource, t, tasksRemot
 
   if (result.error) {
     return <div className={css.root} data-gaia-tasks>
-      <p className={css.error} role="status">{t('invalidTasksFile')}</p>
+      <p className={partial ? css.notice : css.error} role="status">{t(partial ? 'tasksFileIncomplete' : 'invalidTasksFile')}</p>
       {error && <p className={css.error} role="alert">{error}</p>}
       <pre className={css.rawFallback}>{text}</pre>
     </div>
   }
   const tasks = result.value.tasks
   const openTasks = tasks.filter(task => !task.completed)
+  const important = openTasks.filter(task => task.important)
+  const others = openTasks.filter(task => !task.important)
   const completedTasks = tasks.filter(task => task.completed)
   const title = result.value.title?.trim() || fileTitle || t('tasksLabel')
+  const addTask = (): void => {
+    const value = draft.trim()
+    if (!value) return
+    setDraft('')
+    void perform((data) => {
+      const current = Array.isArray(data.tasks) ? data.tasks : []
+      const used = new Set(current.filter(isRecord).map(item => typeof item.id === 'string' ? item.id : ''))
+      const now = new Date().toISOString()
+      return { ...data, tasks: [...current, { id: newId('t', used), title: value, completed: false, status: 'todo', important: false, due: null, note: '', steps: [], createdAt: now, completedAt: null }] }
+    })
+  }
+
   const row = (task: PreviewTask, index: number): ReactNode => {
-    const statusKey = STATUS_KEYS[task.status]
-    const statusLabel = statusKey ? t(statusKey) : task.status
     const overdue = !task.completed && task.due !== null && task.due < today
-    const toggleComplete = taskOperation(task.id, (value) => { setStatus(value, task.completed ? 'todo' : 'done') })
+    const isExpanded = expanded === task.id
+    const hasDetails = task.steps.length > 0 || task.tags.length > 0 || task.note.length > 0
+    const doneSteps = task.steps.filter(step => step.completed).length
+    const edit = (operation: (raw: Record<string, unknown>) => void): void => { void perform(taskOperation(task.id, operation)) }
     const deleteTask = (data: Record<string, unknown>): Record<string, unknown> => {
       const taskItems: unknown[] = Array.isArray(data.tasks) ? data.tasks : []
       return { ...data, tasks: taskItems.filter(value => !isRecord(value) || value.id !== task.id) }
     }
-    return <article className={css.task} data-completed={task.completed} key={task.id}>
-      <TaskCheck completed={task.completed} onClick={editable ? () => { void perform(toggleComplete) } : undefined} label={t(task.completed ? 'reopenTask' : 'completeTask')} />
-      <div className={css.taskContent}>
-        <div className={css.titleLine}>
-          {/* Keyed on the title so a refresh from disk replaces a stale uncontrolled value instead of writing it back on blur. */}
-          {editable ? <input key={task.title} className={css.titleInput} aria-label={t('editTitle')} defaultValue={task.title} onBlur={(event) => {
-            const value = event.currentTarget.value
-            if (value !== task.title) { void perform(taskOperation(task.id, (raw) => { raw.title = value })) }
-          }} />
-            : <span className={`${css.taskTitle} ${task.completed ? css.taskTitleCompleted : ''}`}>{task.title || t('untitledTask')}</span>}
-          {editable
-            ? <button className={css.iconButton} type="button" onClick={() => { void perform(taskOperation(task.id, (raw) => { raw.important = raw.important !== true })) }} title={t('toggleImportant')} aria-label={t('toggleImportant')}><Star size={15} fill={task.important ? 'currentColor' : 'none'} className={task.important ? css.star : undefined} /></button>
-            : task.important && <span className={css.star} aria-label={t('important')}>★</span>}
-          {editable ? <select className={css.statusSelect} aria-label={t('changeStatus')} value={task.status} onChange={(event) => { const status = event.currentTarget.value as TaskStatus; void perform(taskOperation(task.id, (raw) => { setStatus(raw, status) })) }}>
-            {STATUSES.map((status) => {
-              const statusLabelKey = STATUS_KEYS[status]
-              return <option value={status} key={status}>{statusLabelKey ? t(statusLabelKey) : status}</option>
-            })}
-          </select> : task.status !== 'todo' && task.status !== 'done' && <span className={css.status}>{statusLabel}</span>}
-          {task.due && <time className={`${css.due} ${overdue ? css.overdue : ''}`} dateTime={task.due}>{task.due}</time>}
-          {editable && <button className={css.iconButton} type="button" onClick={() => { void perform(deleteTask) }} title={t('deleteTask')} aria-label={t('deleteTask')}><Trash2 size={15} /></button>}
-        </div>
-        {task.tags.length > 0 && <div className={css.tags}>{task.tags.map((tag, tagIndex) => <span className={css.tag} key={`${index}-${tagIndex}`}>{tag}</span>)}</div>}
-        {task.steps.length > 0 && <div className={css.stepsBlock}><div className={css.stepsCount}>{task.steps.length} {t('stepsLabel')}</div><ul className={css.steps}>{task.steps.map((step, stepIndex) => <li className={css.step} key={step.id ?? `${index}-step-${stepIndex}`}>
-          <TaskCheck completed={step.completed} onClick={editable ? () => { void perform(taskOperation(task.id, (raw) => {
-            const steps = raw.steps
-            if (!Array.isArray(steps)) return
-            const stepItems: unknown[] = steps
-            raw.steps = stepItems.map((item, itemIndex): unknown => {
-              const matches = isRecord(item) && (step.id ? item.id === step.id : itemIndex === stepIndex)
-              return matches && isRecord(item) ? { ...item, completed: item.completed !== true } : item
-            })
-          })) } : undefined} label={t('toggleStep')} />
-          <span className={step.completed ? css.stepCompleted : undefined}>{step.title || t('untitledTask')}</span>
-        </li>)}</ul></div>}
-        {task.note && <p className={css.note}>{task.note}</p>}
+    const toggleStep = (step: TaskStep, stepIndex: number): void => {
+      edit((raw) => {
+        const steps = raw.steps
+        if (!Array.isArray(steps)) return
+        const stepItems: unknown[] = steps
+        raw.steps = stepItems.map((item, itemIndex): unknown => {
+          const matches = isRecord(item) && (step.id ? item.id === step.id : itemIndex === stepIndex)
+          return matches && isRecord(item) ? { ...item, completed: item.completed !== true } : item
+        })
+      })
+    }
+    return <article className={css.task} data-completed={task.completed} data-expanded={isExpanded} key={task.id}>
+      <div className={css.taskRow} onClick={hasDetails ? () => { setExpanded(isExpanded ? null : task.id) } : undefined} data-clickable={hasDetails}>
+        <RoundCheck completed={task.completed} onClick={editable ? () => { edit((raw) => { setStatus(raw, task.completed ? 'todo' : 'done') }) } : undefined} label={t(task.completed ? 'reopenTask' : 'completeTask')} />
+        <span className={css.titleCell}><TaskTitle task={task} t={t} onRename={editable ? (value) => { edit((raw) => { raw.title = value }) } : undefined} /></span>
+        {hasDetails && <ChevronRight size={14} className={`${css.chevron} ${isExpanded ? css.chevronOpen : ''}`} aria-hidden="true" />}
+        {task.steps.length > 0 && <span className={css.meta} title={`${task.steps.length} ${t('stepsLabel')}`}>{doneSteps}/{task.steps.length}</span>}
+        {task.status !== 'done' && <StatusMenu status={task.status} t={t} onChange={editable ? (status) => { edit((raw) => { setStatus(raw, status) }) } : undefined} />}
+        {task.due && <time className={`${css.due} ${overdue ? css.overdue : ''}`} dateTime={task.due}>{task.due}</time>}
+        {editable
+          ? <button className={`${css.iconButton} ${task.important ? css.star : css.faint}`} type="button" onClick={(event) => { event.stopPropagation(); edit((raw) => { raw.important = raw.important !== true }) }} title={t('toggleImportant')} aria-label={t('toggleImportant')} aria-pressed={task.important}><Star size={16} fill={task.important ? 'currentColor' : 'none'} /></button>
+          : task.important && <Star size={16} fill="currentColor" className={css.star} aria-label={t('important')} role="img" />}
+        {editable && <button className={`${css.iconButton} ${css.faint} ${css.delete}`} type="button" onClick={(event) => { event.stopPropagation(); void perform(deleteTask) }} title={t('deleteTask')} aria-label={t('deleteTask')}><Trash2 size={16} /></button>}
       </div>
+      {isExpanded && <div className={css.details}>
+        {task.tags.length > 0 && <div className={css.tags}>{task.tags.map((tag, tagIndex) => <span className={css.tag} key={`${index}-${tagIndex}`}>#{tag}</span>)}</div>}
+        {task.steps.length > 0 && <ul className={css.steps} aria-label={t('stepsLabel')}>{task.steps.map((step, stepIndex) => <li className={css.step} key={step.id ?? `${index}-step-${stepIndex}`}>
+          <RoundCheck small completed={step.completed} onClick={editable ? () => { toggleStep(step, stepIndex) } : undefined} label={t('toggleStep')} />
+          <span className={step.completed ? css.stepCompleted : undefined}>{step.title || t('untitledTask')}</span>
+        </li>)}</ul>}
+        {task.note && <p className={css.note}>{task.note}</p>}
+      </div>}
     </article>
   }
   return <div className={css.root} data-gaia-tasks>
-    <header className={css.header}><h1 className={css.heading}>{title}</h1><p className={css.counts}><span>{t('openTasks')} {openTasks.length}</span><span>{t('doneTasks')} {completedTasks.length}</span></p></header>
+    <header className={css.header}>
+      <h1 className={css.heading}>{title}</h1>
+      <p className={css.counts}>{openTasks.length} {t(openTasks.length === 1 ? 'taskRemaining' : 'tasksRemaining')}</p>
+    </header>
     {error && <p className={css.error} role="alert">{error}</p>}
-    <section className={css.taskList} aria-label={t('openTasks')}>{openTasks.map((task, index) => row(task, index))}</section>
-    {editable && <button className={css.addButton} type="button" onClick={() => { void perform((data) => {
-      const current = Array.isArray(data.tasks) ? data.tasks.filter(isRecord) : []
-      const used = new Set(current.map(item => typeof item.id === 'string' ? item.id : ''))
-      const now = new Date().toISOString()
-      return { ...data, tasks: [...(data.tasks as unknown[]), { id: newId('t', used), title: '', completed: false, status: 'todo', important: false, due: null, note: '', steps: [], createdAt: now, completedAt: null }] }
-    }) }} title={t('addTask')} aria-label={t('addTask')}><Plus size={16} />{t('addTask')}</button>}
-    <details className={css.completedGroup}><summary className={css.completedHeading}>{t('completedTasks')} <span className={css.completedCount}>{completedTasks.length}</span></summary><section className={css.taskList} aria-label={t('completedTasks')}>{completedTasks.map((task, index) => row(task, index))}</section></details>
+    {editable && <div className={css.addRow}>
+      <label className={css.addField}>
+        <Plus size={16} className={css.faint} aria-hidden="true" />
+        <input className={css.addInput} value={draft} placeholder={t('addTask')} aria-label={t('addTask')}
+          onChange={(event) => { setDraft(event.currentTarget.value) }}
+          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTask() } }} />
+      </label>
+    </div>}
+    <div className={css.list}>
+      {important.length > 0 && <details className={`${css.group} ${css.importantGroup}`} open>
+        <summary className={`${css.groupHeading} ${css.star}`}><ChevronRight size={14} className={css.groupChevron} aria-hidden="true" /><Star size={14} fill="currentColor" aria-hidden="true" />{t('important')} ({important.length})</summary>
+        <section className={css.taskList} aria-label={t('important')}>{important.map((task, index) => row(task, index))}</section>
+      </details>}
+      <section className={css.taskList} aria-label={t('openTasks')}>{others.map((task, index) => row(task, important.length + index))}</section>
+      {completedTasks.length > 0 && <details className={`${css.group} ${css.completedGroup}`}>
+        <summary className={css.groupHeading}><ChevronRight size={14} className={css.groupChevron} aria-hidden="true" />{t('completedTasks')} ({completedTasks.length})</summary>
+        <section className={css.taskList} aria-label={t('completedTasks')}>{completedTasks.map((task, index) => row(task, index))}</section>
+      </details>}
+    </div>
   </div>
 }

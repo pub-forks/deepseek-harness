@@ -51,3 +51,4 @@ remark 插件、frontmatter 解析器和 Wiki 链接路径助手均从 Gaia web 
 ## Known Limitations and Deferred Work
 
 - Markdown 编辑仍由 Gaia web 应用负责。
+- `.tasks` 预览加载完整文件，超过文档预览完整读取上限的文件无法打开；截止日期、标签和备注在预览中只读，步骤只能勾选；编辑仍由 Gaia web 应用负责。

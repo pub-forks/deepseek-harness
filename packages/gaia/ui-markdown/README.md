@@ -50,3 +50,4 @@ This package does not assemble model requests.
 ## Known Limitations and Deferred Work
 
 - Markdown editing remains in Gaia's web application.
+- `.tasks` previews load the complete file, so a file above the document preview's complete-read cap does not open; due dates, tags, and notes are read-only and steps can only be checked there; editing them remains in Gaia's web application.
