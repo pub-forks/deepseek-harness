@@ -17,7 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-open-in-app/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
-import type { SessionInput, TokenSpan } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SessionInput } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SelectOption } from '@deepseek-ai/dsh-client-ui-commands/client'
@@ -35,6 +35,7 @@ import {
 } from './bridge.ts'
 import { lineParam, resolveFileAddress } from './open-file.ts'
 import { resolveChangesReview } from './open-changes-review.ts'
+import { appendDetectSpan } from './append-detect-span.ts'
 import { GaiaDocumentAction } from './document-action.ts'
 import { GaiaFileActions } from './file-actions.ts'
 import { injectEmbedChrome, injectGaiaSkin } from './styles.ts'
@@ -456,8 +457,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       let applied = false
       if (target && input) {
         const snapshot = input.state.getSnapshot()
-        const at = snapshot.draft.length
-        const span: TokenSpan = { start: at, end: at, draftRev: snapshot.draftRev }
+        const span = appendDetectSpan(snapshot)
         applied = target.bail(target, 'slash/input-insert-text', { text, span }) === true
       }
       postToParent({ source: 'gaia-dsh', v: 1, type: 'targetedInsertTextResult', requestId, ok: applied,
@@ -820,12 +820,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         let applied = false
         if (session !== undefined) {
           const snapshot = session.input.state.getSnapshot()
-          const at = snapshot.draft.length
-          const span: TokenSpan = {
-            start: at,
-            end: at,
-            draftRev: snapshot.draftRev,
-          }
+          const span = appendDetectSpan(snapshot)
           applied = session.actx.bail(session.actx, 'slash/input-insert-text', { text, span }) === true
         }
         if (!applied) {

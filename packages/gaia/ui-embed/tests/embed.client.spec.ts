@@ -245,6 +245,7 @@ describe('ui-embed client plugin', () => {
         getSnapshot: () => ({
           draft: draftValue,
           draftRev: draftRevValue,
+          occurrences: [],
         }),
       },
     }
