@@ -287,6 +287,10 @@ ${GAIA_CONTROLS_SCOPE} :is(input:not([type="checkbox"]):not([type="radio"]):not(
   color: var(--dsw-alias-label-primary);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* Preserve the leading-icon space used by the built-in plugin inventory search. */
+${GAIA_CONTROLS_SCOPE} label:has(> svg) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]))[type="search"] {
+  padding-left: 36px;
+}
 ${GAIA_CONTROLS_SCOPE} textarea {
   box-sizing: border-box;
   height: auto;

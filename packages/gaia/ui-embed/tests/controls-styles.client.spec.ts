@@ -42,7 +42,7 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('button[class*="_deleteConfirm"]')
     expect(GAIA_CONTROLS_CSS).toContain('button[class*="_addButton"]')
     expect(GAIA_CONTROLS_CSS).not.toContain('button:not(nav button)')
-    expect(GAIA_CONTROLS_CSS).not.toContain(':has(> svg)')
+    expect(GAIA_CONTROLS_CSS).not.toContain('button:has(> svg)')
     expect(GAIA_CONTROLS_CSS).not.toContain('button[class*="_cardContent"]')
     expect(GAIA_CONTROLS_CSS).not.toContain('[class*="_creditActions"] > button')
     const primaryButtonRule = GAIA_CONTROLS_CSS.match(/\/\* Button default: primary buttons \*\/([\s\S]*?)\n\}/)?.[1]
@@ -128,6 +128,38 @@ describe('GAIA_CONTROLS_CSS and settings controls styling', () => {
     expect(GAIA_CONTROLS_CSS).toContain('textarea')
     expect(GAIA_CONTROLS_CSS).toMatch(/input:not\([^}]*height:\s*36px/)
     expect(GAIA_CONTROLS_CSS).toContain('var(--gaia-input-border, var(--dsw-alias-border-l2))')
+  })
+
+  it('reserves the upstream leading-icon offset on icon-bearing search inputs only', () => {
+    const selector = ':is(html[data-gaia-embed], html[data-gaia-full]) :is([data-shortcut-modal="settings"], [data-dsh-modal]) label:has(> svg) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]))[type="search"]'
+    const rule = GAIA_CONTROLS_CSS.match(/label:has\(> svg\)[^{]+\{([^}]+)\}/u)?.[1]
+    expect(rule).toMatch(/padding-left:\s*36px/)
+
+    const frame = document.createElement('div')
+    frame.setAttribute('data-shortcut-modal', 'settings')
+    const iconLabel = document.createElement('label')
+    iconLabel.append(document.createElementNS('http://www.w3.org/2000/svg', 'svg'))
+    iconLabel.append(document.createElement('span'))
+    const iconSearch = document.createElement('input')
+    iconSearch.type = 'search'
+    iconLabel.append(iconSearch)
+    const plainLabel = document.createElement('label')
+    const plainSearch = document.createElement('input')
+    plainSearch.type = 'search'
+    plainLabel.append(plainSearch)
+    frame.append(iconLabel, plainLabel)
+    document.body.append(frame)
+
+    const previousEmbed = document.documentElement.getAttribute('data-gaia-embed')
+    document.documentElement.setAttribute('data-gaia-embed', '')
+    try {
+      expect(iconSearch.matches(selector)).toBe(true)
+      expect(plainSearch.matches(selector)).toBe(false)
+    } finally {
+      if (previousEmbed === null) document.documentElement.removeAttribute('data-gaia-embed')
+      else document.documentElement.setAttribute('data-gaia-embed', previousEmbed)
+      frame.remove()
+    }
   })
 
   it('includes focus ring styling with link token and excludes automatic focus', () => {
