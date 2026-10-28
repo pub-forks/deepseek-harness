@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-gaia-ui-markdown",
-  "description": "Gaia Obsidian-style read-only Markdown document preview",
+  "description": "Gaia read-only Markdown and .tasks document previews",
   "version": "0.1.7-rc.2",
   "private": true,
   "type": "module",

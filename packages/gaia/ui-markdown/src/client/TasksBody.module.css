@@ -1,0 +1,50 @@
+.root {
+  --tasks-accent: var(--dsw-alias-link, #ea580c);
+  --tasks-muted: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+  --tasks-border: var(--dsw-alias-border-l2);
+  --tasks-muted-fg: var(--dsw-alias-label-secondary);
+  min-width: 0;
+  padding: 24px;
+  color: var(--dsw-alias-label-primary);
+  font-family: "Fira Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.header { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--tasks-border); }
+.heading { margin: 0 0 8px; font-size: 24px; font-weight: 700; line-height: 1.25; }
+.counts { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; color: var(--tasks-muted-fg); font-size: 12px; }
+.taskList { display: grid; gap: 6px; }
+.task { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 8px; border-radius: 7px; }
+.task:hover { background: color-mix(in srgb, var(--tasks-muted) 70%, transparent); }
+.check { position: relative; display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; align-items: center; justify-content: center; margin-top: 2px; border: 2px solid #f97316; border-radius: 50%; }
+.checkCompleted { border-color: #f97316; background: #f97316; }
+.checkMark { width: 8px; height: 4px; margin-top: -2px; border-bottom: 1.5px solid white; border-left: 1.5px solid white; transform: rotate(-45deg); }
+.taskContent { flex: 1; min-width: 0; }
+.titleLine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.taskTitle { min-width: 0; font-size: 14px; font-weight: 500; }
+.taskTitleCompleted { color: var(--tasks-muted-fg); text-decoration: line-through; }
+.star { color: #f59e0b; font-size: 16px; line-height: 1; }
+.status, .due { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 7px; background: var(--tasks-muted); color: var(--tasks-muted-fg); font-size: 11px; line-height: 16px; }
+.due { font-variant-numeric: tabular-nums; }
+.overdue { background: color-mix(in srgb, #ef4444 14%, transparent); color: #dc2626; }
+:global(body[data-ds-dark-theme]) .overdue { color: #f87171; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tag { display: inline-flex; border-radius: 5px; padding: 1px 6px; background: var(--tasks-muted); color: var(--tasks-muted-fg); font-size: 11px; }
+.stepsBlock { margin-top: 7px; }
+.stepsCount { margin-bottom: 3px; color: var(--tasks-muted-fg); font-size: 11px; }
+.steps { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.step { display: flex; align-items: flex-start; gap: 7px; color: var(--dsw-alias-label-primary); font-size: 12px; }
+.step .check { flex-basis: 14px; width: 14px; height: 14px; margin-top: 2px; border-width: 1.5px; }
+.step .checkMark { width: 6px; height: 3px; }
+.stepCompleted { color: var(--tasks-muted-fg); text-decoration: line-through; }
+.note { margin: 7px 0 0; color: var(--tasks-muted-fg); white-space: pre-wrap; }
+.completedGroup { margin-top: 18px; border-top: 1px solid var(--tasks-border); }
+.completedHeading { display: flex; align-items: center; gap: 7px; padding: 12px 4px 8px; color: var(--tasks-muted-fg); font-size: 13px; font-weight: 600; cursor: pointer; list-style: none; }
+.completedHeading::-webkit-details-marker { display: none; }
+.completedHeading::before { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; transform: rotate(-45deg); transition: transform .15s; }
+.completedGroup[open] > .completedHeading::before { transform: rotate(45deg); }
+.completedCount { display: inline-flex; min-width: 20px; justify-content: center; border-radius: 999px; padding: 0 5px; background: var(--tasks-muted); font-size: 11px; }
+.error { margin: 0 0 10px; color: #dc2626; font-size: 13px; }
+:global(body[data-ds-dark-theme]) .error { color: #f87171; }
+.rawFallback { margin: 0; color: var(--dsw-alias-label-primary); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
