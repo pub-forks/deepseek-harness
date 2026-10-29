@@ -48,6 +48,17 @@ type Operation = (data: Record<string, unknown>) => Record<string, unknown>
 type Translate = TasksBodyProps['t']
 
 const STATUSES: TaskStatus[] = ['todo', 'to-debate', 'to-plan', 'to-implement', 'in-progress', 'to-review', 'on-hold', 'done', 'canceled']
+
+function isGaiaFrame(): boolean {
+  return typeof window !== 'undefined' && window.parent !== window &&
+    (document.documentElement.hasAttribute('data-gaia-full') || document.documentElement.hasAttribute('data-gaia-embed'))
+}
+
+function isAbsoluteTasksPath(path: string | undefined): path is string {
+  return typeof path === 'string' && path.length > 0 && path.length <= 4096 && path.startsWith('/') && path.endsWith('.tasks') &&
+    !/[\u0000-\u001f\u007f]/u.test(path) &&
+    !path.split('/').some(segment => segment === '.' || segment === '..')
+}
 /** Same labels, icons, and colors as Gaia's `TASK_STATUSES`. */
 const STATUS_META: Record<TaskStatus, { key: MarkdownKey; icon: LucideIcon; color: string }> = {
   todo: { key: 'statusTodo', icon: Circle, color: 'var(--tasks-muted-fg)' },
@@ -138,7 +149,12 @@ function taskOperation(id: string, operation: (task: Record<string, unknown>) =>
 }
 
 /** Gaia's `RoundCheck`: an orange disc with a check mark once completed. */
-function RoundCheck({ completed, onClick, label, small }: { completed: boolean; onClick?: (() => void) | undefined; label: string; small?: boolean }): ReactNode {
+function RoundCheck({ completed, onClick, label, small }: {
+  completed: boolean
+  onClick?: (() => void) | undefined
+  label: string
+  small?: boolean
+}): ReactNode {
   const className = `${css.check} ${small ? css.checkSmall : ''} ${completed ? css.checkCompleted : ''}`
   const mark = completed && <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path d="M2.5 6.5L5 9l4.5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
   return onClick
@@ -152,7 +168,11 @@ function StatusIcon({ status }: { status: TaskStatus }): ReactNode {
 }
 
 /** Gaia's icon-variant `StatusPicker`: the status icon opens a menu of every status. */
-function StatusMenu({ status, onChange, t }: { status: TaskStatus; onChange?: ((status: TaskStatus) => void) | undefined; t: Translate }): ReactNode {
+function StatusMenu({ status, onChange, t }: {
+  status: TaskStatus
+  onChange?: ((status: TaskStatus) => void) | undefined
+  t: Translate
+}): ReactNode {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -180,7 +200,11 @@ function StatusMenu({ status, onChange, t }: { status: TaskStatus; onChange?: ((
 }
 
 /** Inline title: a plain label; a double click edits it, committed on Enter or blur and reverted on Escape. */
-function TaskTitle({ task, onRename, t }: { task: PreviewTask; onRename?: ((title: string) => void) | undefined; t: Translate }): ReactNode {
+function TaskTitle({ task, onRename, t }: {
+  task: PreviewTask
+  onRename?: ((title: string) => void) | undefined
+  t: Translate
+}): ReactNode {
   const [editing, setEditing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (editing) inputRef.current?.select() }, [editing])
@@ -202,6 +226,13 @@ function TaskTitle({ task, onRename, t }: { task: PreviewTask; onRename?: ((titl
 export function TasksBody({ content, resourceAddress, useResource, t, tasksRemote }: TasksBodyProps): ReactNode {
   const resource = useResource<'file'>(resourceAddress).value
   const absolutePath = resource?.absolutePath
+  const [gaiaFrame, setGaiaFrame] = useState(isGaiaFrame)
+  useEffect(() => {
+    const root = document.documentElement
+    const observer = new MutationObserver(() => { setGaiaFrame(isGaiaFrame()) })
+    observer.observe(root, { attributes: true, attributeFilter: ['data-gaia-full', 'data-gaia-embed'] })
+    return () => { observer.disconnect() }
+  }, [])
   const source = contentText(content)
   // A text-pages load holds only its first pages until `eof`; a partial file is not invalid, just incomplete.
   const partial = content.kind === 'text' && !content.eof
@@ -212,6 +243,13 @@ export function TasksBody({ content, resourceAddress, useResource, t, tasksRemot
   const [draft, setDraft] = useState('')
   useEffect(() => { setText(source ?? ''); setVersion(resource?.version ?? ''); setError('') }, [source, resource?.version])
   const result = useMemo(() => parseTasksText(text), [text])
+  if (gaiaFrame && isAbsoluteTasksPath(absolutePath)) {
+    const src = new URL(`/embed/tasks?path=${encodeURIComponent(absolutePath)}`, window.location.origin).toString()
+    const title = absolutePath.split('/').at(-1) ?? absolutePath
+    return <div className={css.embedRoot} data-gaia-tasks-embed>
+      <iframe key={absolutePath} className={css.embedFrame} src={src} title={title} />
+    </div>
+  }
   if (source === undefined) return null
   const fileTitle = displayName(absolutePath, resourceAddress)
   const today = localDate()
@@ -258,10 +296,16 @@ export function TasksBody({ content, resourceAddress, useResource, t, tasksRemot
     if (!value) return
     setDraft('')
     void perform((data) => {
-      const current = Array.isArray(data.tasks) ? data.tasks : []
+      const current: unknown[] = Array.isArray(data.tasks) ? data.tasks : []
       const used = new Set(current.filter(isRecord).map(item => typeof item.id === 'string' ? item.id : ''))
       const now = new Date().toISOString()
-      return { ...data, tasks: [...current, { id: newId('t', used), title: value, completed: false, status: 'todo', important: false, due: null, note: '', steps: [], createdAt: now, completedAt: null }] }
+      return {
+        ...data,
+        tasks: [...current, {
+          id: newId('t', used), title: value, completed: false, status: 'todo', important: false,
+          due: null, note: '', steps: [], createdAt: now, completedAt: null,
+        }],
+      }
     })
   }
 
@@ -287,9 +331,16 @@ export function TasksBody({ content, resourceAddress, useResource, t, tasksRemot
       })
     }
     return <article className={css.task} data-completed={task.completed} data-expanded={isExpanded} key={task.id}>
-      <div className={css.taskRow} onClick={hasDetails ? () => { setExpanded(isExpanded ? null : task.id) } : undefined} data-clickable={hasDetails}>
-        <RoundCheck completed={task.completed} onClick={editable ? () => { edit((raw) => { setStatus(raw, task.completed ? 'todo' : 'done') }) } : undefined} label={t(task.completed ? 'reopenTask' : 'completeTask')} />
-        <span className={css.titleCell}><TaskTitle task={task} t={t} onRename={editable ? (value) => { edit((raw) => { raw.title = value }) } : undefined} /></span>
+      <div className={css.taskRow}
+        onClick={hasDetails ? () => { setExpanded(isExpanded ? null : task.id) } : undefined}
+        data-clickable={hasDetails}>
+        <RoundCheck completed={task.completed}
+          onClick={editable ? () => { edit((raw) => { setStatus(raw, task.completed ? 'todo' : 'done') }) } : undefined}
+          label={t(task.completed ? 'reopenTask' : 'completeTask')} />
+        <span className={css.titleCell}>
+          <TaskTitle task={task} t={t}
+            onRename={editable ? (value) => { edit((raw) => { raw.title = value }) } : undefined} />
+        </span>
         {hasDetails && <ChevronRight size={14} className={`${css.chevron} ${isExpanded ? css.chevronOpen : ''}`} aria-hidden="true" />}
         {task.steps.length > 0 && <span className={css.meta} title={`${task.steps.length} ${t('stepsLabel')}`}>{doneSteps}/{task.steps.length}</span>}
         {task.status !== 'done' && <StatusMenu status={task.status} t={t} onChange={editable ? (status) => { edit((raw) => { setStatus(raw, status) }) } : undefined} />}

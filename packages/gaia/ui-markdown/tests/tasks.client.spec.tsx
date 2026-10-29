@@ -98,7 +98,10 @@ describe('Gaia Tasks document preview', () => {
     const original = JSON.stringify({ tasks: [{ id: 'a', title: 'Work', completed: false, status: 'todo' }] })
     const write = vi.fn<TestWrite>(async () => ({ version: 'v2' }))
     render(<TasksBody {...props(original)} tasksRemote={{ write, read: vi.fn() }} />)
-    const written = (call: number): Array<Record<string, unknown>> => (JSON.parse(write.mock.calls[call]?.[2] as string) as { tasks: Array<Record<string, unknown>> }).tasks
+    const written = (call: number): Array<Record<string, unknown>> => {
+      const value = JSON.parse(write.mock.calls[call]?.[2] as string) as { tasks: Array<Record<string, unknown>> }
+      return value.tasks
+    }
     fireEvent.doubleClick(screen.getByText('Work'))
     const input = screen.getByRole('textbox', { name: 'Edit task title' })
     fireEvent.change(input, { target: { value: 'Renamed' } })

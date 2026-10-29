@@ -12,6 +12,9 @@
   line-height: 1.43;
   overflow-wrap: anywhere;
 }
+.embedRoot { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.embedFrame { display: block; flex: 1 1 auto; width: 100%; height: 100%; min-width: 0; min-height: 0; border: 0; }
+:global([data-textpreview-body]:has([data-gaia-tasks-embed])) { display: flex; overflow: hidden; }
 .header { padding: 20px 24px 12px; border-bottom: 1px solid var(--tasks-border); }
 .heading { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.33; }
 .counts { margin: 4px 0 0; color: var(--tasks-muted-fg); font-size: 12px; }
