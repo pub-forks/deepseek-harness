@@ -42,6 +42,20 @@ describe('Gaia Tasks document preview', () => {
     expect(screen.getByRole('status').textContent).toBe('Not fully loaded')
   })
 
+  it('does not inspect or parse task content when Gaia supplies its embedded viewer', () => {
+    const parentDescriptor = Object.getOwnPropertyDescriptor(window, 'parent')
+    Object.defineProperty(window, 'parent', { configurable: true, value: {} })
+    document.documentElement.setAttribute('data-gaia-embed', '')
+    const uninspected = new Proxy({}, { get: () => { throw new Error('task content should remain untouched') } })
+    try {
+      render(<TasksBody {...props('')} content={uninspected as TasksBodyProps['content']} />)
+      expect(screen.getByTitle('list.tasks').getAttribute('src')).toContain('/embed/tasks?path=%2Fworkspace%2Flist.tasks')
+    } finally {
+      document.documentElement.removeAttribute('data-gaia-embed')
+      if (parentDescriptor) Object.defineProperty(window, 'parent', parentDescriptor)
+    }
+  })
+
   it('parses a blank file as an empty list and falls back to the filename for a missing title', () => {
     expect(parseTasksText(' \n\t')).toMatchObject({ value: { tasks: [] }, error: false })
     const { container } = render(<TasksBody {...props('{"tasks":[]}')} />)

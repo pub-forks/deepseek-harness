@@ -223,7 +223,8 @@ function TaskTitle({ task, onRename, t }: {
 }
 
 /** Render and edit a parsed task list; invalid JSON remains a read-only raw view. */
-export function TasksBody({ content, resourceAddress, useResource, t, tasksRemote }: TasksBodyProps): ReactNode {
+export function TasksBody(props: TasksBodyProps): ReactNode {
+  const { resourceAddress, useResource } = props
   const resource = useResource<'file'>(resourceAddress).value
   const absolutePath = resource?.absolutePath
   const [gaiaFrame, setGaiaFrame] = useState(isGaiaFrame)
@@ -233,16 +234,6 @@ export function TasksBody({ content, resourceAddress, useResource, t, tasksRemot
     observer.observe(root, { attributes: true, attributeFilter: ['data-gaia-full', 'data-gaia-embed'] })
     return () => { observer.disconnect() }
   }, [])
-  const source = contentText(content)
-  // A text-pages load holds only its first pages until `eof`; a partial file is not invalid, just incomplete.
-  const partial = content.kind === 'text' && !content.eof
-  const [text, setText] = useState(source ?? '')
-  const [version, setVersion] = useState(resource?.version ?? '')
-  const [error, setError] = useState('')
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
-  useEffect(() => { setText(source ?? ''); setVersion(resource?.version ?? ''); setError('') }, [source, resource?.version])
-  const result = useMemo(() => parseTasksText(text), [text])
   if (gaiaFrame && isAbsoluteTasksPath(absolutePath)) {
     const src = new URL(`/embed/tasks?path=${encodeURIComponent(absolutePath)}`, window.location.origin).toString()
     const title = absolutePath.split('/').at(-1) ?? absolutePath
@@ -250,6 +241,23 @@ export function TasksBody({ content, resourceAddress, useResource, t, tasksRemot
       <iframe key={absolutePath} className={css.embedFrame} src={src} title={title} />
     </div>
   }
+  return <LocalTasksBody {...props} absolutePath={absolutePath} resourceVersion={resource?.version} />
+}
+
+function LocalTasksBody({ content, resourceAddress, absolutePath, resourceVersion, t, tasksRemote }: TasksBodyProps & {
+  absolutePath: string | undefined
+  resourceVersion: string | undefined
+}): ReactNode {
+  const source = contentText(content)
+  // A text-pages load holds only its first pages until `eof`; a partial file is not invalid, just incomplete.
+  const partial = content.kind === 'text' && !content.eof
+  const [text, setText] = useState(source ?? '')
+  const [version, setVersion] = useState(resourceVersion ?? '')
+  const [error, setError] = useState('')
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  useEffect(() => { setText(source ?? ''); setVersion(resourceVersion ?? ''); setError('') }, [source, resourceVersion])
+  const result = useMemo(() => parseTasksText(text), [text])
   if (source === undefined) return null
   const fileTitle = displayName(absolutePath, resourceAddress)
   const today = localDate()
