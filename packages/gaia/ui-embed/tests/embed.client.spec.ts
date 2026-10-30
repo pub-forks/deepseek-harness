@@ -1170,6 +1170,50 @@ describe('ui-embed client plugin', () => {
     expect(parentMessages.some(m => m.type === 'error' && m.code === 'insert_unsupported')).toBe(false)
   })
 
+  it('in full mode inserts dictated text into the Session shown by the conversation', () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    const shown = document.createElement('div')
+    shown.setAttribute('data-conversation-session', 's-test-123')
+    document.body.appendChild(shown)
+    apply(mock.ctx)
+
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'insertText', text: ' drawer dictation' },
+    }))
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'focus' },
+    }))
+
+    expect(mock.sessions.scope).toHaveBeenCalledWith('s-test-123')
+    expect(mock.insertTextSpy).toHaveBeenCalledWith({
+      text: ' drawer dictation',
+      span: { start: 14, end: 14, draftRev: 2 },
+    })
+    expect(mock.focusSpy).toHaveBeenCalled()
+    expect(parentMessages).not.toContainEqual({ source: 'gaia-dsh', v: 1, type: 'error', code: 'insert_unsupported' })
+    shown.remove()
+  })
+
+  it('reports insert_unsupported in full mode when no conversation Session is shown', () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    apply(mock.ctx)
+
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent,
+      origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'insertText', text: 'drawer dictation' },
+    }))
+
+    expect(mock.insertTextSpy).not.toHaveBeenCalled()
+    expect(parentMessages).toContainEqual({ source: 'gaia-dsh', v: 1, type: 'error', code: 'insert_unsupported' })
+  })
+
   it.each(['embed', 'full'] as const)('targeted reply inserts into the explicit session and acknowledges in %s mode', (mode) => {
     setLocationSearch(mode === 'full' ? '?gaia=full' : '?gaia=embed&session=s-test-123')
     const mock = createMockContext()

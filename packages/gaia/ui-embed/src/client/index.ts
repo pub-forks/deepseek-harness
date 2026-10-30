@@ -556,6 +556,35 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     const summary = ctx.sessions.list.getSnapshot().byId[id]
     return summary?.title ?? summary?.displayTitle ?? ''
   }
+  /** Resolve the composer belonging to a Session scope.
+   * @param id - Session whose composer should receive a bridge command.
+   * @returns The Session scope and input when both are available.
+   */
+  const getSessionInput = (id: SessionId): { actx: Context; input: SessionInput } | undefined => {
+    const actx = ctx.sessions.scope(id)
+    if (actx === undefined) return undefined
+    const conversation = actx.get('conversation')
+    if (conversation === undefined) return undefined
+    return { actx, input: conversation.input.for(actx) }
+  }
+  /** Append text to a Session composer through its normal insertion event.
+   * @param id - Session receiving the text.
+   * @param text - Text to append.
+   * @returns Whether the composer accepted the text.
+   */
+  const insertText = (id: SessionId, text: string): boolean => {
+    const session = getSessionInput(id)
+    if (session === undefined) return false
+    const span = appendDetectSpan(session.input.state.getSnapshot())
+    return session.actx.bail(session.actx, 'slash/input-insert-text', { text, span }) === true
+  }
+  /** Return the Session id currently rendered by the full-shell conversation.
+   * @returns The displayed Session id, or undefined when no conversation is shown.
+   */
+  const getShownSessionId = (): SessionId | undefined => {
+    const rawId = document.querySelector('[data-conversation-session]')?.getAttribute('data-conversation-session')
+    return rawId && isValidSessionId(rawId) ? SessionId(rawId) : undefined
+  }
   let unsubFullNotifications: (() => void) | undefined
   let onFullMessage: ((event: MessageEvent) => void) | undefined
   if (mode === 'full') {
@@ -563,11 +592,22 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     // A notification's "Open in Harness" asks the full shell to show its session.
     onFullMessage = (event: MessageEvent): void => {
       if (event.source !== window.parent || event.origin !== window.location.origin) return
-      if (!isGaiaIncomingMessage(event.data) || event.data.type !== 'openSession') return
-      try {
-        ctx.uiWorkspace.openSession(SessionId(event.data.sessionId))
-      } catch {
-        // The session may have been archived or deleted since it notified.
+      if (!isGaiaIncomingMessage(event.data)) return
+      if (event.data.type === 'openSession') {
+        try {
+          ctx.uiWorkspace.openSession(SessionId(event.data.sessionId))
+        } catch (error) {
+          // The session may have been archived or deleted since it notified.
+          void error
+        }
+      } else if (event.data.type === 'focus') {
+        const sessionId = getShownSessionId()
+        if (sessionId !== undefined) getSessionInput(sessionId)?.input.focus()
+      } else if (event.data.type === 'insertText') {
+        const sessionId = getShownSessionId()
+        if (sessionId === undefined || !insertText(sessionId, event.data.text)) {
+          postToParent({ source: 'gaia-dsh', v: 1, type: 'error', code: 'insert_unsupported' })
+        }
       }
     }
     window.addEventListener('message', onFullMessage)
@@ -789,15 +829,6 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     }), 'gaia-ui-embed: open files in the Gaia editor')
   })
 
-  /** Resolve SessionInput through the Session scope context. */
-  const getSessionInput = (): { actx: Context; input: SessionInput } | undefined => {
-    const actx = ctx.sessions.scope(sessionId)
-    if (actx === undefined) return undefined
-    const conversation = actx.get('conversation')
-    if (conversation === undefined) return undefined
-    return { actx, input: conversation.input.for(actx) }
-  }
-
   // Listen to incoming messages from the parent frame.
   const onMessage = (event: MessageEvent): void => {
     if (event.source !== window.parent || event.origin !== window.location.origin) return
@@ -810,19 +841,13 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
       case 'openSettings': break
       case 'targetedInsertText': break // handled by the frame-mode-independent bridge listener above
       case 'focus': {
-        const session = getSessionInput()
+        const session = getSessionInput(sessionId)
         session?.input.focus()
         break
       }
       case 'insertText': {
         const text = event.data.text
-        const session = getSessionInput()
-        let applied = false
-        if (session !== undefined) {
-          const snapshot = session.input.state.getSnapshot()
-          const span = appendDetectSpan(snapshot)
-          applied = session.actx.bail(session.actx, 'slash/input-insert-text', { text, span }) === true
-        }
+        const applied = insertText(sessionId, text)
         if (!applied) {
           postToParent({ source: 'gaia-dsh', v: 1, type: 'error', code: 'insert_unsupported' })
         }
