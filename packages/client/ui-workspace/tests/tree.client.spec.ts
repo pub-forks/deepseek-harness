@@ -9,7 +9,7 @@ import type { SessionProjectionSnapshot } from '@deepseek-ai/dsh-api-session-con
 import {
   type ArchivedFilter,
   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
-  groupsWithOpenSessions, orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds,
+  groupsWithOpenSessions, orderWorkspacesByName, partitionStarredGroups, pinCurrentBlank, reconcileManualOrder, sessionMemberIds,
   visibleSessionIds, workspaceLabel, UNGROUPED_KEY,
 } from '../src/client/tree.ts'
 import { createWorkspaceViewStore } from '../src/client/stores.ts'
@@ -149,6 +149,33 @@ describe('Session ordering', () => {
     const order = orderByRecency(sessions.ids, sessions.byId)
     expect(deriveFlat(sessions, order, state, noAttention).map(row => row.id))
       .toEqual([sid('fresh-pin'), sid('stale-pin'), sid('plain')])
+  })
+
+  // GAIA: favorite folder matches are a view-only partition of existing Workspace order.
+  it('projects starred groups by exact path and descendants while preserving each input order', () => {
+    const sessions = list(summary('one', 1), summary('child', 2), summary('sibling-prefix', 3), summary('plain', 4), summary('loose', 5))
+    const ordered = [
+      workspace('child', ['child']), workspace('plain', ['plain']), workspace('exact', ['one']),
+      workspace('prefix', ['sibling-prefix']),
+    ]
+    const groups = deriveGroups(sessions, ordered, noRows, noAttention, view(['child', 'plain', 'exact', 'prefix', UNGROUPED_KEY]))
+    const partition = partitionStarredGroups(groups, ['/projects/exact', '/projects/child'])
+    expect(partition.starred.map(group => group.key)).toEqual(['child', 'exact'])
+    expect(partition.other.map(group => group.key)).toEqual(['plain', 'prefix', UNGROUPED_KEY])
+    expect(partition.other.at(-1)?.workspaceId).toBeUndefined()
+  })
+
+  // GAIA: path-segment containment rejects sibling names that only share a string prefix.
+  it('keeps empty starred projections empty and matches Workspace path descendants at segment boundaries', () => {
+    const sessions = list(summary('a', 1), summary('ab', 2))
+    const groups = deriveGroups(sessions, [
+      { ...workspace('a', ['a']), path: '/a/b' },
+      { ...workspace('ab', ['ab']), path: '/a/bc' },
+    ], noRows, noAttention, view(['a', 'ab']))
+    expect(partitionStarredGroups(groups, []).starred).toEqual([])
+    expect(partitionStarredGroups(groups, ['/a/b']).starred.map(group => group.key)).toEqual(['a'])
+    expect(partitionStarredGroups(groups, ['/a/b/']).starred.map(group => group.key)).toEqual(['a'])
+    expect(partitionStarredGroups(groups, ['/']).starred.map(group => group.key)).toEqual(['a', 'ab'])
   })
 
   it('reconciles retained manual slots and appends newly known members by recency', () => {

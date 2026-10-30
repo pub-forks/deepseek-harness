@@ -21,6 +21,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { DraftInitializationOptions } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { RowToast } from './contract/slots.ts'
+import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import { pinOrderAccounts, pinOrderSource } from './pin-order.ts'
 import type { WorkspaceViewStoreActions } from './stores.ts'
 
@@ -37,6 +38,14 @@ export interface StartSessionOptions extends DraftInitializationOptions {
 
 /** Workspace archive and directory operations consumed by Client UI domains. */
 export interface UiWorkspace {
+  /** Parent-provided absolute paths used only to project the browser's Starred section. */
+  readonly starredWorkspacePaths: HostObservable<readonly string[]>
+  /**
+   * Replace the read-only parent projection without changing Host Workspace data.
+   * @param paths - validated absolute paths from Gaia's parent frame.
+   * @returns nothing.
+   */
+  setStarredWorkspacePaths(paths: readonly string[]): void
   /**
    * Select a Session and show its Conversation as one UI navigation action.
    * @param target - known Session identity or durable direct-parent subagent address to display.
@@ -156,6 +165,9 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     readonly attempt: Promise<SessionId>
   }>()
   private readonly lifetime = new AbortController()
+  // GAIA: the service instance owns this parent-frame projection for its browser consumer.
+  private readonly starredPaths = createSnapshotStore<readonly string[]>([])
+  readonly starredWorkspacePaths: HostObservable<readonly string[]> = this.starredPaths
   private readonly selection = createSnapshotStore<MainSelection>(
     {}, { persist: { name: 'dsh.sessions.current' } },
   )
@@ -188,6 +200,13 @@ class UiWorkspaceService extends Service implements UiWorkspace {
         reference?.release()
       }
     }, 'ui-workspace: Workspace navigation policy')
+  }
+
+  // GAIA: keep bridge state on this service instance for its browser consumer.
+  setStarredWorkspacePaths(paths: readonly string[]): void {
+    const current = this.starredPaths.getSnapshot()
+    if (current.length === paths.length && current.every((path, index) => path === paths[index])) return
+    this.starredPaths.set([...paths])
   }
 
   connectWorkspace(workspaceId: WorkspaceId, options: Pick<StartSessionOptions, 'agentPreset'> = {}): Promise<SessionId> {

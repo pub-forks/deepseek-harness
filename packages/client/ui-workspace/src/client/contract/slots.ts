@@ -230,6 +230,8 @@ export type WorkspaceBrowserInjected = {
     hostInfo: HostObservable<RemoteHostFacts>
     workspaceShortcuts: HostObservable<WorkspaceShortcutState>
     shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>
+    /** Gaia's read-only parent projection; empty in standalone Harness. */
+    starredWorkspacePaths: HostObservable<readonly string[]>
   }
   /** Open the browser search and focus its input. */
   requestSearch: () => void

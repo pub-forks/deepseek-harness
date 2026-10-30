@@ -59,6 +59,16 @@ describe('isGaiaIncomingMessage', () => {
     expect(isGaiaIncomingMessage({ source: 'gaia-dsh', v: 1, type: 'insertText', text: 123 })).toBe(false)
   })
 
+  // GAIA: exercise the complete path-list bounds at the wire validator.
+  it('validates bounded absolute starred Workspace paths', () => {
+    const message = { source: 'gaia-dsh', v: 1, type: 'starredWorkspaces', paths: ['/projects/a', '/projects/a/child'] }
+    expect(isGaiaIncomingMessage(message)).toBe(true)
+    for (const paths of [new Array(201).fill('/projects/a'), ['/'.repeat(4097)], [''], ['relative'], ['/bad\npath'], new Array(1)]) {
+      expect(isGaiaIncomingMessage({ ...message, paths })).toBe(false)
+    }
+    expect(isGaiaIncomingMessage({ ...message, extra: true })).toBe(false)
+  })
+
   it('validates targetedInsertText as its own bounded session-addressed protocol', () => {
     const valid = { source: 'gaia-dsh', v: 1, type: 'targetedInsertText', sessionId: 'session-1', requestId: 'reply-1', text: 'draft' }
     expect(isGaiaIncomingMessage(valid)).toBe(true)
@@ -191,6 +201,7 @@ describe('ui-embed client plugin', () => {
 
     const uiWorkspace = {
       openSession: vi.fn(),
+      setStarredWorkspacePaths: vi.fn(),
     }
     ctx.provide('uiWorkspace', uiWorkspace)
 
@@ -456,6 +467,27 @@ describe('ui-embed client plugin', () => {
     }))
     await dispose?.()
     expect(document.documentElement.hasAttribute('data-gaia-full')).toBe(false)
+  })
+
+  it('applies starred Workspace paths in full mode and ignores the message in embed mode', () => {
+    const paths = ['/projects/starred']
+    setLocationSearch('?gaia=full')
+    const full = createMockContext()
+    apply(full.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent, origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'starredWorkspaces', paths },
+    }))
+    expect(full.uiWorkspace.setStarredWorkspacePaths).toHaveBeenCalledWith(paths)
+
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const embed = createMockContext()
+    apply(embed.ctx)
+    window.dispatchEvent(new MessageEvent('message', {
+      source: fakeParent, origin: window.location.origin,
+      data: { source: 'gaia-dsh', v: 1, type: 'starredWorkspaces', paths },
+    }))
+    expect(embed.uiWorkspace.setStarredWorkspacePaths).not.toHaveBeenCalled()
   })
 
   it.each(['full', 'embed'] as const)('debounces workspace changes after the first ready snapshot in %s mode', async (mode) => {

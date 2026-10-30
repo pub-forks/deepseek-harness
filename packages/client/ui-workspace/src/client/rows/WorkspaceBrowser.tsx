@@ -35,6 +35,7 @@ import type { ArchivedFilter, GroupNode, SessionNode, SessionOrderBy, SessionRow
 import {
   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
   groupsWithOpenSessions, orderWorkspacesByName, pinCurrentBlank, reconcileManualOrder, sessionMemberIds, UNGROUPED_KEY,
+  partitionStarredGroups,
 } from '../tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
 import { AnimatedRows } from './AnimatedRows.tsx'
@@ -282,6 +283,8 @@ type SessionTreeProps = Pick<
   | 'sidebar.session.row.hover'
 > & {
   shortcuts: readonly import('@deepseek-ai/dsh-client-shortcuts/client').ShortcutCatalogEntry[]
+  /** Paths Gaia marks in the leading Starred section; empty in standalone Harness. */
+  starredWorkspacePaths: readonly string[]
   /** Always-mounted Session list snapshot. */
   list: SessionListState
   /** Host account home for POSIX hover-path abbreviation. */
@@ -347,6 +350,7 @@ function SessionTree({
   renderSlot,
   insertWorkspaceBefore,
   nestWorkspaces, workspaceOrderBy, openSessionsOnly, groupExpansion, setGroupExpanded,
+  starredWorkspacePaths,
   setSessionOrder, home, t,
   revealSessionId, onSessionRevealed, shortcuts,
 }: SessionTreeProps) {
@@ -411,6 +415,8 @@ function SessionTree({
       : projectedGroups,
     [openSessionsOnly, projectedGroups, list, workspaces, rowState.archivedSessionIds, parents],
   )
+  // GAIA: preserve the selected workspace order while projecting favorite groups first.
+  const sections = useMemo(() => partitionStarredGroups(groups, starredWorkspacePaths), [groups, starredWorkspacePaths])
   useEffect(() => {
     for (let key = revealGroup; key !== undefined; key = parents.get(key)) {
       if (groupExpansion[key] === false || (key === revealGroup && groupExpansion[key] !== true)) {
@@ -484,6 +490,8 @@ function SessionTree({
       console.warn('workspace reorder rejected:', reason)
     })
   }
+  const starredKeys = useMemo(() => new Set(sections.starred.map(group => group.key)), [sections.starred])
+  const renderedGroupKeys = new Set(groups.map(group => group.key))
   const childrenByParent = useMemo(() => {
     const rendered = new Set(groups.map(group => group.key))
     const children = new Map<string | undefined, GroupNode[]>()
@@ -492,18 +500,27 @@ function SessionTree({
       // absent; nest under the nearest rendered one.
       let parent = parents.get(group.key)
       while (parent !== undefined && !rendered.has(parent)) parent = parents.get(parent)
+      if (parent !== undefined && starredKeys.has(parent) !== starredKeys.has(group.key)) parent = undefined
       const siblings = children.get(parent)
       if (siblings === undefined) children.set(parent, [group])
       else siblings.push(group)
     }
     return children
-  }, [groups, parents])
-  const rootGroups = childrenByParent.get(undefined) ?? []
+  }, [groups, parents, starredKeys])
+  const sectionRoots = (members: readonly GroupNode[]): GroupNode[] => members.filter((group) => {
+    const parent = parents.get(group.key)
+    return parent === undefined || !renderedGroupKeys.has(parent)
+      || starredKeys.has(group.key) !== starredKeys.has(parent)
+  })
+  const starredRoots = sectionRoots(sections.starred)
+  const otherRoots = sectionRoots(sections.other)
+  const rootGroups = [...starredRoots, ...otherRoots]
   const workspaceDropAtListStart = rootGroups[0]?.workspaceId !== undefined
     && workspaceDrag?.over?.id === rootGroups[0].workspaceId
     && workspaceDrag.over.half === 'before'
 
   const rowKeys: string[] = groups.length === 0 ? ['empty'] : []
+  if (sections.starred.length > 0) rowKeys.push('section:starred')
   const renderGroup = (group: GroupNode, depth: number): ReactNode => {
     const workspaceId = group.workspaceId
     const children = childrenByParent.get(group.key) ?? []
@@ -696,7 +713,9 @@ function SessionTree({
     )
   }
 
-  const groupRows = rootGroups.map(group => renderGroup(group, 0))
+  const starredRows = starredRoots.map(group => renderGroup(group, 0))
+  if (starredRoots.length > 0 && otherRoots.length > 0) rowKeys.push('section:other')
+  const otherRows = otherRoots.map(group => renderGroup(group, 0))
   return (
     <HoverCardGroup className={clsx(css.treeBody, css.wide)}>
       {workspaceDropAtListStart && <span className={css.listTopDropIndicator} aria-hidden="true" />}
@@ -710,7 +729,10 @@ function SessionTree({
         {groups.length === 0 && (
           <EmptySessions rowState={rowState} onLeaveArchivedOnly={onLeaveArchivedOnly} t={t} />
         )}
-        {groupRows}
+        {starredRows.length > 0 && <div role="heading" aria-level={3} className={css.searchStatus} data-row-key="section:starred">{t('section.starred')}</div>}
+        {starredRows}
+        {starredRows.length > 0 && otherRows.length > 0 && <div role="heading" aria-level={3} className={css.searchStatus} data-row-key="section:other">{t('section.other')}</div>}
+        {otherRows}
       </AnimatedRows>
       <span className={css.fade} />
     </HoverCardGroup>
@@ -953,6 +975,7 @@ export function WorkspaceBrowser({
   useHostInfo,
   useShortcuts,
   useWorkspaceShortcuts,
+  useStarredWorkspacePaths,
   requestSearch,
   requestAddWorkspace,
   closeAddWorkspace,
@@ -960,6 +983,7 @@ export function WorkspaceBrowser({
   renderSlot,
   t,
 }: WorkspaceBrowserProps) {
+  const starredWorkspacePaths = useStarredWorkspacePaths(paths => paths)
   const home = useHostInfo(info => info.home)
   const shortcuts = useShortcuts(rows => rows)
   const searchShortcut = shortcuts.find(row => row.id === 'session.search')
@@ -1501,6 +1525,7 @@ export function WorkspaceBrowser({
                 nestWorkspaces={groupBy === 'workspace-tree'}
                 workspaceOrderBy={workspaceOrderBy}
                 openSessionsOnly={openSessionsOnly}
+                starredWorkspacePaths={starredWorkspacePaths}
                 animationResetKey={`${groupBy}/${orderBy}/${workspaceOrderBy}/${archivedFilter}/${openSessionsOnly}`}
                 groupExpansion={groupExpansion}
                 setGroupExpanded={actions.setGroupExpanded}

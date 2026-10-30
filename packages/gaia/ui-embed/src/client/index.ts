@@ -600,6 +600,8 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
           // The session may have been archived or deleted since it notified.
           void error
         }
+      } else if (event.data.type === 'starredWorkspaces') {
+        ctx.uiWorkspace.setStarredWorkspacePaths(event.data.paths)
       } else if (event.data.type === 'focus') {
         const sessionId = getShownSessionId()
         if (sessionId !== undefined) getSessionInput(sessionId)?.input.focus()
@@ -837,6 +839,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     switch (event.data.type) {
       case 'readAloudState': break
       case 'appChords': break
+      case 'starredWorkspaces': break // full mode owns this display-only projection.
       case 'theme': break
       case 'openSettings': break
       case 'targetedInsertText': break // handled by the frame-mode-independent bridge listener above

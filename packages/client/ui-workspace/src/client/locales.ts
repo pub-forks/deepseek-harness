@@ -18,6 +18,9 @@ export const zh = {
   'shortcut.noCompletedTurn': '当前会话没有已结束的轮次',
   'shortcut.forkFailed': '无法分叉会话，请重试',
   'section.workspaces': '工作区',
+  // GAIA: label the read-only group projected from Gaia project favorites.
+  'section.starred': '已加星标',
+  'section.other': '其他',
   'section.sessions': '会话',
   'viewOptions.label': '视图选项',
   'groupBy.label': '分组方式',
@@ -150,6 +153,9 @@ export const en = {
   'shortcut.noCompletedTurn': 'This session has no completed turn',
   'shortcut.forkFailed': 'Could not fork the session. Try again.',
   'section.workspaces': 'Workspaces',
+  // GAIA: label the read-only group projected from Gaia project favorites.
+  'section.starred': 'Starred',
+  'section.other': 'Other',
   'section.sessions': 'Sessions',
   'viewOptions.label': 'View options',
   'groupBy.label': 'Group by',

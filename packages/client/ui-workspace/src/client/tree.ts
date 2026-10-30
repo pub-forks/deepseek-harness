@@ -83,6 +83,41 @@ export interface GroupNode {
   sessions: readonly SessionNode[]
 }
 
+/**
+ * Match an absolute Workspace cwd to a starred folder using path-segment boundaries.
+ * @param cwd - Workspace cwd to classify.
+ * @param starredPaths - parent-provided starred folders.
+ * @returns whether the cwd equals or descends from a starred folder.
+ */
+// GAIA: classify project paths without consulting the filesystem.
+export function isWorkspacePathStarred(cwd: string | undefined, starredPaths: readonly string[]): boolean {
+  if (cwd === undefined) return false
+  return starredPaths.some((path) => {
+    const root = path.length > 1 ? path.replace(/\/+$/, '') || '/' : path
+    return cwd === root || cwd.startsWith(root === '/' ? '/' : `${root}/`)
+  })
+}
+
+/**
+ * Split already ordered groups into Starred and ordinary sections, keeping Ungrouped last.
+ * @param groups - groups in the selected Name or Manual order.
+ * @param starredPaths - parent-provided starred folders.
+ * @returns the two ordered sections.
+ */
+// GAIA: sectioning is a display projection over the existing group order.
+export function partitionStarredGroups(
+  groups: readonly GroupNode[],
+  starredPaths: readonly string[],
+): { starred: GroupNode[]; other: GroupNode[] } {
+  const starred: GroupNode[] = []
+  const other: GroupNode[] = []
+  for (const group of groups) {
+    if (group.workspaceId !== undefined && isWorkspacePathStarred(group.cwd, starredPaths)) starred.push(group)
+    else other.push(group)
+  }
+  return { starred, other }
+}
+
 const workspaceTitleCollator = new Intl.Collator('en', { sensitivity: 'base', numeric: true })
 
 /**

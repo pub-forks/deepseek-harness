@@ -281,7 +281,11 @@ export function apply(ctx: Context): void {
     requestAddWorkspace: shortcutControls.add,
     closeAddWorkspace: shortcutControls.closeAdd,
     setDirectoryBusy: shortcutControls.directoryBusy,
-    hooks: { directoryFlow: browserFlowSource, hostInfo, workspaceShortcuts: shortcutControls.state, shortcuts: ctx.shortcuts.catalog },
+    // GAIA: keep the parent projection under the uiWorkspace service owner and pass it through a typed hook.
+    hooks: {
+      directoryFlow: browserFlowSource, hostInfo, workspaceShortcuts: shortcutControls.state,
+      shortcuts: ctx.shortcuts.catalog, starredWorkspacePaths: uiWorkspace.starredWorkspacePaths,
+    },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({
     createWorkspace: input => workspaces.create(input),

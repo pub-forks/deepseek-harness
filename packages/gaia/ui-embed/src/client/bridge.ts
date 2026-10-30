@@ -10,6 +10,10 @@ export const GAIA_BRIDGE_SOURCE = 'gaia-dsh' as const
 
 /** Maximum byte length for insertText messages (8 KB). */
 export const MAX_INSERT_TEXT_BYTES = 8192
+/** Maximum number of parent-provided starred Workspace paths. */
+export const MAX_STARRED_WORKSPACE_PATHS = 200
+/** Maximum UTF-16 code units in one parent-provided starred Workspace path. */
+export const MAX_STARRED_WORKSPACE_PATH_LENGTH = 4096
 
 // Twin: web/src/lib/harnessBridge.ts in Gaia.
 /** Maximum text length included in a completion recap. */
@@ -141,6 +145,7 @@ export type GaiaIncomingMessage =
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'theme'; mode: 'light' | 'dark'; palette?: GaiaPalette }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'focus' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'insertText'; text: string }
+  | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'starredWorkspaces'; paths: string[] }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'targetedInsertText'; sessionId: string; requestId: string; text: string }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'clear' }
   | { source: typeof GAIA_BRIDGE_SOURCE; v: typeof GAIA_BRIDGE_VERSION; type: 'resumeSessions'; reqId: string; sessions: ResumeSessionRow[] }
@@ -207,6 +212,11 @@ export function isGaiaIncomingMessage(data: unknown): data is GaiaIncomingMessag
       if (typeof msg.text !== 'string') return false
       return new TextEncoder().encode(msg.text).length <= MAX_INSERT_TEXT_BYTES
     }
+    case 'starredWorkspaces':
+      return Array.isArray(msg.paths) && msg.paths.length <= MAX_STARRED_WORKSPACE_PATHS
+        && Array.from(msg.paths).every(path => typeof path === 'string' && path.length > 0
+          && path.length <= MAX_STARRED_WORKSPACE_PATH_LENGTH && path.startsWith('/') && !/[\0\r\n\t]/.test(path))
+        && Object.keys(msg).every(key => ['source', 'v', 'type', 'paths'].includes(key))
     case 'targetedInsertText':
       return typeof msg.sessionId === 'string' && isValidSessionId(msg.sessionId)
         && typeof msg.requestId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(msg.requestId)
