@@ -310,6 +310,35 @@ export function apply(ctx: Context): void {
               })
             }
             answer(res, 200, { sessions })
+          } else if (method === 'GET' && path === `${PREFIX}/sessions/by-workspace`) {
+            const rawIds = url.searchParams.get('workspaceIds')
+            if (rawIds === null || !rawIds) throw new RequestError(400, 'invalid_workspaceIds')
+            const rawIncludeArchived = url.searchParams.get('includeArchived')
+            if (rawIncludeArchived !== null && rawIncludeArchived !== '1') throw new RequestError(400, 'invalid_includeArchived')
+            for (const key of url.searchParams.keys()) {
+              if (key !== 'workspaceIds' && key !== 'includeArchived') throw new RequestError(400, `invalid_${key}`)
+            }
+            const ids = [...new Set(rawIds.split(',').filter(Boolean))]
+            if (ids.length === 0 || ids.length > 500 || ids.some(id => id.length > 4096)) throw new RequestError(400, 'invalid_workspaceIds')
+            const includeArchived = rawIncludeArchived === '1'
+            const workspaces = new Map(ctx.workspaceRegistry.list().map(workspace => [workspace.id, workspace]))
+            const archivedSet = new Set(ctx.workspaceRegistry.archivedSessionIds)
+            const items = (await ctx.sessionController.list({}, new AbortController().signal)).items
+            const itemMap = new Map(items.map(item => [item.sessionId, item]))
+            const sessionsByWorkspace: Record<string, Array<{ sessionId: string; title: string; running: boolean; updatedAt: number | null; archived: boolean }>> = {}
+            for (const id of ids) {
+              const workspace = workspaces.get(WorkspaceId(id))
+              if (workspace === undefined) continue
+              const sessions = []
+              for (const sessionId of workspace.sessionIds) {
+                const archived = archivedSet.has(sessionId)
+                if (!includeArchived && archived) continue
+                const item = itemMap.get(sessionId)
+                sessions.push({ sessionId, title: item?.projections?.values.title ?? '', running: item?.running ?? false, updatedAt: item?.updatedAt ?? null, archived })
+              }
+              sessionsByWorkspace[id] = sessions
+            }
+            answer(res, 200, { sessionsByWorkspace })
           } else if (method === 'GET' && path === `${PREFIX}/activity`) {
             answer(res, 200, {
               attachedClients: 0,

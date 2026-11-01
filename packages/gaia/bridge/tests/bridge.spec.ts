@@ -219,6 +219,23 @@ describe('Gaia control bridge', () => {
     expect(listed.body.sessions).toEqual([{ sessionId: 'fresh-session', title: '', running: false, updatedAt: null, archived: false }])
   })
 
+  it('lists sessions for multiple workspaces with one controller listing', async () => {
+    const f = fixture()
+    const first = await f.call('POST', '/gaia/control/workspaces/ensure', { path: '/tmp' })
+    const second = await f.call('POST', '/gaia/control/workspaces/ensure', { path: '/' })
+    await f.call('POST', '/gaia/control/sessions', { workspaceId: first.body.workspaceId, title: 'First' })
+    await f.call('POST', '/gaia/control/sessions', { workspaceId: second.body.workspaceId, title: 'Second' })
+    await f.call('POST', '/gaia/control/sessions/session-2/archive', {})
+    const before = vi.mocked(f.ctx.sessionController.list).mock.calls.length
+    const query = new URLSearchParams({ workspaceIds: `${first.body.workspaceId},${second.body.workspaceId},missing`, includeArchived: '1' })
+    const result = await f.call('GET', `/gaia/control/sessions/by-workspace?${query}`)
+    expect(vi.mocked(f.ctx.sessionController.list).mock.calls.length - before).toBe(1)
+    expect(result.body.sessionsByWorkspace).toEqual({
+      [String(first.body.workspaceId)]: [{ sessionId: 'session-1', title: 'First', running: false, updatedAt: 1, archived: false }],
+      [String(second.body.workspaceId)]: [{ sessionId: 'session-2', title: 'Second', running: false, updatedAt: 1, archived: true }],
+    })
+  })
+
   it('reports an explicit approximation for activity', async () => {
     expect((await fixture().call('GET', '/gaia/control/activity')).body).toEqual({ attachedClients: 0, runningTurns: 1, approximate: true })
   })
