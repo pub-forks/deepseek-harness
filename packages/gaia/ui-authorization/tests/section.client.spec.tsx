@@ -51,14 +51,30 @@ it('marks the add-account form for Gaia embedded control styling', async () => {
 
 it('submits API-key account credentials through the dedicated operation', async () => {
   const apiSource: FlowView = { ...flow, methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'api-key', label: 'API key' }] }
-  const operations = mount([], [apiSource])
+  const alternateSource: FlowView = { key: credentialKey('llm-pi-ai', 'anthropic'), label: 'Anthropic', methods: [{ id: 'api-key', label: 'API key' }], inFlight: false, signedIn: false }
+  const operations = mount([], [apiSource, alternateSource])
   await screen.findByText('Codex', { selector: 'strong' })
   fireEvent.change(screen.getByLabelText(en.accountKind), { target: { value: 'api-key' } })
+  fireEvent.change(screen.getByLabelText(en.accountSource), { target: { value: 'anthropic' } })
   fireEvent.change(screen.getByLabelText(en.accountLabel), { target: { value: 'OpenRouter Work' } })
   fireEvent.change(screen.getByLabelText(en.accountId), { target: { value: 'openrouter-work' } })
   fireEvent.change(screen.getByLabelText(en.apiKey), { target: { value: 'dummy-key' } })
   fireEvent.click(screen.getByRole('button', { name: en.addAccount }))
-  await waitFor(() => { expect(operations.createApiKeyAccount).toHaveBeenCalledWith('openai-codex', 'openrouter-work', 'OpenRouter Work', 'dummy-key') })
+  await waitFor(() => { expect(operations.createApiKeyAccount).toHaveBeenCalledWith('anthropic', 'openrouter-work', 'OpenRouter Work', 'dummy-key') })
+})
+
+it('starts sign-in with the selected method', async () => {
+  const multiMethodFlow: FlowView = {
+    key: credentialKey('other', 'multi-method'), label: 'Multi-method',
+    methods: [{ id: 'oauth', label: 'OAuth' }, { id: 'api-key', label: 'API key' }],
+    inFlight: false, signedIn: false, accountApiKey: true,
+  }
+  const operations = mount([], [multiMethodFlow])
+  const card = await screen.findByText('Multi-method', { selector: 'strong' })
+  const row = card.closest('li') as HTMLElement
+  fireEvent.change(within(row).getByLabelText(en.method), { target: { value: 'api-key' } })
+  fireEvent.click(within(row).getByRole('button', { name: en.signIn }))
+  await waitFor(() => { expect(operations.start).toHaveBeenCalledWith({ key: multiMethodFlow.key, method: 'api-key' }, expect.any(AbortSignal)) })
 })
 
 it('shows the failure reason from the attempt and from a failed stream', async () => {

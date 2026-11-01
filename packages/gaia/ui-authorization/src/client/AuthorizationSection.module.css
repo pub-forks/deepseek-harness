@@ -16,10 +16,30 @@
 .notice { display: grid; gap: 8px; }
 .code { font: 600 22px/1.4 ui-monospace, monospace; letter-spacing: .1em; color: var(--dsw-alias-label-primary); }
 .prompt { display: grid; justify-items: start; gap: 10px; }
-.prompt input, .prompt select, .actions select, .actions input { padding: 7px 9px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary); }
+.prompt input, .actions input { padding: 7px 9px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary); }
+.select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 240px;
+  height: 32px;
+  padding: 0 32px 0 10px;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: var(--dsw-radius-md);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  background-color: var(--dsw-alias-bg-layer-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%2381858C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 12px;
+  color: var(--dsw-alias-label-primary);
+  appearance: none;
+  cursor: pointer;
+}
 .accountForm { display: flex; flex-direction: column; gap: 10px; }
 .accountRow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
 .accountRow label { display: grid; gap: 5px; font-size: 13px; flex: 1 1 0; min-width: 140px; }
-.accountRow input, .accountRow select { box-sizing: border-box; width: 100%; height: 36px; padding: 7px 9px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary); }
+.accountRow input { box-sizing: border-box; width: 100%; height: 36px; padding: 7px 9px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary); }
 .accountForm .accountRow button, .accountForm .accountRow [data-dsh-button] { height: 36px; box-sizing: border-box; flex: 0 0 auto; white-space: nowrap; }
 

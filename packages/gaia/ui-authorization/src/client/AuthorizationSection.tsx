@@ -156,7 +156,7 @@ export function AuthorizationSection({
     </div>)}
     {showPrompt && prompt && <form onSubmit={(event) => { event.preventDefault(); void submit() }} className={css.prompt}>
       <label>{prompt.message}
-        {prompt.kind === 'select' ? <select data-dsh-select-trigger="" value={promptValue || (selected.key === 'llm-pi-ai/openai-codex' ? prompt.options?.find(option => /device/i.test(`${option.id} ${option.label}`))?.id : undefined) || prompt.options?.[0]?.id || ''} onChange={(event) => { setPromptValue(event.target.value) }}>{prompt.options?.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input type={prompt.kind === 'secret' ? 'password' : 'text'} value={promptValue} placeholder={prompt.placeholder} onChange={(event) => { setPromptValue(event.target.value) }} />}
+        {prompt.kind === 'select' ? <select data-dsh-select-trigger="" className={css.select} value={promptValue || (selected.key === 'llm-pi-ai/openai-codex' ? prompt.options?.find(option => /device/i.test(`${option.id} ${option.label}`))?.id : undefined) || prompt.options?.[0]?.id || ''} onChange={(event) => { setPromptValue(event.target.value) }}>{prompt.options?.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input type={prompt.kind === 'secret' ? 'password' : 'text'} value={promptValue} placeholder={prompt.placeholder} onChange={(event) => { setPromptValue(event.target.value) }} />}
       </label><Button variant="primary" onClick={() => { void submit() }}>{t('submit')}</Button>
     </form>}
     {terminal?.type === 'done' && <p>{t(terminal.outcome === 'authorized' ? 'authorized' : 'cancelled')}</p>}
@@ -179,9 +179,9 @@ export function AuthorizationSection({
     <p>{t('apiKeyHint')} <a href="#settings/models" onClick={(event) => { event.preventDefault(); openSection?.('models') }}>{t('models')}</a></p>
     <form data-gaia-auth-account-form="" className={css.accountForm} onSubmit={(event) => { void submitAccount(event) }}>
       <div className={css.accountRow}>
-        <label>{t('accountKind')} <select data-dsh-select-trigger="" value={accountKind} onChange={(event) => { setAccountKind(event.target.value as 'oauth' | 'api-key') }}><option value="oauth">{t('oauthAccount')}</option><option value="api-key">{t('apiKeyAccount')}</option></select></label>
+        <label>{t('accountKind')} <select data-dsh-select-trigger="" className={css.select} value={accountKind} onChange={(event) => { setAccountKind(event.target.value as 'oauth' | 'api-key') }}><option value="oauth">{t('oauthAccount')}</option><option value="api-key">{t('apiKeyAccount')}</option></select></label>
         <label>{t('accountSource')}
-          <select data-dsh-select-trigger="" value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
+          <select data-dsh-select-trigger="" className={css.select} value={sourceValue} onChange={(event) => { setAccountSource(event.target.value) }}>
             {accountSources.map(flow => <option key={flow.key} value={flow.key.slice('llm-pi-ai/'.length)}>{flow.label}</option>)}
           </select>
         </label>
@@ -197,7 +197,7 @@ export function AuthorizationSection({
       <ul className={css.list}>{ordered.map(flow => <li key={flow.key} data-gaia-auth-card="" className={css.card}>
         <div className={css.row}><strong>{flow.label}</strong><span className={css.status}>{t(flow.signedIn ? 'signedIn' : 'signedOut')}{flow.expiresAt === undefined ? '' : ` · ${t('expires')} ${new Date(flow.expiresAt).toLocaleString()}`}</span></div>
         <div className={css.actions}>
-          {flow.methods.length > 1 && <label>{t('method')} <select data-dsh-select-trigger="" value={selected?.key === flow.key ? method : preferredMethod(flow)} onChange={(event) => { setSelected(flow); setMethod(event.target.value) }}>{flow.methods.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
+          {flow.methods.length > 1 && <label>{t('method')} <select data-dsh-select-trigger="" className={css.select} value={selected?.key === flow.key ? method : preferredMethod(flow)} onChange={(event) => { setSelected(flow); setMethod(event.target.value) }}>{flow.methods.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>}
           <Button variant="primary" disabled={flow.inFlight || busy} onClick={() => { void begin(flow, selected?.key === flow.key && method ? method : preferredMethod(flow)) }}>{t('signIn')}</Button>
           {flow.signedIn && <Button variant="outline" data-dsh-button="danger" disabled={busy} onClick={() => { setConfirmKey(flow.key) }}>{t('signOut')}</Button>}
           {flow.accountAlias && <Button variant="outline" data-dsh-button="danger" disabled={flow.inFlight || busy} onClick={() => { setRemoveKey(flow.key) }}>{t('removeAccount')}</Button>}
