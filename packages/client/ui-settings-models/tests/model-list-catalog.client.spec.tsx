@@ -104,3 +104,26 @@ it('restores inherited image input after a failed catalog read is retried manual
   expect(discover).toHaveBeenCalledTimes(2)
   expect(onChange).not.toHaveBeenCalled()
 })
+
+it('adopts alias catalog models without freezing their catalog capacities or inputs', async () => {
+  const onChange = vi.fn()
+  const catalog: ModelDiscoveryOutcome = {
+    kind: 'found',
+    models: [{ id: 'gpt-x', name: 'GPT X', contextWindow: 500_000, maxTokens: 128_000, inputModalities: ['text', 'image'] }],
+  }
+  const props = {
+    onChange, catalogProvider: 'codex-02', inheritsCatalog: true,
+    probe: { settingsNs: 'llm-pi-ai', provider: 'codex-02' },
+    disabled: false, t: (key: keyof typeof en) => en[key], onBusyChange: () => {},
+    operations: operations(() => Promise.resolve(catalog)),
+  }
+  const { rerender } = render(<ModelListEditor {...props} models={[]} />)
+  fireEvent.click(screen.getByRole('button', { name: en.fetchModels }))
+  const picker = await screen.findByRole('dialog', { name: en.fetchTitle })
+  fireEvent.click(within(picker).getByRole('button', { name: en.fetchAdopt }))
+  expect(onChange).toHaveBeenCalledExactlyOnceWith([{ id: 'gpt-x', name: 'GPT X' }])
+
+  rerender(<ModelListEditor {...props} models={[{ id: 'gpt-x', name: 'GPT X' }]} />)
+  fireEvent.click(screen.getByRole('button', { name: `${en.modelAdvanced} 1` }))
+  await waitFor(() => { expect(screen.getByPlaceholderText('500K')).toBeTruthy() })
+})

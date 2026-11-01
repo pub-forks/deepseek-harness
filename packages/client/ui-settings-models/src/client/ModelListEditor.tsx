@@ -109,6 +109,11 @@ export interface ModelListEditorProps {
    * answer, and the picker it opens, is still bound for this list.
    */
   onBusyChange: (busy: boolean) => void
+  /**
+   * GAIA: the route is an account alias of an installed catalog. Adopted rows
+   * then keep only id and name, so capacities and input types follow the catalog.
+   */
+  inheritsCatalog?: boolean
 }
 
 /**
@@ -135,8 +140,15 @@ function capacitySpelling(value: number | undefined): string {
   return value === undefined ? '' : formatCapacity(value)
 }
 
-/** Adopt a candidate, preserving disclosed capacities and input types. */
-function adopt(candidate: LlmDiscoveredModel): ModelDraft {
+/**
+ * Adopt a candidate, preserving disclosed capacities and input types.
+ * @param candidate - the listed model.
+ * @param inherited - GAIA: the row's account alias inherits this installed catalog model.
+ * @returns the drafted row; an inherited row keeps only its id and name so catalog
+ * capacities and input types keep following the installed catalog.
+ */
+function adopt(candidate: LlmDiscoveredModel, inherited: boolean): ModelDraft {
+  if (inherited) return { id: candidate.id, ...candidate.name === undefined ? {} : { name: candidate.name } }
   return {
     id: candidate.id,
     ...candidate.name === undefined ? {} : { name: candidate.name },
@@ -173,6 +185,12 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
   }, [catalogProvider, operations, probe.settingsNs])
   const catalog = inheritedCatalog?.provider === catalogProvider ? inheritedCatalog?.models : undefined
   const inputDefaults = useMemo(() => new Map(catalog?.map(model => [model.id, model.inputModalities])), [catalog])
+  // GAIA: an alias row's empty capacity field serves the inherited catalog value.
+  const catalogModels = useMemo(() => new Map(catalog?.map(model => [model.id, model])), [catalog])
+  const capacityHint = (model: ModelDraft, field: CapacityField): string => {
+    const inherited = catalogModels.get(textOf(model, 'id'))?.[field]
+    return inherited === undefined ? CAPACITY_HINT[field] : formatCapacity(inherited)
+  }
   const [candidates, setCandidates] = useState<readonly LlmDiscoveredModel[] | undefined>(undefined)
   // Candidates whose checkbox the user flipped from its default. The default
   // is read from the list at render, so a row drafted while the fetch was in
@@ -262,7 +280,7 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
   const keptIds = new Set(keptRows.map(model => textOf(model, 'id')))
   const addedRows = activeCandidates
     .filter(candidate => isPicked(candidate.id) && !keptIds.has(candidate.id))
-    .map(adopt)
+    .map(candidate => adopt(candidate, props.inheritsCatalog === true && catalogModels.has(candidate.id)))
   // An empty list serves the whole catalog, so emptying a non-empty list
   // would restore every model instead of removing the unchecked ones.
   const emptiesList = models.length > 0 && keptRows.length === 0 && addedRows.length === 0
@@ -361,12 +379,12 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
             t={t}
             contextWindow={{
               value: capacityText(model, index, 'contextWindow'),
-              placeholder: CAPACITY_HINT.contextWindow,
+              placeholder: capacityHint(model, 'contextWindow'),
               onChange: (text) => { editCapacity(index, 'contextWindow', text) },
             }}
             maxTokens={{
               value: capacityText(model, index, 'maxTokens'),
-              placeholder: CAPACITY_HINT.maxTokens,
+              placeholder: capacityHint(model, 'maxTokens'),
               onChange: (text) => { editCapacity(index, 'maxTokens', text) },
             }}
             onFieldChange={(field, value) => { patch(index, { [field]: value }) }}

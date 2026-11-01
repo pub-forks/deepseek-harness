@@ -530,6 +530,8 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                 <ModelListEditor
                   {...catalogProps}
                   catalogProvider={props.declared === true ? undefined : props.provider}
+                  // GAIA: account aliases adopt catalog models without freezing catalog fields.
+                  inheritsCatalog={stringAt(draft, 'catalogProvider') !== undefined}
                   reasoningLevels={reasoningLevels}
                   defaultInput={Array.isArray(defaultInput) ? defaultInput : undefined}
                   probe={probe}
