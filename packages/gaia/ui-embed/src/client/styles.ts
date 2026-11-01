@@ -536,10 +536,14 @@ ${GAIA_CONTROLS_CSS}
 
 /** Chrome removal and compact-viewport treatment unique to single-session embed mode. */
 export const GAIA_EMBED_CHROME_CSS = `
-/* Remove shell columns from the grid so the conversation fills the drawer. */
+/* Zero the side tracks: the centre column is placed in grid column 2, so the
+ * conversation fills the drawer. Narrow drawers use upstream's sidebar-drawer
+ * mode, whose opener and its header clearance are hidden here. */
 html[data-gaia-embed] [data-app-frame] {
-  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-columns: 0 minmax(0, 1fr) 0 !important;
+  --dsh-frame-leading-clearance: 0px !important;
 }
+html[data-gaia-embed] [data-sidebar-mask],
 html[data-gaia-embed] [data-sidebar-col],
 html[data-gaia-embed] [data-rightbar-col],
 html[data-gaia-embed] [data-shell-leading],

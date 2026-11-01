@@ -1808,10 +1808,11 @@ describe('ui-embed client plugin', () => {
 })
 
 describe('embed styles', () => {
-  it('collapses the frame to one track so the conversation column is not placed in a 0px track', async () => {
+  it('zeroes the side tracks so the column-2 conversation fills the drawer', async () => {
     const { GAIA_EMBED_CHROME_CSS } = await import('../src/client/styles.ts')
-    expect(GAIA_EMBED_CHROME_CSS).toContain('grid-template-columns: minmax(0, 1fr) !important;')
-    expect(GAIA_EMBED_CHROME_CSS).not.toMatch(/grid-template-columns:\s*0px/)
+    expect(GAIA_EMBED_CHROME_CSS).toContain('grid-template-columns: 0 minmax(0, 1fr) 0 !important;')
+    expect(GAIA_EMBED_CHROME_CSS).toContain('--dsh-frame-leading-clearance: 0px !important;')
+    expect(GAIA_EMBED_CHROME_CSS).toContain('html[data-gaia-embed] [data-sidebar-mask]')
   })
 })
 
