@@ -1,7 +1,7 @@
 /** Workspace model memory for the Gaia bridge and the full drawer's shared Host create path. */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Context } from '@deepseek-ai/cordis'
-import type { CreateAgentOptions } from '@deepseek-ai/dsh-agent'
+import type { CreateAgentOptions, ModelSelectionProjectionState } from '@deepseek-ai/dsh-agent'
 import type { Session } from '@deepseek-ai/dsh-session'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
@@ -13,7 +13,9 @@ export const name = 'gaia-workspace-model'
 export const inject = ['sessionController', 'agents', 'llm', 'sessionProjections']
 
 function hasOwnChoice(ctx: Context, session: Session): boolean {
-  const state = ctx.sessionProjections.stateOf(session, 'modelSelection')
+  // GAIA: agents registers this unit without a domain reader; the keyed read is typed here.
+  // oxlint-disable-next-line typescript/no-deprecated -- no owning-service accessor for modelSelection yet.
+  const state = ctx.sessionProjections.stateOf(session, 'modelSelection') as ModelSelectionProjectionState | undefined
   return state?.pending != null || state?.lastUsed != null
 }
 

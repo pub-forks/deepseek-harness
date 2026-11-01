@@ -32,8 +32,13 @@
 .root :global(:is(h1, h2, h3, h4, h5, h6)).heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .headingText { min-width: 0; flex: 1; }
 .readButton { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: var(--md-muted-fg); cursor: pointer; opacity: 0; transition: opacity .15s, background-color .15s, color .15s; }
-.root :global(:is(h1, h2, h3, h4, h5, h6)):hover .readButton, .root :global(:is(h1, h2, h3, h4, h5, h6)):focus-within .readButton, .readButton:focus-visible, .readButton[aria-pressed="true"] { opacity: 1; }
-.readButton:hover:not(:disabled) { background: var(--md-muted); color: var(--dsw-alias-label-primary); }
+.root :global(:is(h1, h2, h3, h4, h5, h6)):focus-within .readButton, .readButton:focus-visible, .readButton[aria-pressed="true"] { opacity: 1; }
+@media (hover: hover) {
+  .root :global(:is(h1, h2, h3, h4, h5, h6)):hover .readButton { opacity: 1; }
+}
+@media (hover: hover) {
+  .readButton:hover:not(:disabled) { background: var(--md-muted); color: var(--dsw-alias-label-primary); }
+}
 .readButton:focus-visible { outline: 2px solid var(--md-accent); outline-offset: 1px; }
 .readButton:disabled { cursor: not-allowed; }
 .root :global(h1) { margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--md-border); font-size: 30px; line-height: 36px; }
@@ -55,7 +60,9 @@
 .root :global(input[type=checkbox]) { margin: 0 8px 0 0; vertical-align: middle; accent-color: var(--md-accent); }
 
 .root :global(a) { color: var(--md-accent); text-decoration: none; cursor: pointer; } /* text-orange-600 hover:underline */
-.root :global(a:hover) { text-decoration: underline; }
+@media (hover: hover) {
+  .root :global(a:hover) { text-decoration: underline; }
+}
 
 .root :global(blockquote) { margin: 16px 0; padding-left: 16px; border-left: 4px solid var(--md-muted); color: var(--md-muted-fg); font-style: italic; }
 
@@ -81,7 +88,9 @@
 
 /* Wikilinks: accent, dotted underline, offset 2 */
 .inlineLink { display: inline; padding: 0; border: 0; background: transparent; color: var(--md-accent); font: inherit; text-align: left; text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; }
-.inlineLink:hover { text-decoration-style: solid; }
+@media (hover: hover) {
+  .inlineLink:hover { text-decoration-style: solid; }
+}
 
 /* Properties panel: mb-6 rounded-md border bg-muted/20 divide-y; rows px-3 py-2 text-sm */
 .properties { margin: 0 0 24px; border: 1px solid var(--md-border); border-radius: 6px; background: color-mix(in srgb, var(--md-muted) 20%, transparent); font-size: 14px; line-height: 20px; }
@@ -94,9 +103,14 @@
 /* Code blocks: bg-muted rounded-lg my-4; pre p-4; code text-sm; language + copy fade in on hover */
 .codeFrame { position: relative; margin: 16px 0; border-radius: 8px; background: var(--md-muted); }
 .codeToolbar { position: absolute; inset: 8px 8px auto 12px; z-index: 1; display: flex; justify-content: space-between; align-items: center; color: var(--md-muted-fg); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; opacity: 0; transition: opacity .15s; pointer-events: none; }
-.codeFrame:hover .codeToolbar, .codeFrame:focus-within .codeToolbar { opacity: 1; }
+.codeFrame:focus-within .codeToolbar { opacity: 1; }
+@media (hover: hover) {
+  .codeFrame:hover .codeToolbar { opacity: 1; }
+}
 .copyButton { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-transform: none; letter-spacing: 0; font-size: 12px; cursor: pointer; pointer-events: auto; }
-.copyButton:hover { background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); }
+@media (hover: hover) {
+  .copyButton:hover { background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary); }
+}
 .root :global(pre) { margin: 0; padding: 16px; overflow-x: auto; background: transparent; }
 .root :global(pre code) { padding: 0; background: transparent; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 14px; line-height: 20px; white-space: pre; }
 .prism :global(.token.comment), .prism :global(.token.prolog) { color: var(--md-muted-fg); font-style: italic; }

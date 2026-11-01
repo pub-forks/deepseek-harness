@@ -28,11 +28,16 @@
 .task { min-width: 0; border-radius: 6px; }
 .taskRow { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 12px; border-radius: 6px; }
 .taskRow[data-clickable="true"] { cursor: pointer; }
-.taskRow:hover, .task[data-expanded="true"] > .taskRow { background: var(--tasks-hover); }
+.task[data-expanded="true"] > .taskRow { background: var(--tasks-hover); }
+@media (hover: hover) {
+  .taskRow:hover { background: var(--tasks-hover); }
+}
 .task[data-expanded="true"] > .taskRow { background: var(--tasks-muted); }
-.check { display: inline-flex; flex: 0 0 20px; width: 20px; height: 20px; align-items: center; justify-content: center; box-sizing: border-box; border: 1px solid var(--tasks-faint-fg); border-radius: 50%; padding: 0; color: white; background: transparent; transition: border-color .15s, background-color .15s; }
+.check { display: inline-flex; flex: 0 0 20px; width: 20px; height: 20px; align-items: center; justify-content: center; box-sizing: border-box; border: 1px solid var(--tasks-faint-fg); border-radius: 50%; corner-shape: round; padding: 0; color: white; background: transparent; transition: border-color .15s, background-color .15s; }
 button.check { cursor: pointer; }
-button.check:hover { border-color: #f97316; }
+@media (hover: hover) {
+  button.check:hover { border-color: #f97316; }
+}
 .check svg { width: 12px; height: 12px; }
 .checkSmall { flex-basis: 16px; width: 16px; height: 16px; }
 .checkSmall svg { width: 10px; height: 10px; }
@@ -46,20 +51,37 @@ button.check:hover { border-color: #f97316; }
 .chevronOpen { transform: rotate(90deg); }
 .meta { flex: none; color: var(--tasks-muted-fg); font-size: 11px; font-variant-numeric: tabular-nums; }
 .iconButton { display: inline-flex; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 6px; padding: 0; color: var(--tasks-muted-fg); background: transparent; cursor: pointer; transition: color .15s, opacity .15s; }
-.iconButton:hover { opacity: .8; }
+@media (hover: hover) {
+  .iconButton:hover { opacity: .8; }
+}
 .iconButton:focus-visible, .check:focus-visible, .groupHeading:focus-visible, .statusMenuItem:focus-visible { outline: 1px solid var(--tasks-accent); outline-offset: 1px; }
 .faint { color: var(--tasks-faint-fg); }
-.faint:hover { color: var(--dsw-alias-label-primary); opacity: 1; }
-.star, .star:hover { color: #f59e0b; }
-.faint.star:hover, .iconButton.faint:not(.delete):hover { color: #f59e0b; }
+@media (hover: hover) {
+  .faint:hover { color: var(--dsw-alias-label-primary); opacity: 1; }
+}
+.star { color: #f59e0b; }
+@media (hover: hover) {
+  .star:hover { color: #f59e0b; }
+}
+@media (hover: hover) {
+  .faint.star:hover, .iconButton.faint:not(.delete):hover { color: #f59e0b; }
+}
 .delete { opacity: 0; }
-.taskRow:hover .delete, .delete:focus-visible { opacity: 1; }
-.delete:hover { color: #ef4444; }
+.delete:focus-visible { opacity: 1; }
+@media (hover: hover) {
+  .taskRow:hover .delete { opacity: 1; }
+}
+@media (hover: hover) {
+  .delete:hover { color: #ef4444; }
+}
 .statusIcon { display: inline-flex; flex: none; }
 .statusMenuRoot { position: relative; display: inline-flex; flex: none; }
-.statusMenu { position: absolute; z-index: 10; top: calc(100% + 4px); right: 0; display: grid; min-width: 176px; border: 1px solid var(--tasks-border); border-radius: 6px; padding: 4px; background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-base)); box-shadow: 0 8px 24px light-dark(#0000001a, #00000060); }
+/* Shared MenuSurface owns the menu material; this rule only places it. */
+.statusMenu { position: absolute; z-index: 10; top: calc(100% + 4px); right: 0; display: grid; min-width: 176px; padding: 4px; }
 .statusMenuItem { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 0; border-radius: 4px; padding: 6px 8px; color: var(--dsw-alias-label-primary); background: transparent; cursor: pointer; font: inherit; font-size: 13px; text-align: left; }
-.statusMenuItem:hover { background: var(--tasks-muted); }
+@media (hover: hover) {
+  .statusMenuItem:hover { background: var(--tasks-muted); }
+}
 .statusMenuLabel { display: inline-flex; align-items: center; gap: 8px; }
 .accent { color: var(--tasks-accent); }
 .due { flex: none; border-radius: 4px; padding: 1px 6px; color: var(--tasks-muted-fg); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -76,8 +98,12 @@ button.check:hover { border-color: #f97316; }
 .importantGroup { margin: 0 0 4px; padding-bottom: 4px; border-bottom: 1px solid var(--tasks-border); }
 .completedGroup { margin-top: 12px; }
 .groupHeading { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 4px 8px; color: var(--tasks-muted-fg); font-size: 12px; font-weight: 500; cursor: pointer; list-style: none; }
-.groupHeading:hover { color: var(--dsw-alias-label-primary); }
-.importantGroup > .groupHeading:hover { color: #fbbf24; }
+@media (hover: hover) {
+  .groupHeading:hover { color: var(--dsw-alias-label-primary); }
+}
+@media (hover: hover) {
+  .importantGroup > .groupHeading:hover { color: #fbbf24; }
+}
 .groupHeading::-webkit-details-marker { display: none; }
 .groupChevron { transition: transform .15s; }
 .group[open] > .groupHeading .groupChevron { transform: rotate(90deg); }

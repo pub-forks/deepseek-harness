@@ -84,6 +84,8 @@ async function compose() {
   agentContext = new Context()
   const agent: Agent = {
     id: session.id, options: {}, session, ctx: agentContext,
+    // /starred never reads model selection.
+    model: {} as Agent['model'],
     inbox: createInboxStub(), status: 'idle',
     send() {}, followup, steer() {}, inject() {}, cancel() {},
     runMaintenance: task => task(new AbortController().signal),

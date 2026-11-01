@@ -9,7 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { FlowView } from '@deepseek-ai/dsh-gaia-api-authorization/types'
 import { AuthorizationSection, type AuthorizationSectionInjected } from './AuthorizationSection.tsx'
-import { en, zh, type AuthorizationKey } from './locales.ts'
+import { en, zh, ja, es, fr, de, ru, pt, type AuthorizationKey } from './locales.ts'
 import { determineFlowAuthKind } from './oauth.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -20,7 +20,7 @@ export const inject = ['remote', 'slots', 'locale']
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const dispose = await ctx.remote.$mount(remoteContribution)
   const t = ctx.locale.bind('settings.gaiaAuthorization')
-  ctx.effect(() => ctx.locale.register('settings.gaiaAuthorization', { en, zh }), 'gaia-authorization: dictionaries')
+  ctx.effect(() => ctx.locale.register('settings.gaiaAuthorization', { en, zh, ja, es, fr, de, ru, pt }), 'gaia-authorization: dictionaries')
   // This plugin mounts its own namespace, so it cannot list
   // 'remote.gaiaAuthorization' in `inject` (activation would wait on itself).
   // Cordis refuses undeclared sub-service access, so the section is registered

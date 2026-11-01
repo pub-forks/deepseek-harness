@@ -8,7 +8,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import { en, zh } from './locales.ts'
+import { en, zh, ja, es, fr, de, ru, pt } from './locales.ts'
 import { MARKDOWN_BODY_ID, TASKS_BODY_ID, markdownDefinition, tasksDefinition } from './markdown-definition.ts'
 import { MarkdownBody } from './MarkdownBody.tsx'
 import { TasksBody } from './TasksBody.tsx'
@@ -20,7 +20,7 @@ export const inject = ['locale', 'slots', 'documentPreviews', 'gaiaReadAloud', '
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(remoteContribution)
   const t = ctx.locale.bind('gaiaMarkdown')
-  ctx.effect(() => ctx.locale.register('gaiaMarkdown', { en, zh }), 'gaia-markdown: dictionaries')
+  ctx.effect(() => ctx.locale.register('gaiaMarkdown', { en, zh, ja, es, fr, de, ru, pt }), 'gaia-markdown: dictionaries')
   ctx.effect(() => {
     const removeMarkdown = ctx.documentPreviews.register(markdownDefinition(() => t('label')))
     const removeTasks = ctx.documentPreviews.register(tasksDefinition(() => t('tasksLabel')))

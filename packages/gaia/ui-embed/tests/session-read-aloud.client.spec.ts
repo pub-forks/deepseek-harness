@@ -2,6 +2,7 @@
 import { createElement } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
+import { allowAllAccess, contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { SessionNodeItem, SearchResultItem } from '@deepseek-ai/dsh-client-ui-workspace/src/client/rows/Rows.tsx'
 import type { SessionNode, SearchResultNode } from '@deepseek-ai/dsh-client-ui-workspace/src/client/tree.ts'
@@ -54,6 +55,8 @@ test('catalog and search rows keep narration visible during activity, unread sta
   const renderRowSlot: Parameters<typeof SessionNodeItem>[0]['renderSlot'] = renderSlot
   const rowProps = {
     currentId: undefined, now: 0, onOpen: vi.fn(), onRenameRequest: vi.fn(), t: (key: string) => key, renderSlot: renderRowSlot,
+    openSessionMenu: vi.fn(), useContextMenuTarget: <T>(select: (target: null) => T) => select(null),
+    useContextMenu: contextMenuHook(() => {}), useSessionAccess: allowAllAccess.useSessionAccess,
   }
   const view = render(createElement(SessionNodeItem, { ...rowProps, node }))
   for (const state of [{}, { running: true }, { completed: true }, { archived: true }]) {
@@ -61,7 +64,10 @@ test('catalog and search rows keep narration visible during activity, unread sta
     expect(view.getByRole('treeitem').contains(view.getByRole('img', { name: en.reading }))).toBe(true)
   }
   const result: SearchResultNode = { ...node, workspace: 'Workspace', archived: true }
-  const searchProps = { result, currentId: undefined, onOpen: vi.fn(), onUnarchive: vi.fn(), t: (key: string) => key, renderSlot }
+  const searchProps = {
+    result, currentId: undefined, onOpen: vi.fn(), onUnarchive: vi.fn(),
+    useSessionAccess: allowAllAccess.useSessionAccess, t: (key: string) => key, renderSlot,
+  }
   view.rerender(createElement(SearchResultItem, searchProps))
   expect(view.getByRole('img', { name: en.reading })).toBeTruthy()
   player = { ...active, status: 'speaking', sessionId: SessionId('session-2') }

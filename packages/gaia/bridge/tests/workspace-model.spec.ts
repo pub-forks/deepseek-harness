@@ -21,6 +21,7 @@ import * as StorageJson from '@deepseek-ai/dsh-storage-json'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import WorkspaceRegistry from '@deepseek-ai/dsh-workspace'
 import * as JsonlPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { createSessionTestController } from '../../../api/session-controller/tests/test-remote.ts'
 import * as Bridge from '../src/index.ts'
 import { WorkspaceModelStore } from '../src/workspace-model-store.ts'
@@ -64,10 +65,10 @@ async function boot() {
   context.loader.builtins.include = Include
   // Only external provider and browser transport are substituted. Agent setup,
   // session creation, selection validation, projection and plugin loading are real.
-  function environment() {
+  async function environment() {
     const child = context
     child.llm.registerAdapter(['fixture'], new Adapter())
-    createSessionTestController(child, {
+    await createSessionTestController(child, {
       cwd: directory, defaultModelSelection: () => defaultChoice,
       saveDefaultModelSelection: saveDefault,
     })
@@ -84,7 +85,7 @@ async function boot() {
       inject: ['llm', 'sessions', 'agents', 'sessionProjections', 'workspaceRegistry', 'sessionPersistence'], apply: environment }],
     ['@deepseek-ai/dsh-gaia-bridge', Bridge],
     ['storage', Storage], ['storage-json', StorageJson], ['storage-domain', StorageDomain],
-    ['workspaces', WorkspaceRegistry], ['persistence', JsonlPersistence],
+    ['workspaces', WorkspaceRegistry], ['persistence', JsonlPersistence], ['executor', NativeToolExecutor],
   ])
   context.loader.internal = {
     version: 'v2', async import(specifier: string) {
@@ -95,7 +96,7 @@ async function boot() {
   const config = join(directory, 'cordis.yml')
   await writeFile(config, [
     '- name: sessions', '- name: projections', '- name: agents',
-    '- name: llm', '- name: prompt', '- name: tools',
+    '- name: llm', '- name: prompt', '- name: tools', '- name: executor',
     '- name: storage', '- name: storage-json', '  config:', `    root: ${JSON.stringify(join(directory, 'data'))}`,
     '- name: storage-domain', '  config:', '    backend: json',
     '- name: persistence', '  config:', `    root: ${JSON.stringify(join(directory, 'sessions'))}`, '    compression: none',
@@ -154,7 +155,9 @@ describe('Gaia bridge workspace model memory through real Loader composition', (
     expect(saveDefault).toHaveBeenCalledTimes(count)
     expect(choice(context, await create(context, join(directory, 'other-project')))).toEqual(defaultChoice)
     const agent = context.agents.get(fresh)!
-    const assembly = await agent.ctx.systemPrompt.assemble(assembleContextFor(agent))
+    // The loop assembles each step with the Agent's current selection.
+    const modelSelection = agent.model.current()!
+    const assembly = await agent.ctx.systemPrompt.assemble({ ...assembleContextFor(agent), modelSelection })
     expect(assembly.variables.provider).toBe(remembered.provider)
     expect(assembly.variables.model).toBe(remembered.model)
     expect(await readFile(file, 'utf8')).toBe(JSON.stringify(raw) + '\n')
@@ -205,13 +208,18 @@ describe('Gaia bridge workspace model memory through real Loader composition', (
 
   it('loads workspace choices after plugin restart without changing resumed sessions', async () => {
     const { context } = await remember()
+    // Unmount first: the seeded Session is entered in the store, so a live bridge would record its choice.
+    await memoryFiber?.dispose()
     const storedSession = context.sessions.prepare(SessionId('stored-explicit'), { meta: { cwd: directory } })
+    // Sessions append only while entered in the store; detach before writing the stored copy.
+    const detach = context.effect(() => context.sessions.enter(storedSession))
+    context.sessions.announce(storedSession)
     storedSession.append('model/selection', { provider: 'fixture', model: 'other' })
+    await detach()
     const stored = await context.sessionPersistence.create(storedSession.header)
     await stored.append(storedSession.snapshotEvents())
     await stored.flush()
     await stored.close()
-    await memoryFiber?.dispose()
     await context.plugin(Bridge)
     const resumed = await context.sessionController.create({ sessionId: storedSession.id, cwd: directory })
     expect(choice(context, resumed.sessionId)).toEqual({ provider: 'fixture', model: 'other' })

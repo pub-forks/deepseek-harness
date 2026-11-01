@@ -9,21 +9,28 @@ import { CommandId } from '@deepseek-ai/dsh-commands'
 import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent-loop'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import type { ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import type { ToolExecutionInput, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import * as sessionRename from '../src/index.ts'
 
 const signal = new AbortController().signal
 
+/** Run one parsed call through the shared tool pipeline (no executor batch). */
+async function runTool(ctx: Context, input: ToolExecutionInput): Promise<ToolExecutionResult> {
+  const pipeline = new ToolExecutionPipeline(ctx)
+  const prepared = await pipeline.prepare(input)
+  const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
+  return pipeline.complete(prepared.exec, outcome)
+}
+
 async function setup() {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
-  ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
@@ -35,6 +42,8 @@ async function setup() {
   const followup = vi.fn<Agent['followup']>()
   const agent: Agent = {
     id: session.id, options: {}, session, ctx: new Context(), inbox: createInboxStub(),
+    // The rename tool never reads model selection.
+    model: {} as Agent['model'],
     get status() { return status },
     send() {}, followup, steer() { return { outcome: Promise.resolve({ status: 'rejected' as const }) } },
     inject() {}, cancel() {}, runMaintenance: task => task(new AbortController().signal),
@@ -50,7 +59,7 @@ async function setup() {
     }), { surfaceOp: 'append' })
   }
   async function execute(args: unknown, caller: Agent = agent): Promise<ToolExecutionResult> {
-    return ctx.agents.withInitiator(caller, () => ctx.tools.execute({
+    return ctx.agents.withInitiator(caller, () => runTool(ctx, {
       signal, callId: ToolCallId(`rename-call-${Math.random()}`), name: 'rename_session', arguments: args, agent: caller,
     }))
   }
@@ -65,7 +74,7 @@ describe('rename_session', () => {
     expect(result.isError).toBe(false)
     expect(result.value).toEqual({ title: 'Build Notes' })
     expect(state.ctx.sessionTitle.get(state.session)?.title).toBe('Build Notes')
-    expect(state.ctx.tools.executionMode({ signal, callId: ToolCallId('rename-mode'), name: 'rename_session', arguments: {} }))
+    expect(new ToolExecutionPipeline(state.ctx).executionMode({ signal, callId: ToolCallId('rename-mode'), name: 'rename_session', arguments: {} }))
       .toEqual({ kind: 'exclusive' })
     await state.fiber.dispose()
   })

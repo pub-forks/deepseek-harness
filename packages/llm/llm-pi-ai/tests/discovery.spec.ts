@@ -82,21 +82,22 @@ describe('catalog-route model discovery', () => {
     { provider: 'openai-codex', model: 'gpt-6-sol' },
     { provider: 'openai-codex', model: 'gpt-6-luna' },
     { provider: 'openai-codex', model: 'gpt-6-astra' },
-    { provider: 'openai-codex', model: 'gpt-6.1-sol' },
-  ])('reports the installed catalog capacity for $provider/$model', async ({ provider, model }) => {
+    // pi-ai 1.3.0 raised the Codex route's gpt-6.1-sol window to 500k; Gaia keeps the catalog value.
+    { provider: 'openai-codex', model: 'gpt-6.1-sol', contextWindow: 500_000 },
+  ])('reports the installed catalog capacity for $provider/$model', async ({ provider, model, contextWindow = 272_000 }) => {
     const ctx = await harness()
 
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider })
 
-    expect(models.find(candidate => candidate.id === model)?.contextWindow).toBe(272_000)
+    expect(models.find(candidate => candidate.id === model)?.contextWindow).toBe(contextWindow)
   })
 
-  it('discovers 272_000 for gpt-6.1-sol on an account alias', async () => {
+  it('discovers the Codex catalog capacity (500_000) for gpt-6.1-sol on an account alias', async () => {
     const ctx = await harness({ providers: { 'codex-02': { displayName: 'Codex-02', catalogProvider: 'openai-codex' } } })
 
     const models = await ctx.llm.discoverModels('llm-pi-ai', { provider: 'codex-02' })
 
-    expect(models.find(candidate => candidate.id === 'gpt-6.1-sol')?.contextWindow).toBe(272_000)
+    expect(models.find(candidate => candidate.id === 'gpt-6.1-sol')?.contextWindow).toBe(500_000)
   })
 
   it('imports an OAuth account alias from the catalog it inherits', async () => {

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
+import { MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MarkdownKey } from './locales.ts'
@@ -190,12 +191,12 @@ function StatusMenu({ status, onChange, t }: {
     <button className={css.iconButton} type="button" title={label} aria-label={`${t('changeStatus')}: ${label}`} aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen(value => !value) }}>
       <StatusIcon status={status} />
     </button>
-    {open && <span className={css.statusMenu} role="menu">
+    {open && <MenuSurface compact className={css.statusMenu} role="menu">
       {STATUSES.map(value => <button key={value} className={css.statusMenuItem} type="button" role="menuitemradio" aria-checked={value === status} onClick={() => { setOpen(false); if (value !== status) onChange(value) }}>
         <span className={css.statusMenuLabel}><StatusIcon status={value} />{t(STATUS_META[value].key)}</span>
         {value === status && <Check size={14} className={css.accent} aria-hidden="true" />}
       </button>)}
-    </span>}
+    </MenuSurface>}
   </span>
 }
 

@@ -21,8 +21,8 @@ function executionContext(ctx: Context, exec: ToolRunContext) {
     || ctx.agents.currentInitiator() !== agent) {
     throw new HarnessError('rename_session requires the exact live calling agent inside its active driver', 'SESSION_RENAME_DRIVER_REQUIRED')
   }
-  const boundary = ctx.sessionProjections.stateOf(agent.session, 'turnBoundary')
-  if (boundary === undefined || boundary.openTurnStartSeq === null) {
+  const boundary = ctx.agents.turnBoundaryOf(agent.session)
+  if (boundary.openTurnStartSeq === null) {
     throw new HarnessError('rename_session requires an open model turn', 'SESSION_RENAME_DRIVER_REQUIRED')
   }
   // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.

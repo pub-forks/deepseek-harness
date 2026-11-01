@@ -33,7 +33,7 @@ for (const mode of ['embed', 'full']) {
     }] } })
     remote.commands.list.mockResolvedValue({ ok: true, value: [] })
     remote.skills.list.mockResolvedValue({ ok: true, value: { skills: [] } })
-    remote.schedule.list.mockResolvedValue({ ok: true, value: [] })
+    remote.schedule.list.mockResolvedValue({ ok: true, value: { items: [], shown: 0, total: 0, limit: 50, offset: 0 } })
     remote.schedule.catalog.mockResolvedValue({ ok: true, value: [] })
     mock.stream('session/follow', followScript(history(events)))
     mock.stream('job/list', (_args, stream) => { stream.push({ type: 'rows', jobs: [] }) })

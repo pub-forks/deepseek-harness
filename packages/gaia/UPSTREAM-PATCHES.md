@@ -29,6 +29,7 @@
 | `packages/client/ui-layout/src/client/{stores,service,index}.ts` | `GAIA:` expose the existing `layoutInfo` snapshot as a read-only `ctx.layout.layoutInfo` observable. | The Gaia full-shell frame must expand the narrow sidebar only when it starts collapsed, without reasserting after a user toggle. | Upstream exposes its responsive layout snapshot or an equivalent read-only sidebar state. |
 | `packages/client/ui-workspace/src/client/{stores.ts,tree.ts,rows/WorkspaceBrowser.tsx,locales.ts}` (+ focused tests and English/Chinese README translations) | `GAIA:` persist a separate Manual/Name Workspace-order preference; project real groups by resolved title with numeric, case-insensitive comparison and identity tie-break in Name mode; keep Ungrouped trailing and suppress Host-backed Workspace drag wiring in that view. | Gaia users need a local alphabetical Workspace view while preserving the Host's authoritative manual order for return to Manual mode. | Upstream adds a Workspace-order preference with equivalent view-only sorting and drag suppression. |
 | `packages/client/locale/src/client/index.ts` (+ locale tests) | `GAIA:` add optional key-level `LocaleService.override()` layers over registered dictionaries, with subscriber notifications and idempotent disposal; preserve `register()`'s single-occupant rule. | Gaia's full-shell branding must replace product-name strings in existing en/zh namespaces without changing model, provider or account names. | Upstream supports scoped locale dictionary overrides. |
+| `packages/client/{ui-workspace,ui-model-selection,ui-settings-models}/src/client/locales.ts` | `GAIA:` give the Gaia-added keys (Starred/Other sections, Workspace order and open-Sessions filter, Collapse/Expand all, OAuth tag) values in upstream's additional `ja`, `es`, `fr`, `de`, `ru` and `pt` dictionaries. | Typed `register()` requires every locale dictionary to carry the namespace's complete key set. | The Gaia keys leave these namespaces. |
 | `packages/llm/llm-pi-ai/README.md` and `README.zh.md` | `GAIA:` document OAuth and API-key catalog aliases, alias-local model lists/overrides, and independent route credentials. | Users need to configure separate provider accounts without sharing route credentials. | Upstream documents account aliases and route-local model customization. |
 | `packages/llm/llm-pi-ai/src/{catalog,config,discovery,index,login,provider}.ts` (+ focused tests) | `GAIA:` provider profiles may name an OAuth/API-key-capable installed `catalogProvider`; catalog models (including Models-page import) and provider-native auth are inherited under an independent route/credential key, with alias model lists and overrides allowed, and authorization registrations reconcile with settings. | Gaia Harness users need independently selectable OAuth and API-key identities plus per-account model lists. | Upstream supports account-scoped credentials and catalog inheritance. |
 | `packages/client/ui-primitives/src/Button.tsx` | `GAIA:` add `data-dsh-button` and `data-dsh-size` attributes. | The embed client plugin requires stable data attributes for scoped Gaia button styling. | Upstream exposes stable variant/size data attributes on the Button primitive. |
@@ -63,12 +64,13 @@
 
 The formerly ported changes are included in the 0.2.1-rc.2 upstream merge; upstream versions of those files are authoritative.
 
-## Known local gate failures (0.2.1-rc.2 merge)
+## Known local gate failures (0.2.1-rc.5 merge)
 
-These fail on a WSL2 checkout of pristine upstream too; the files are unchanged from upstream. Do not patch them.
+These fail on this WSL2 checkout although the files are unchanged from upstream. Do not patch them.
 
 | Gate | Failure | Cause |
 | --- | --- | --- |
 | `pnpm run test` | 5 tests in `host/open-in-app/tests/resolver.spec.ts` and `util/native-command/tests/{path-opener,file-applications,file-applications-linux-native}.spec.ts` | They assume a Linux host without a desktop session; WSL provides `xdg-open` and GIO desktop entries. |
-| `pnpm run test` (full parallel run only) | `deliverables/workspace-changes/tests/plugin.spec.ts`, `subprocess/subprocess-local/tests/spawn-runner.spec.ts` | Timing under full-suite load; both pass when run alone. |
-| `pnpm run doc-sync` | `verify-repository-references`: `python/sdk/uv.lock:113 commit-hash` | Upstream lockfile content. |
+| `pnpm run test` | `subprocess/subprocess-local/tests/spawn-runner.spec.ts` › Windows executable resolution | Fails alone on WSL as well. |
+| `pnpm run test` | `experimental/client-ui-forge/tests/controller.host.spec.ts` (removed-worktree cases), `experimental/forge-github/tests/gh.spec.ts` (timeout/abort), `experimental/worktree/tests/checkout-safety.spec.ts` | 5 s timeouts around Git/`gh` subprocesses on WSL; more fail under full-suite load. |
+| `pnpm run test` (full parallel run only) | `boot/plugin-manager/tests/manager.spec.ts`, `apps/desktop/tests/prepare-runtime-patches.spec.ts`, `experimental/ptc-runtime-python/tests/runtime.spec.ts`, `experimental/worktree/tests/worktree.spec.ts` | Timing under full-suite load; they pass when run alone. |

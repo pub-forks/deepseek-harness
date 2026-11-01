@@ -48,7 +48,7 @@ import { GaiaAppearanceRow } from './appearance-row.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { GaiaSessionReadAloud, type SessionReadAloudInjected } from './session-read-aloud.tsx'
 import { GaiaReadAloudActions, type ReadAloudInjected } from './read-aloud-actions.tsx'
-import { en as readAloudEnglishLabels, zh as readAloudChineseLabels } from './read-aloud-locales.ts'
+import * as readAloudLabels from './read-aloud-locales.ts'
 import type { GaiaReadAloudState } from './bridge.ts'
 import { GaiaAutoReadLifecycle, type AutoReadInjected } from './auto-read-lifecycle.tsx'
 import { notificationRecap } from './notification-recap.ts'
@@ -294,7 +294,10 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
     // GAIA: /rename is a Host command; this client face supplies its menu glyph.
     scope.effect(() => scope.commandUi.face({ name: 'rename', icon: RenameIcon }))
   })
-  ctx.effect(() => ctx.locale.register('gaia.readAloud', { zh: readAloudChineseLabels, en: readAloudEnglishLabels }), 'gaia-ui-embed: narration labels')
+  ctx.effect(() => ctx.locale.register('gaia.readAloud', {
+    en: readAloudLabels.en, zh: readAloudLabels.zh, ja: readAloudLabels.ja, es: readAloudLabels.es,
+    fr: readAloudLabels.fr, de: readAloudLabels.de, ru: readAloudLabels.ru, pt: readAloudLabels.pt,
+  }), 'gaia-ui-embed: narration labels')
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay', id: 'gaia-auto-read', order: 20,
     inject: (sessionId): AutoReadInjected => ({
