@@ -866,6 +866,25 @@ describe('ui-embed client plugin', () => {
     expect(b.defaultPrevented).toBe(false)
   })
 
+  it('relays only allowlisted shortcuts from the nested Gaia task preview', () => {
+    setLocationSearch('?gaia=full')
+    const mock = createMockContext()
+    apply(mock.ctx)
+    const tasks = document.createElement('iframe')
+    tasks.src = `${window.location.origin}/embed/tasks?path=%2Fworkspace%2FPlan.tasks`
+    document.body.append(tasks)
+    const shortcut = { source: 'gaia-dsh', v: 1, type: 'appShortcut', code: 'KeyV', shift: false }
+    window.dispatchEvent(new MessageEvent('message', { origin: window.location.origin, source: tasks.contentWindow, data: shortcut }))
+    expect(parentMessages).toContainEqual(shortcut)
+    parentMessages = []
+    window.dispatchEvent(new MessageEvent('message', { origin: 'https://attacker.invalid', source: tasks.contentWindow, data: shortcut }))
+    window.dispatchEvent(new MessageEvent('message', { origin: window.location.origin, source: fakeParent, data: shortcut }))
+    window.dispatchEvent(new MessageEvent('message', { origin: window.location.origin, source: tasks.contentWindow,
+      data: { ...shortcut, code: 'KeyQ' } }))
+    expect(parentMessages).toEqual([])
+    tasks.remove()
+  })
+
   it.each(['embed', 'full'])('forwards voice press and release without retaining modifiers in %s mode', async (mode) => {
     setLocationSearch(`?gaia=${mode}&session=s-test-123`)
     const mock = createMockContext()

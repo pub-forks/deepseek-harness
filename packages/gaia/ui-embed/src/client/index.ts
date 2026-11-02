@@ -28,6 +28,7 @@ import {
   APP_CHORD_CODE_PATTERN,
   isAppShortcutCandidate,
   isGaiaIncomingMessage,
+  APP_SHORTCUT_CODES,
   isValidSessionId,
   narrationWorkspace,
   postToParent,
@@ -497,6 +498,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   // Intercept keyboard shortcuts that match Gaia app/drawer shortcuts or navigation chrome.
   let registeredAppChords: Array<{ code: string; mod: boolean; alt: boolean; shift: boolean }> = []
+  let registeredAppChordMessage: { source: 'gaia-dsh'; v: 1; type: 'appChords'; chords: unknown[] } | undefined
   let heldAppChord: { code: string; mod: boolean; alt: boolean; shift: boolean } | null = null
   let legacyVoiceShortcutHeld = false
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -554,6 +556,34 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   }
   window.addEventListener('keydown', onKeyDown, { capture: true })
   window.addEventListener('keyup', onKeyUp, { capture: true })
+
+  // Gaia's .tasks preview is a same-origin child frame inside this shell. Its
+  // keyboard events do not bubble to this window, so relay only bounded
+  // appShortcut messages from that known preview frame to Gaia.
+  const onNestedShortcut = (event: MessageEvent): void => {
+    if (event.origin !== window.location.origin || typeof event.data !== 'object' || event.data === null) return
+    const message = event.data as Record<string, unknown>
+    if (message.source !== 'gaia-dsh' || message.v !== 1 || message.type !== 'appShortcut'
+      || typeof message.code !== 'string' || typeof message.shift !== 'boolean'
+      || (message.mod !== undefined && typeof message.mod !== 'boolean')
+      || (message.alt !== undefined && typeof message.alt !== 'boolean')
+      || ((message.mod === undefined) !== (message.alt === undefined))
+      || (message.phase !== undefined && message.phase !== 'keyup')
+      || Object.keys(message).some(key => !['source', 'v', 'type', 'code', 'shift', 'mod', 'alt', 'phase'].includes(key))) return
+    const sourceFrame = [...document.querySelectorAll('iframe')].find(frame => frame.contentWindow === event.source)
+    if (!sourceFrame || new URL(sourceFrame.src, window.location.href).pathname !== '/embed/tasks') return
+    const builtIn = message.mod === undefined && (APP_SHORTCUT_CODES as readonly string[]).includes(message.code)
+      && isAppShortcutCandidate(message.code, message.shift)
+    const registered = typeof message.mod === 'boolean' && typeof message.alt === 'boolean'
+      && registeredAppChords.some(chord => chord.code === message.code && chord.mod === message.mod
+        && chord.alt === message.alt && chord.shift === message.shift)
+    if (builtIn || registered) {
+      postToParent({ source: 'gaia-dsh', v: 1, type: 'appShortcut', code: message.code, shift: message.shift,
+        ...(typeof message.mod === 'boolean' && typeof message.alt === 'boolean' ? { mod: message.mod, alt: message.alt } : {}),
+        ...(message.phase === 'keyup' ? { phase: 'keyup' as const } : {}) })
+    }
+  }
+  window.addEventListener('message', onNestedShortcut)
 
   const getFullSessionTitle = (id: SessionId): string => {
     const summary = ctx.sessions.list.getSnapshot().byId[id]
@@ -621,6 +651,7 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
   const onChordMessage = (event: MessageEvent): void => {
     if (event.source !== window.parent || event.origin !== window.location.origin || !isGaiaIncomingMessage(event.data)) return
     if (event.data.type !== 'appChords') return
+    registeredAppChordMessage = event.data
     registeredAppChords = event.data.chords.filter((value): value is { code: string; mod: boolean; alt: boolean; shift: boolean } => {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
       const chord = value as Record<string, unknown>
@@ -629,17 +660,29 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
         && (chord.mod || chord.alt)
         && Object.keys(chord).every(key => ['code', 'mod', 'alt', 'shift'].includes(key))
     })
+    for (const frame of document.querySelectorAll('iframe')) relayChordsToTasksFrame(frame)
     if (heldAppChord && !registeredAppChords.some(chord => chord.code === heldAppChord?.code
       && chord.mod === heldAppChord.mod && chord.alt === heldAppChord.alt && chord.shift === heldAppChord.shift)) {
       heldAppChord = null
     }
   }
   window.addEventListener('message', onChordMessage)
+  const relayChordsToTasksFrame = (frame: HTMLIFrameElement): void => {
+    if (registeredAppChordMessage && new URL(frame.src, window.location.href).pathname === '/embed/tasks') {
+      frame.contentWindow?.postMessage(registeredAppChordMessage, window.location.origin)
+    }
+  }
+  const onNestedFrameLoad = (event: Event): void => {
+    if (event.target instanceof HTMLIFrameElement) relayChordsToTasksFrame(event.target)
+  }
+  window.addEventListener('load', onNestedFrameLoad, { capture: true })
 
   const commonDisposer = ctx.effect(() => () => {
     window.removeEventListener('keydown', onKeyDown, { capture: true })
     window.removeEventListener('keyup', onKeyUp, { capture: true })
+    window.removeEventListener('message', onNestedShortcut)
     window.removeEventListener('message', onChordMessage)
+    window.removeEventListener('load', onNestedFrameLoad, { capture: true })
     unsubConnection?.()
     unsubFullNotifications?.()
     if (onFullMessage) window.removeEventListener('message', onFullMessage)

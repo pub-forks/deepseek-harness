@@ -235,8 +235,15 @@ function decodeAnchor(value: string): string {
 
 function openTarget(target: string, dir: string | null, open: (path: string) => void): void {
   if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(target)) return
-  const path = resolveWikiTarget(dir, target)
+  const resolved = resolveWikiTarget(dir, target)
+  const path = resolved && !target.startsWith('/') && dir && !dir.startsWith('/') ? resolved.slice(1) : resolved
   if (path) open(path)
+}
+
+function joinDocumentPath(dir: string, target: string): string {
+  const absolute = dir.startsWith('/')
+  const joined = joinPath(absolute ? dir : `/${dir}`, target)
+  return absolute ? joined : joined.slice(1)
 }
 
 function isEditable(target: EventTarget | null): boolean {
@@ -263,8 +270,12 @@ function scrollMarkdown(root: HTMLElement, key: string, shiftKey: boolean): void
 /** Parse and render accumulated text with the same remark/sanitize order as Gaia. */
 export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo, t, readAloud }: MarkdownBodyProps): ReactNode {
   const resource = useResource<'file'>(resourceAddress).value
+  const sourceAddress = useMemo(() => parseFileAddress(resourceAddress), [resourceAddress])
   const absolutePath = resource?.absolutePath
-  const dir = useMemo(() => dirOf(absolutePath), [absolutePath])
+  // Some session hosts omit absolutePath while the resource address still has
+  // the workspace-relative path needed to resolve sibling links.
+  const documentPath = absolutePath || (sourceAddress?.scope === 'session' ? sourceAddress.path : undefined)
+  const dir = useMemo(() => dirOf(documentPath), [documentPath])
   const tab = useTabInfo().tab
   const { body, props } = useMemo(() => content.kind === 'text' ? parseFrontmatter(content.text) : { body: '', props: [] }, [content])
   const sections = useMemo(() => sectionsByHeadingLine(body), [body])
@@ -274,14 +285,32 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
   const documentId = `doc-${stableId(absolutePath ?? resourceAddress)}`
   const [copied, setCopied] = useState(false)
   const open = (path: string): void => {
-    if (!isAbsoluteWorkspacePath(path)) return
-    const source = parseFileAddress(resourceAddress)
-    const address = source?.scope === 'session'
+    const source = sourceAddress
+    const safeSessionPath = source?.scope === 'session' && path.length > 0 && path.length <= 4096
+      && !/[\u0000-\u001f\u007f]/u.test(path) && !path.split('/').some(segment => segment === '.' || segment === '..')
+    if (!safeSessionPath && !isAbsoluteWorkspacePath(path)) return
+    const address = source?.scope === 'session' && safeSessionPath
       ? sessionFileAddress(source.sessionId, path)
       : absoluteFileAddress(path)
     // Each click creates a file resource tab, matching the file tree's open flow.
     tab.actions.openResource(address, { revealIfOpened: false })
   }
+  const fullReading = readState.status !== 'idle' && readState.sessionId === documentId && readState.messageId === 'all'
+  const fullText = body.trim()
+  const fullTextTooLong = fullText.length > 200_000 || new TextEncoder().encode(fullText).length > 200_000
+  const onReadWholeFile = (): void => {
+    if (fullReading) postReadAloud({ type: 'stopReadAloud', sessionId: documentId, messageId: 'all' })
+    else if (readState.enabled && fullText && !fullTextTooLong) {
+      postReadAloud({ type: 'readAloud', sessionId: documentId, messageId: 'all', text: fullText,
+        label: documentName.slice(0, 256) })
+    }
+  }
+  useEffect(() => {
+    if (readState.status === 'idle' || readState.sessionId !== documentId || readState.messageId === 'all') return
+    const heading = [...document.querySelectorAll<HTMLElement>('[data-gaia-read-section]')]
+      .find(element => element.dataset.gaiaReadSection === readState.messageId)
+    heading?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [documentId, readState.messageId, readState.sessionId, readState.status])
   const renderHeading = (level: 1 | 2 | 3 | 4 | 5 | 6, children: ReactNode, node: unknown): ReactNode => {
     const Tag = `h${level}` as const
     const headingText = textOf(children).trim()
@@ -300,7 +329,7 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
           label: `${documentName} · ${headingText || t('label')}`.slice(0, 256) })
       }
     }
-    return <Tag id={slugify(headingText)} className={css.heading}>
+    return <Tag id={slugify(headingText)} data-gaia-read-section={sectionId} className={css.heading}>
       <span className={css.headingText}>{children}</span>
       {readState.enabled && <button type="button" className={css.readButton} aria-label={ariaLabel} title={ariaLabel}
         aria-pressed={reading} disabled={tooLong || (!reading && !text.trim())} onClick={(event) => { event.stopPropagation(); onRead() }}>
@@ -338,7 +367,7 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
         const encodedTarget = href.split(/[?#]/u)[0] ?? href
         let target = encodedTarget
         try { target = decodeURIComponent(encodedTarget) } catch { return }
-        open(isAbsoluteWorkspacePath(target) ? target : joinPath(dir, target))
+        open(isAbsoluteWorkspacePath(target) ? target : joinDocumentPath(dir, target))
       }}>{children}</button>
     },
     img: ({ src, alt }) => {
@@ -452,6 +481,13 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
       event.stopPropagation()
       scrollMarkdown(event.currentTarget, event.key, event.shiftKey)
     }}>
+    {readState.enabled && <div className={css.documentToolbar}>
+      <button type="button" className={css.readButton} aria-label={t(fullReading ? 'stopFile' : 'readFile')}
+        title={t(fullReading ? 'stopFile' : 'readFile')} aria-pressed={fullReading}
+        disabled={fullTextTooLong || (!fullReading && !fullText)} onClick={onReadWholeFile}>
+        {fullReading ? <VolumeX size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
+      </button>
+    </div>}
     <Properties entries={props} dir={dir} open={open} t={t} />
     <ReactMarkdown remarkPlugins={[remarkGfm, remarkObsidian]} rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
       urlTransform={url => url.startsWith('obsidian://') ? url : defaultUrlTransform(url)} components={components}>

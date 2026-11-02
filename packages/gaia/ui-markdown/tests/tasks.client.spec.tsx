@@ -10,7 +10,7 @@ afterEach(cleanup)
 type TestWrite = (sessionId: string, path: string, content: string, version: string, signal: AbortSignal) => Promise<{ version: string }>
 
 const labels: Record<MarkdownKey, string> = {
-  label: 'Obsidian', copy: 'Copy', copied: 'Copied', properties: 'Properties', empty: 'empty', footnotes: 'Footnotes', readSection: 'Read aloud', stopSection: 'Stop reading',
+  label: 'Obsidian', copy: 'Copy', copied: 'Copied', properties: 'Properties', empty: 'empty', footnotes: 'Footnotes', readSection: 'Read aloud', stopSection: 'Stop reading', readFile: 'Read whole file aloud', stopFile: 'Stop reading',
   tasksLabel: 'Tasks', openTasks: 'Open', tasksRemaining: 'tasks remaining', taskRemaining: 'task remaining', tasksFileIncomplete: 'Not fully loaded', completedTasks: 'Completed', untitledTask: 'Untitled task',
   invalidTasksFile: 'Could not parse this tasks file. Showing the raw text.', stepsLabel: 'steps',
   statusTodo: 'To Do', statusDone: 'Done', statusToDebate: 'To Debate', statusToPlan: 'To Plan', statusToImplement: 'To Implement', statusInProgress: 'In Progress', statusToReview: 'To Review', statusOnHold: 'On Hold', statusCanceled: 'Canceled',

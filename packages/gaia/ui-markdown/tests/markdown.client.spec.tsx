@@ -22,12 +22,12 @@ async function renderHtml(markdown: string): Promise<string> {
   return String(result)
 }
 
-function props(text: string, openResource = vi.fn(), readAloud?: MarkdownBodyProps['readAloud']): MarkdownBodyProps {
+function props(text: string, openResource = vi.fn(), readAloud?: MarkdownBodyProps['readAloud'], absolutePath = '/workspace/docs/readme.md'): MarkdownBodyProps {
   return {
     content: { kind: 'text', text, pages: [], eof: true }, resourceAddress: 'dsh-resource://file/session/s1/docs/readme.md',
-    useResource: () => ({ status: 'ready', value: { absolutePath: '/workspace/docs/readme.md' } }),
+    useResource: () => ({ status: 'ready', value: { absolutePath } }),
     useTabInfo: () => ({ tab: { actions: { openResource } } }),
-    t: (key: string) => ({ readSection: 'Read aloud', stopSection: 'Stop reading' } as Record<string, string>)[key] ?? key,
+    t: (key: string) => ({ readSection: 'Read aloud', stopSection: 'Stop reading', readFile: 'Read whole file aloud', stopFile: 'Stop reading' } as Record<string, string>)[key] ?? key,
     readAloud,
   } as unknown as MarkdownBodyProps
 }
@@ -55,9 +55,13 @@ describe('Gaia Markdown remark port', () => {
     expect(request.messageId).toMatch(/^section-[a-z0-9-]+$/u)
 
     snapshot = { enabled: true, status: 'speaking', sessionId: request.sessionId, messageId: request.messageId }
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView })
     act(() => { for (const listener of listeners) listener() })
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' })
     fireEvent.click(screen.getByRole('button', { name: 'Stop reading · readme.md · Top' }))
     expect(parent.postMessage.mock.calls[1]?.[0]).toEqual({ source: 'gaia-dsh', v: 1, type: 'stopReadAloud', sessionId: request.sessionId, messageId: request.messageId })
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
     vi.restoreAllMocks()
   })
 
@@ -103,6 +107,43 @@ describe('Gaia Markdown remark port', () => {
     fireEvent.click(screen.getByRole('button', { name: 'second' }))
     expect(open).toHaveBeenNthCalledWith(1, sessionFileAddress('s1', '/workspace/docs/docs/a.md'), { revealIfOpened: false })
     expect(open).toHaveBeenNthCalledWith(2, sessionFileAddress('s1', '/workspace/docs/b.md'), { revealIfOpened: false })
+  })
+
+  it('resolves relative links from a session address when the resource omits absolutePath', () => {
+    const open = vi.fn()
+    const input = props('[sibling](./guide.md) [[Notes/Plan]]', open, undefined, '')
+    render(<MarkdownBody {...input} />)
+    fireEvent.click(screen.getByRole('button', { name: 'sibling' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Notes/Plan' }))
+    expect(open).toHaveBeenNthCalledWith(1, sessionFileAddress('s1', 'docs/guide.md'), { revealIfOpened: false })
+    expect(open).toHaveBeenNthCalledWith(2, sessionFileAddress('s1', 'docs/Notes/Plan.md'), { revealIfOpened: false })
+  })
+
+  it('reads and stops the whole file through the existing bridge', () => {
+    let snapshot: ReturnType<NonNullable<MarkdownBodyProps['readAloud']>['getSnapshot']> = { enabled: true, status: 'idle', sessionId: null, messageId: null }
+    const listeners = new Set<() => void>()
+    const readAloud = {
+      getSnapshot: () => snapshot,
+      subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    }
+    const parent = { postMessage: vi.fn() }
+    vi.spyOn(window, 'parent', 'get').mockReturnValue(parent as unknown as Window)
+    render(<MarkdownBody {...props('---\ntitle: Secret metadata\n---\n# Start\nThe full text.', vi.fn(), readAloud)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Read whole file aloud' }))
+    const request = parent.postMessage.mock.calls[0]?.[0] as { sessionId: string; messageId: string; text: string }
+    expect(request).toMatchObject({ messageId: 'all', text: '# Start\nThe full text.' })
+    snapshot = { enabled: true, status: 'speaking', sessionId: request.sessionId, messageId: 'all' }
+    act(() => { for (const listener of listeners) listener() })
+    fireEvent.click(screen.getByRole('button', { name: 'Stop reading' }))
+    expect(parent.postMessage.mock.calls[1]?.[0]).toMatchObject({ type: 'stopReadAloud', messageId: 'all' })
+    vi.restoreAllMocks()
+  })
+
+  it('renders GFM task checkboxes with disabled checked state retained', () => {
+    const { container } = render(<MarkdownBody {...props('- [ ] open\n- [x] done')} />)
+    const checkboxes = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    expect(checkboxes.map(input => input.checked)).toEqual([false, true])
+    expect(checkboxes.every(input => input.disabled)).toBe(true)
   })
 
   it('keeps web links external and leaves unsafe or unknown schemes inert', () => {
