@@ -43,7 +43,7 @@
 .readButton:disabled { cursor: not-allowed; }
 .documentToolbar { display: flex; justify-content: flex-end; margin: 0 0 8px; }
 .documentToolbar .readButton { opacity: 1; }
-.root :global(input[type='checkbox']) { appearance: none; display: inline-grid; place-content: center; box-sizing: border-box; width: 18px; height: 18px; flex: 0 0 18px; margin: 0 8px 0 0; vertical-align: -3px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-secondary) 55%, transparent); border-radius: 50%; color: white; background: transparent; }
+.root :global(input[type='checkbox']) { appearance: none; display: inline-grid; place-content: center; box-sizing: border-box; width: 18px; height: 18px; flex: 0 0 18px; margin: 0 8px 0 0; vertical-align: -3px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-secondary) 55%, transparent); border-radius: 50%; corner-shape: round; color: white; background: transparent; }
 .root :global(input[type='checkbox']::before) { content: ''; width: 10px; height: 10px; transform: scale(0); transition: transform .12s ease-in-out; background: currentColor; clip-path: polygon(14% 44%, 0 59%, 40% 100%, 100% 18%, 84% 4%, 38% 69%); }
 .root :global(input[type='checkbox']:checked) { border-color: #ea580c; background: #ea580c; }
 .root :global(input[type='checkbox']:checked::before) { transform: scale(1); }

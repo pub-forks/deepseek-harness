@@ -325,7 +325,13 @@ export function apply(ctx: Context): void {
             const archivedSet = new Set(ctx.workspaceRegistry.archivedSessionIds)
             const items = (await ctx.sessionController.list({}, new AbortController().signal)).items
             const itemMap = new Map(items.map(item => [item.sessionId, item]))
-            const sessionsByWorkspace: Record<string, Array<{ sessionId: string; title: string; running: boolean; updatedAt: number | null; archived: boolean }>> = {}
+            const sessionsByWorkspace: Record<string, Array<{
+              sessionId: string
+              title: string
+              running: boolean
+              updatedAt: number | null
+              archived: boolean
+            }>> = {}
             for (const id of ids) {
               const workspace = workspaces.get(WorkspaceId(id))
               if (workspace === undefined) continue

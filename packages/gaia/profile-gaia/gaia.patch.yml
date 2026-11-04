@@ -29,6 +29,11 @@
     nativeOpen: false
 - id: open-in-app
   disabled: true
+# GAIA: keep read-before-write and external-change checks, which upstream ships
+# off since 0.2.2. Gaia agents edit the same files the user does, so a write must
+# not overwrite a change the agent has not seen.
+- id: fs-observation-policy
+  disabled: false
 - id: hmr
   disabled: true
 - id: client-hmr
