@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps, TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { ScheduleUsagePanel } from '../src/client/ScheduleUsagePanel.tsx'
-import { en, type ScheduleUsageKey } from '../src/client/locales.ts'
+import { en, type NS, type ScheduleUsageKey } from '../src/client/locales.ts'
+import type {} from '../src/client/index.ts'
 import type { ScheduledRunUsage, ScheduleUsageDashboard, ScheduleUsageQuery } from '../src/types.ts'
 
 afterEach(cleanup)
@@ -33,7 +34,7 @@ const data: ScheduleUsageDashboard = {
 function mount() {
   const load = vi.fn(async (_query: ScheduleUsageQuery) => data)
   const globals = {} as GlobalStandardProps
-  const t = (key: ScheduleUsageKey): string => en[key]
+  const t: TranslateNS<typeof NS> = key => (key in en ? en[key as ScheduleUsageKey] : key)
   render(<ScheduleUsagePanel {...globals} load={load} t={t} />)
   return load
 }
