@@ -78,10 +78,10 @@ export const GAIA_LOCALE_OVERRIDES: LocaleOverrides = {
   },
   'settings.models': {
     en: {
-      welcomeBody: 'Gaia Harness 0.1 is being tested with Harness developers. Many areas still need improvement, and we welcome feedback from the developer community. Gaia Harness’s core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the Gaia Harness plugin ecosystem.',
+      welcomeBody: 'Gaia Harness is being tested with Harness developers. Many areas still need improvement, and we welcome feedback from the developer community. Gaia Harness’s core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the Gaia Harness plugin ecosystem.',
     },
     zh: {
-      welcomeBody: 'Gaia Harness 0.1 目前仍面向 Harness 开发者测试。产品还有许多方面需要持续改进，我们欢迎开发者社区提供反馈。未来几个月，Gaia Harness 的核心插件和基础 API 仍将快速迭代。\n\n我们期待与全球开发者携手，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎各地的 Harness 开发者加入 Gaia Harness 插件生态。',
+      welcomeBody: 'Gaia Harness 目前仍面向 Harness 开发者测试。产品还有许多方面需要持续改进，我们欢迎开发者社区提供反馈。未来几个月，Gaia Harness 的核心插件和基础 API 仍将快速迭代。\n\n我们期待与全球开发者携手，在开源、开放、可复用、可组合的基础设施之上，共同探索智能上限。欢迎各地的 Harness 开发者加入 Gaia Harness 插件生态。',
     },
   },
   model: {
