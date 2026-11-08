@@ -1,0 +1,4 @@
+- insert:
+    - id: gaia-schedule-usage
+      name: '@deepseek-ai/dsh-gaia-schedule-usage'
+      config: {}
