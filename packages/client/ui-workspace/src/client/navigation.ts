@@ -48,6 +48,12 @@ export interface UiWorkspace {
    */
   setStarredWorkspacePaths(paths: readonly string[]): void
   /**
+   * GAIA: skip startup restoration of the persisted selection. A Gaia embed
+   * frame opens exactly its own Session; restoring the origin-shared selection
+   * there names a blank another frame holds, and the Host creates a new one.
+   */
+  skipStartupRestore(): void
+  /**
    * Select a Session and show its Conversation as one UI navigation action.
    * @param target - known Session identity or durable direct-parent subagent address to display.
    */
@@ -187,6 +193,8 @@ class UiWorkspaceService extends Service implements UiWorkspace {
   )
   private mainReference: SessionReference | undefined
   private restorationNavigation: AbortSignal | undefined
+  // GAIA: set by the Gaia embed frame before the lists load.
+  private startupRestoreSkipped = false
 
   /**
    * @param ctx - Client root Context.
@@ -222,6 +230,11 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     const current = this.starredPaths.getSnapshot()
     if (current.length === paths.length && current.every((path, index) => path === paths[index])) return
     this.starredPaths.set([...paths])
+  }
+
+  // GAIA: see UiWorkspace.skipStartupRestore.
+  skipStartupRestore(): void {
+    this.startupRestoreSkipped = true
   }
 
   connectWorkspace(workspaceId: WorkspaceId, options: Pick<StartSessionOptions, 'agentPreset'> = {}): Promise<SessionId> {
@@ -456,7 +469,8 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       const workspace = this.workspaces.list.getSnapshot()
       const sessions = this.sessions.list.getSnapshot()
       if (workspace.phase !== 'ready' || sessions.phase !== 'ready') return
-      if (this.mainReference !== undefined) {
+      // GAIA: an embed frame never restores the shared selection.
+      if (this.mainReference !== undefined || this.startupRestoreSkipped) {
         initial = 'done'
         return
       }

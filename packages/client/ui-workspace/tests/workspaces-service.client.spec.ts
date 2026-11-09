@@ -1029,6 +1029,19 @@ describe('UiWorkspaceService', () => {
     })
   })
 
+  // GAIA: embed frames skip restoring the origin-shared selection.
+  it('creates no Session at startup after skipStartupRestore', async () => {
+    persistSelection({ sessionId: sid('saved') })
+    const b = bench()
+    b.uiWorkspace.skipStartupRestore()
+    b.workspaces.list.set(workspaceState([workspace('a', [sid('saved')])]))
+    b.sessions.list.set(sessionState([summary('saved', { blank: true, cwd: '/w/a' })]))
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(b.sessions.create).not.toHaveBeenCalled()
+    expect(b.sessions.retain).not.toHaveBeenCalled()
+  })
+
   it('uses catalog order for Workspace connects without reading the saved selection', async () => {
     persistSelection({ sessionId: sid('saved') })
     const b = bench({

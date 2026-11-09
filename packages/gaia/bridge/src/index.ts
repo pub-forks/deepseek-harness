@@ -307,6 +307,7 @@ export function apply(ctx: Context): void {
                 running: item?.running ?? false,
                 updatedAt: item?.updatedAt ?? null,
                 archived: isArchived,
+                blank: item?.blank ?? false,
               })
             }
             answer(res, 200, { sessions })
@@ -331,6 +332,7 @@ export function apply(ctx: Context): void {
               running: boolean
               updatedAt: number | null
               archived: boolean
+              blank: boolean
             }>> = {}
             for (const id of ids) {
               const workspace = workspaces.get(WorkspaceId(id))
@@ -340,7 +342,7 @@ export function apply(ctx: Context): void {
                 const archived = archivedSet.has(sessionId)
                 if (!includeArchived && archived) continue
                 const item = itemMap.get(sessionId)
-                sessions.push({ sessionId, title: item?.projections?.values.title ?? '', running: item?.running ?? false, updatedAt: item?.updatedAt ?? null, archived })
+                sessions.push({ sessionId, title: item?.projections?.values.title ?? '', running: item?.running ?? false, updatedAt: item?.updatedAt ?? null, archived, blank: item?.blank ?? false })
               }
               sessionsByWorkspace[id] = sessions
             }

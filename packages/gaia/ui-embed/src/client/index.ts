@@ -723,6 +723,12 @@ export function apply(ctx: Context): (() => void | Promise<void>) | void {
 
   const sessionId = SessionId(rawSession)
 
+  // DSH restores the origin-shared last selection once its lists load. Several
+  // frames booting together (a Gaia restart) would each name the same saved
+  // blank, and the Host creates a new blank Session for every frame that does
+  // not hold it. This frame only ever shows its own Session, so skip that.
+  ctx.uiWorkspace.skipStartupRestore()
+
   // Only this frame's successful message forks qualify; shared list lineage
   // also contains other frames' forks and subagents.
   const branchChildren = new Set<SessionId>()

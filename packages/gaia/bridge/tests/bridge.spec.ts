@@ -27,7 +27,13 @@ function fixture(value: string | undefined = secret, documentPath: string | null
     status(): Promise<string>
   }
   const workspaces = new Map<string, MockWorkspace>()
-  const sessions: { sessionId: string; running: boolean; updatedAt: number; projections: { values: { title: string } } }[] = []
+  const sessions: {
+    sessionId: string
+    running: boolean
+    blank: boolean
+    updatedAt: number
+    projections: { values: { title: string } }
+  }[] = []
   const archivedSessions = new Set<string>()
   const indexInjectListeners: ((table: IndexInjection[]) => void)[] = []
   const warn = vi.fn()
@@ -56,7 +62,7 @@ function fixture(value: string | undefined = secret, documentPath: string | null
     sessionController: {
       create: vi.fn(async ({ workspaceId }: { workspaceId: string }) => {
         const sessionId = `session-${sessions.length + 1}`
-        sessions.push({ sessionId, running: false, updatedAt: 1, projections: { values: { title: '' } } })
+        sessions.push({ sessionId, running: false, blank: true, updatedAt: 1, projections: { values: { title: '' } } })
         const workspace = [...workspaces.values()].find(item => item.id === workspaceId)
         workspace?.sessionIds.push(sessionId)
         return { sessionId }
@@ -162,7 +168,7 @@ describe('Gaia control bridge', () => {
     const created = await f.call('POST', '/gaia/control/sessions', { workspaceId: first.body.workspaceId, title: 'Initial' })
     expect(created.body.sessionId).toBe('session-1')
     const listed = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}`)
-    expect(listed.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Initial', running: false, updatedAt: 1, archived: false }])
+    expect(listed.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Initial', running: false, updatedAt: 1, archived: false, blank: true }])
     expect((await f.call('POST', '/gaia/control/sessions/session-1/rename', { title: 'Next' })).body.ok).toBe(true)
     expect((await f.call('POST', '/gaia/control/sessions/session-1/archive', {})).body.ok).toBe(true)
     expect(f.ctx.workspaceRegistry.archiveSession).toHaveBeenCalled()
@@ -173,7 +179,7 @@ describe('Gaia control bridge', () => {
 
     // With includeArchived=1, archived session is included with archived: true
     const withArchived = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}&includeArchived=1`)
-    expect(withArchived.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: true }])
+    expect(withArchived.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: true, blank: true }])
 
     // Query validation
     expect((await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}&includeArchived=0`)).status).toBe(400)
@@ -190,7 +196,7 @@ describe('Gaia control bridge', () => {
 
     // Session is now unarchived in list
     const afterUnarchive = await f.call('GET', `/gaia/control/sessions?workspaceId=${first.body.workspaceId}`)
-    expect(afterUnarchive.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: false }])
+    expect(afterUnarchive.body.sessions).toEqual([{ sessionId: 'session-1', title: 'Next', running: false, updatedAt: 1, archived: false, blank: true }])
   })
 
   it('lists workspaces and validates and applies workspace titles', async () => {
@@ -216,7 +222,7 @@ describe('Gaia control bridge', () => {
     const workspace = f.ctx.workspaceRegistry.get(ws.body.workspaceId as string)
     workspace?.sessionIds.push('fresh-session')
     const listed = await f.call('GET', `/gaia/control/sessions?workspaceId=${ws.body.workspaceId}`)
-    expect(listed.body.sessions).toEqual([{ sessionId: 'fresh-session', title: '', running: false, updatedAt: null, archived: false }])
+    expect(listed.body.sessions).toEqual([{ sessionId: 'fresh-session', title: '', running: false, updatedAt: null, archived: false, blank: false }])
   })
 
   it('lists sessions for multiple workspaces with one controller listing', async () => {
@@ -231,8 +237,8 @@ describe('Gaia control bridge', () => {
     const result = await f.call('GET', `/gaia/control/sessions/by-workspace?${query}`)
     expect(vi.mocked(f.ctx.sessionController.list).mock.calls.length - before).toBe(1)
     expect(result.body.sessionsByWorkspace).toEqual({
-      [String(first.body.workspaceId)]: [{ sessionId: 'session-1', title: 'First', running: false, updatedAt: 1, archived: false }],
-      [String(second.body.workspaceId)]: [{ sessionId: 'session-2', title: 'Second', running: false, updatedAt: 1, archived: true }],
+      [String(first.body.workspaceId)]: [{ sessionId: 'session-1', title: 'First', running: false, updatedAt: 1, archived: false, blank: true }],
+      [String(second.body.workspaceId)]: [{ sessionId: 'session-2', title: 'Second', running: false, updatedAt: 1, archived: true, blank: true }],
     })
   })
 

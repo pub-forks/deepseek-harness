@@ -202,6 +202,7 @@ describe('ui-embed client plugin', () => {
     const uiWorkspace = {
       openSession: vi.fn(),
       setStarredWorkspacePaths: vi.fn(),
+      skipStartupRestore: vi.fn(),
     }
     ctx.provide('uiWorkspace', uiWorkspace)
 
@@ -488,6 +489,20 @@ describe('ui-embed client plugin', () => {
       data: { source: 'gaia-dsh', v: 1, type: 'starredWorkspaces', paths },
     }))
     expect(embed.uiWorkspace.setStarredWorkspacePaths).not.toHaveBeenCalled()
+  })
+
+  it('skips DSH startup selection restore only in embed mode', () => {
+    setLocationSearch('?gaia=full')
+    const full = createMockContext()
+    apply(full.ctx)
+    expect(full.uiWorkspace.skipStartupRestore).not.toHaveBeenCalled()
+
+    setLocationSearch('?gaia=embed&session=s-test-123')
+    const embed = createMockContext()
+    apply(embed.ctx)
+    expect(embed.uiWorkspace.skipStartupRestore).toHaveBeenCalledTimes(1)
+    expect(embed.uiWorkspace.skipStartupRestore.mock.invocationCallOrder[0])
+      .toBeLessThan(embed.uiWorkspace.openSession.mock.invocationCallOrder[0] ?? Infinity)
   })
 
   it.each(['full', 'embed'] as const)('debounces workspace changes after the first ready snapshot in %s mode', async (mode) => {
@@ -1899,7 +1914,7 @@ describe('embed integration of the palette and header entries', () => {
     const overrideTokens = vi.fn(() => () => {})
     const registrations: { name: string; id: string; priority?: number }[] = []
     ctx.provide('layout', { selectPanel: vi.fn(), closeRightbar: vi.fn(), toggleSidebar: vi.fn(), openRightbar: vi.fn() })
-    ctx.provide('uiWorkspace', { openSession: vi.fn() })
+    ctx.provide('uiWorkspace', { openSession: vi.fn(), skipStartupRestore: vi.fn() })
     ctx.provide('connection', { state: { getSnapshot: () => 'connected', subscribe: () => () => {} } })
     ctx.provide('uiSession', { sessionStatus: { getSnapshot: () => new Map(), subscribe: () => () => {} } })
     ctx.provide('sessions', { list: { getSnapshot: () => ({ phase: 'ready', byId: {} }), subscribe: () => () => {} }, scope: () => undefined })
