@@ -62,6 +62,7 @@
 | `packages/client/ui-conversation/README.md`, `README.zh.md` | Document the Gaia history provider and lossless checkpoint behavior for atomic command and reference chips. | Consumers need the callback, timing, and restoration contract. | Upstream documents the equivalent capability. |
 | `packages/client/ui-conversation/tests/input-history.client.spec.ts`, `keymap-routing.client.spec.tsx` | Exercise lossless restoration and history safeguards. | The unavoidable composer edits require owner-local regressions. | Upstream covers the equivalent behavior. |
 | `apps/cli/package.json`, `packages/bundle/web-app/package.json`, `tsconfig.base.json`, `tsconfig.host.json`, `tsconfig.client.json`, `pnpm-lock.yaml` | `GAIA:` register `dsh-gaia-schedule-usage` for resolution, Web bundling, and both compiler faces. | The Gaia profile overlay mounts the scheduled-task usage dashboard and its Host Remote. | The Gaia usage package leaves the workspace. |
+| `packages/llm/llm-pi-ai/src/stream.ts` (+ `tests/convert.spec.ts`) | `GAIA:` classify transient WebSocket close codes as `TRANSPORT`. | pi-ai rethrows a mid-stream WebSocket close without SSE fallback, so transient server-side drops were not retried. | Upstream classifies transient WebSocket close codes as transport errors. |
 
 ## Ported upstream changes
 

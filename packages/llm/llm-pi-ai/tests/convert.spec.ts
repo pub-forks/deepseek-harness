@@ -954,6 +954,10 @@ describe('mapStopReason / mapUsage', () => {
     'other side closed',
     'HTTP2 request did not get a response',
     'WebSocket closed unexpectedly',
+    ...[1001, 1005, 1006, 1011, 1012, 1013].flatMap(code => [
+      `WebSocket closed ${code}`,
+      `WebSocket closed ${code} service restart`,
+    ]),
     // undici flattens a mid-stream socket drop to this bare word (its SocketError
     // cause is discarded upstream before it reaches us).
     'terminated',
@@ -966,6 +970,16 @@ describe('mapStopReason / mapUsage', () => {
   ])('maps pi-ai transport wording %j', (errorMessage) => {
     expect(mapStopReason(assistant({ stopReason: 'error', errorMessage })))
       .toMatchObject({ kind: 'error', failure: { code: 'TRANSPORT' } })
+  })
+
+  it.each([
+    'WebSocket closed 1009 message too big',
+    'WebSocket closed 1000',
+    'WebSocket closed',
+    'WebSocket closed 10120',
+  ])('does not classify non-transient WebSocket close wording %j as transport', (errorMessage) => {
+    expect(mapStopReason(assistant({ stopReason: 'error', errorMessage })))
+      .toMatchObject({ kind: 'error', failure: { code: 'PI_AI_ERROR' } })
   })
 
   it('uses pi-ai provider-specific overflow classification without losing rate-limit exclusions', () => {
