@@ -393,6 +393,9 @@ importers:
       '@deepseek-ai/dsh-gaia-profile':
         specifier: workspace:*
         version: link:../../packages/gaia/profile-gaia
+      '@deepseek-ai/dsh-gaia-schedule-archive':
+        specifier: workspace:*
+        version: link:../../packages/gaia/schedule-archive
       '@deepseek-ai/dsh-gaia-schedule-usage':
         specifier: workspace:*
         version: link:../../packages/gaia/schedule-usage
@@ -12498,6 +12501,44 @@ importers:
         version: link:../../session/session-projection
 
   packages/gaia/profile-gaia: {}
+
+  # GAIA: workspace links for the Host-only scheduled-session archive plugin.
+  packages/gaia/schedule-archive:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: workspace:~
+        version: link:../../../vendor/include
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: workspace:~
+        version: link:../../../vendor/loader
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:*
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:*
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-schedule':
+        specifier: workspace:*
+        version: link:../../schedule/schedule
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
+      '@deepseek-ai/dsh-session-query':
+        specifier: workspace:*
+        version: link:../../session-query/session-query
+      '@deepseek-ai/dsh-user-approval':
+        specifier: workspace:*
+        version: link:../../interaction/user-approval
+      '@deepseek-ai/dsh-workspace':
+        specifier: workspace:*
+        version: link:../../workspace/workspace
 
   packages/gaia/schedule-usage:
     devDependencies:

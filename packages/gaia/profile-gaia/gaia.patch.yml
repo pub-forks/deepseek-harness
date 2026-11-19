@@ -75,3 +75,6 @@
     # GAIA: browser dashboard for scheduled-task token usage and estimated costs.
     - id: gaia-schedule-usage
       name: '@deepseek-ai/dsh-gaia-schedule-usage'
+    # GAIA: archive safely completed Sessions from per-delivery scheduled tasks.
+    - id: gaia-schedule-archive
+      name: '@deepseek-ai/dsh-gaia-schedule-archive'

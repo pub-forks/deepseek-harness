@@ -587,6 +587,8 @@
     { "path": "./packages/gaia/ui-markdown/tsconfig.host.json" },
     // GAIA: compile the scheduled-task usage Remote on the Host face.
     { "path": "./packages/gaia/schedule-usage/tsconfig.host.json" },
+    // GAIA: compile the scheduled-session archive plugin on the Host face.
+    { "path": "./packages/gaia/schedule-archive" },
     { "path": "./packages/gaia/profile-gaia" },
     { "path": "./packages/host/open-in-app" },
     { "path": "./packages/host/plugin-inventory" },

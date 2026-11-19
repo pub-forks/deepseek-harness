@@ -421,6 +421,8 @@
       "@deepseek-ai/dsh-gaia-ui-markdown": ["./packages/gaia/ui-markdown/src"],
       // GAIA: TypeScript source alias for the scheduled-task usage plugin.
       "@deepseek-ai/dsh-gaia-schedule-usage": ["./packages/gaia/schedule-usage/src"],
+      // GAIA: TypeScript source alias for the scheduled-session archive plugin.
+      "@deepseek-ai/dsh-gaia-schedule-archive": ["./packages/gaia/schedule-archive/src"],
       "@deepseek-ai/dsh-message-quotes/client": ["./packages/session/message-quotes/src/client/index.ts"],
       "@deepseek-ai/dsh-ptc-runtime-node/configuration": ["./packages/ptc-runtime/ptc-runtime-node/src/configuration.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
