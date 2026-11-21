@@ -27,7 +27,7 @@ async function runTool(ctx: Context, input: ToolExecutionInput): Promise<ToolExe
   return pipeline.complete(prepared.exec, outcome)
 }
 
-async function setup() {
+async function setup(meta?: { parentSession: ReturnType<typeof SessionId>; origin: 'subagent' }) {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
@@ -37,7 +37,7 @@ async function setup() {
   await ctx.plugin(CommandRuntime)
   await ctx.plugin(SessionTitleService, { fallbackMaxWords: 5, fallbackMaxBytes: 80, maxTitleBytes: 80 })
   const fiber = await ctx.plugin(sessionRename)
-  const session = ctx.sessions.create(SessionId(`rename-${Math.random()}`))
+  const session = ctx.sessions.create(SessionId(`rename-${Math.random()}`), meta === undefined ? {} : { meta })
   let status: AgentStatus = 'running'
   const followup = vi.fn<Agent['followup']>()
   const agent: Agent = {
@@ -89,9 +89,8 @@ describe('rename_session', () => {
   })
 
   it('rejects a subagent even when the turn contains a user-source message', async () => {
-    const state = await setup()
+    const state = await setup({ parentSession: SessionId('rename-parent'), origin: 'subagent' })
     state.openTurn()
-    vi.spyOn(state.ctx.agents, 'roots').mockReturnValue([])
     const result = await state.execute({ title: 'Child title' })
     expect(result.isError).toBe(true)
     expect(state.ctx.sessionTitle.get(state.session)?.title).not.toBe('Child title')

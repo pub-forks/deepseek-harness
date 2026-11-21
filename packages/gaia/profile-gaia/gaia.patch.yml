@@ -6,6 +6,17 @@
     compression: gzip
     compressionLevel: 1
     compressionThresholdBytes: 1024
+# GAIA: schedule-archive archives Sessions unattended, so never remove their Git worktrees.
+- id: worktree
+  config:
+    retainOnArchive: true
+    directory: .agents/worktrees
+    namePrefix: dsh-
+    gitCommand: git
+    nodeCommand: node
+    timeoutMs: 300000
+    graceMs: 3000
+    maxOutputBytes: 65536
 - id: web-runtime
   config:
     openBrowser: false

@@ -7,7 +7,7 @@
   /* GAIA: Markdown tables and code blocks scroll on the elevated document surface. */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-  --md-accent: var(--dsw-alias-link, #ea580c);
+  --md-accent: var(--dsw-alias-link);
   /* Same derivation as the Gaia palette mapping (bg-layer-2 = 7% foreground). */
   --md-muted: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
   --md-border: var(--dsw-alias-border-l2);
@@ -43,9 +43,9 @@
 .readButton:disabled { cursor: not-allowed; }
 .documentToolbar { display: flex; justify-content: flex-end; margin: 0 0 8px; }
 .documentToolbar .readButton { opacity: 1; }
-.root :global(input[type='checkbox']) { appearance: none; display: inline-grid; place-content: center; box-sizing: border-box; width: 18px; height: 18px; flex: 0 0 18px; margin: 0 8px 0 0; vertical-align: -3px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-secondary) 55%, transparent); border-radius: 50%; corner-shape: round; color: white; background: transparent; }
+.root :global(input[type='checkbox']) { appearance: none; display: inline-grid; place-content: center; box-sizing: border-box; width: 18px; height: 18px; flex: 0 0 18px; margin: 0 8px 0 0; vertical-align: -3px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-secondary) 55%, transparent); border-radius: 50%; corner-shape: round; color: var(--dsw-alias-button-contrast-fill); background: transparent; }
 .root :global(input[type='checkbox']::before) { content: ''; width: 10px; height: 10px; transform: scale(0); transition: transform .12s ease-in-out; background: currentColor; clip-path: polygon(14% 44%, 0 59%, 40% 100%, 100% 18%, 84% 4%, 38% 69%); }
-.root :global(input[type='checkbox']:checked) { border-color: #ea580c; background: #ea580c; }
+.root :global(input[type='checkbox']:checked) { border-color: var(--md-accent); background: var(--md-accent); }
 .root :global(input[type='checkbox']:checked::before) { transform: scale(1); }
 .root :global(input[type='checkbox']:disabled) { opacity: .72; }
 .root :global(h1) { margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--md-border); font-size: 30px; line-height: 36px; }
@@ -86,7 +86,7 @@
 .root :global(th) { background: color-mix(in srgb, var(--md-muted) 50%, transparent); font-weight: 700; }
 
 /* ==highlight==: bg-yellow-300 text-yellow-950 px-0.5 */
-.mark { padding: 0 2px; background: #fde047; color: #422006; }
+.mark { padding: 0 2px; background: var(--dsw-alias-markdown-tag); color: var(--dsw-alias-label-primary); }
 
 /* Tags: inline-block bg-muted text-xs rounded-md px-1.5 py-0.5 mx-0.5 font-mono */
 .tag { display: inline-block; margin: 0 2px; padding: 2px 6px; border-radius: 6px; background: var(--md-muted); color: var(--dsw-alias-label-primary); font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 12px; line-height: 16px; }
@@ -121,15 +121,15 @@
 .root :global(pre) { margin: 0; padding: 16px; overflow-x: auto; background: transparent; }
 .root :global(pre code) { padding: 0; background: transparent; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 14px; line-height: 20px; white-space: pre; }
 .prism :global(.token.comment), .prism :global(.token.prolog) { color: var(--md-muted-fg); font-style: italic; }
-.prism :global(.token.keyword), .prism :global(.token.important) { color: #c026d3; }
-.prism :global(.token.string), .prism :global(.token.inserted) { color: #16a34a; }
-.prism :global(.token.number), .prism :global(.token.boolean), .prism :global(.token.tag) { color: #ea580c; }
-.prism :global(.token.function) { color: #2563eb; }
+.prism :global(.token.keyword), .prism :global(.token.important) { color: var(--dsw-alias-json-tree-keyword); }
+.prism :global(.token.string), .prism :global(.token.inserted) { color: var(--dsw-alias-json-tree-string); }
+.prism :global(.token.number), .prism :global(.token.boolean), .prism :global(.token.tag) { color: var(--dsw-alias-json-tree-number); }
+.prism :global(.token.function) { color: var(--dsw-alias-json-tree-property); }
 
 /* Callouts (Gaia CALLOUT_TYPES): border-l-4 in the 500 shade; title in 600,
    400 on dark; background 10%, 20% on dark. DSH marks dark with
    body[data-ds-dark-theme]. */
-.callout { --callout: #3b82f6; --callout-text: #2563eb; --callout-text-dark: #60a5fa; margin: 16px 0; padding: 8px 16px; border-left: 4px solid var(--callout); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--callout) 10%, transparent); font-style: normal; }
+.callout { --callout: var(--dsw-alias-button-info-fill); --callout-text: var(--dsw-alias-label-primary); --callout-text-dark: var(--dsw-alias-label-primary); margin: 16px 0; padding: 8px 16px; border-left: 4px solid var(--callout); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--callout) 10%, transparent); font-style: normal; }
 :global(body[data-ds-dark-theme]) .callout { background: color-mix(in srgb, var(--callout) 20%, transparent); }
 .calloutTitle { display: flex; align-items: center; gap: 8px; color: var(--callout-text); font-weight: 600; }
 :global(body[data-ds-dark-theme]) .calloutTitle { color: var(--callout-text-dark); }
@@ -138,14 +138,12 @@
 .calloutBody > :last-child { margin-bottom: 0; }
 .calloutSummary { cursor: pointer; list-style: none; }
 .calloutSummary::-webkit-details-marker { display: none; }
-.callout[data-callout=abstract] { --callout: #06b6d4; --callout-text: #0891b2; --callout-text-dark: #22d3ee; }
-.callout[data-callout=info], .callout[data-callout=todo] { --callout: #0ea5e9; --callout-text: #0284c7; --callout-text-dark: #38bdf8; }
-.callout[data-callout=tip] { --callout: #14b8a6; --callout-text: #0d9488; --callout-text-dark: #2dd4bf; }
-.callout[data-callout=success] { --callout: #10b981; --callout-text: #059669; --callout-text-dark: #34d399; }
-.callout[data-callout=question] { --callout: #f59e0b; --callout-text: #d97706; --callout-text-dark: #fbbf24; }
-.callout[data-callout=warning] { --callout: #f97316; --callout-text: #ea580c; --callout-text-dark: #fb923c; }
-.callout[data-callout=failure], .callout[data-callout=danger], .callout[data-callout=bug] { --callout: #ef4444; --callout-text: #dc2626; --callout-text-dark: #f87171; }
-.callout[data-callout=example] { --callout: #8b5cf6; --callout-text: #7c3aed; --callout-text-dark: #a78bfa; }
+.callout[data-callout=abstract] { --callout: var(--dsw-alias-button-info-fill); }
+.callout[data-callout=info], .callout[data-callout=todo] { --callout: var(--dsw-alias-button-info-fill); }
+.callout[data-callout=tip], .callout[data-callout=success] { --callout: var(--dsw-alias-state-success-primary); }
+.callout[data-callout=question], .callout[data-callout=warning] { --callout: var(--dsw-alias-state-warn-primary); }
+.callout[data-callout=failure], .callout[data-callout=danger], .callout[data-callout=bug] { --callout: var(--dsw-alias-state-error-primary); }
+.callout[data-callout=example] { --callout: var(--dsw-alias-brand-primary); }
 /* quote: border-muted-foreground/40, text-muted-foreground, bg-muted/40 (30% on dark) */
 .callout[data-callout=quote] { --callout: color-mix(in srgb, var(--md-muted-fg) 40%, transparent); --callout-text: var(--md-muted-fg); --callout-text-dark: var(--md-muted-fg); background: color-mix(in srgb, var(--md-muted) 40%, transparent); }
 :global(body[data-ds-dark-theme]) .callout[data-callout=quote] { background: color-mix(in srgb, var(--md-muted) 30%, transparent); }

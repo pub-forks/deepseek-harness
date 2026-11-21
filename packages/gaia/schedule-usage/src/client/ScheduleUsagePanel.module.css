@@ -34,15 +34,17 @@
   height: 36px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
 }
 
-.refresh:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+@media (hover: hover) {
+  .refresh:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover-solid);
+  }
 }
 
 .refresh:disabled {
@@ -68,7 +70,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 16px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 10px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -96,7 +98,7 @@
 
 .notice {
   padding: 10px 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -127,7 +129,7 @@
 
 .task {
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 10px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -149,9 +151,11 @@
   display: none;
 }
 
-.taskSummary:hover,
-.runSummary:hover {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+@media (hover: hover) {
+  .taskSummary:hover,
+  .runSummary:hover {
+    background: var(--dsw-alias-interactive-bg-hover-solid);
+  }
 }
 
 .taskName,
@@ -184,7 +188,7 @@
 
 .run {
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-2);
 }
@@ -229,7 +233,7 @@
 
 .model {
   padding: 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -321,7 +325,7 @@
   box-sizing: border-box;
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
@@ -346,8 +350,10 @@
   display: none;
 }
 
-.taskFilterSummary:hover {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+@media (hover: hover) {
+  .taskFilterSummary:hover {
+    background: var(--dsw-alias-interactive-bg-hover-solid);
+  }
 }
 
 .taskFilterLabel {
@@ -355,6 +361,8 @@
 }
 
 .taskFilterMenu {
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
   position: absolute;
   z-index: 10;
   top: calc(100% + 4px);
@@ -366,7 +374,7 @@
   flex-direction: column;
   padding: 6px;
   overflow-y: auto;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l1);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
   box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
@@ -382,8 +390,10 @@
   cursor: pointer;
 }
 
-.taskOption:hover {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+@media (hover: hover) {
+  .taskOption:hover {
+    background: var(--dsw-alias-interactive-bg-hover-solid);
+  }
 }
 
 .taskOptionTitle {
@@ -412,6 +422,8 @@
   cursor: pointer;
 }
 
-.clearSelection:hover {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+@media (hover: hover) {
+  .clearSelection:hover {
+    background: var(--dsw-alias-interactive-bg-hover-solid);
+  }
 }

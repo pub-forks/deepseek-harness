@@ -33,7 +33,8 @@ function executionContext(ctx: Context, exec: ToolRunContext) {
 /** Require direct human authority in the current root agent turn. */
 function requireDirectHuman(ctx: Context, exec: ToolRunContext): ReturnType<typeof executionContext> {
   const execution = executionContext(ctx, exec)
-  if (!ctx.agents.roots().includes(execution.agent)) {
+  if (execution.agent.session.header.parentSession !== undefined
+    || execution.agent.session.header.origin === 'subagent') {
     throw new HarnessError('rename_session requires a direct human turn on a top-level agent', 'SESSION_RENAME_AUTHORITY_REQUIRED')
   }
   for (let seq = execution.openTurnStartSeq + 1; seq < execution.events.length; seq += 1) {

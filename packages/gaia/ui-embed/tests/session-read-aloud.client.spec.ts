@@ -54,6 +54,7 @@ test('catalog and search rows keep narration visible during activity, unread sta
   // Other seats are empty in this row fixture; the decoration gets its real owner identity.
   const renderRowSlot: Parameters<typeof SessionNodeItem>[0]['renderSlot'] = renderSlot
   const rowProps = {
+    renderFactorySlot: () => null,
     currentId: undefined, now: 0, onOpen: vi.fn(), onRenameRequest: vi.fn(), t: (key: string) => key, renderSlot: renderRowSlot,
     openSessionMenu: vi.fn(), useContextMenuTarget: <T>(select: (target: null) => T) => select(null),
     useContextMenu: contextMenuHook(() => {}), useSessionAccess: allowAllAccess.useSessionAccess,

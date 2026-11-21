@@ -8,7 +8,7 @@ import remoteContribution from '@deepseek-ai/dsh-gaia-schedule-usage/remote'
 import { ScheduleUsageIcon } from './ScheduleUsageIcon.tsx'
 import type { ScheduleUsageDashboard, ScheduleUsageQuery } from '../types.ts'
 import { ScheduleUsagePanel } from './ScheduleUsagePanel.tsx'
-import { NS, en, zh, type ScheduleUsageKey } from './locales.ts'
+import { NS, de, en, es, fr, ja, pt, ru, zh, type ScheduleUsageKey } from './locales.ts'
 
 const PANEL_ID = 'schedule-usage' as MainPanelId
 
@@ -28,7 +28,7 @@ export const inject = ['remote', 'slots', 'locale']
  */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(remoteContribution)
-  ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'gaia-schedule-usage: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { en, zh, ja, es, fr, de, ru, pt }), 'gaia-schedule-usage: dictionaries')
   const t = ctx.locale.bind(NS)
   ctx.inject(['remote.gaiaScheduleUsage', 'slots'], (actx) => {
     const load = async (query: ScheduleUsageQuery): Promise<ScheduleUsageDashboard> => {

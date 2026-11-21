@@ -19,7 +19,12 @@ const MAX_TASKS = 100
 const RECEIPTS_PER_TASK = 20
 const HISTORY_MS = 7 * 24 * 60 * 60 * 1000
 
-/** Decide from committed history whether to archive, retain for a later check, or forget a delivery. */
+/** Decide whether committed history permits archiving, requires another check, or excludes a delivery.
+ * @param events - Committed Session history for the target.
+ * @param messageId - Scheduled delivery message id to locate.
+ * @param keepFailed - Whether a failed scheduled turn stays visible.
+ * @returns The archive, wait, or skip decision.
+ */
 export function decision(events: readonly SessionEvent[], messageId: string, keepFailed: boolean): 'archive' | 'wait' | 'skip' {
   let messageSeq: number | undefined
   let turn: number | undefined

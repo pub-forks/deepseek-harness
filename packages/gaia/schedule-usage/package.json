@@ -32,7 +32,7 @@
     }
   },
   "scripts": { "bundle": "tsdown", "watch": "tsdown --watch" },
-  "files": ["cordis.patch.yml", "icon.svg", "locale/*.json", "lib/index.js", "lib/client.js", "lib/typert.host.js", "lib/typert.host.d.ts", "lib/typert.remote-client.js", "lib/typert.remote-client.d.ts", "lib/types/**/*.d.ts"],
+  "files": ["cordis.patch.yml", "icon.svg", "locale/*.json", "lib/index.js", "lib/client.js", "lib/typert.host.js", "lib/typert.host.d.ts", "lib/typert.remote-client.js", "lib/typert.remote-client.d.ts", "lib/typert.remote-client.d.ts.map", "lib/types/**/*.d.ts", "lib/types/**/*.d.ts.map", "lib/**/*.js.map"],
   "license": "MIT",
   "peerDependencies": { "@deepseek-ai/cordis": "workspace:~" },
   "devDependencies": {

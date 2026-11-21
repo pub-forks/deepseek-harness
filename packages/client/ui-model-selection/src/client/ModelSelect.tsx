@@ -84,12 +84,6 @@ function writeCollapsedGroups(groups: ReadonlySet<string>): void {
   }
 }
 
-/** Unplaced portal card: hidden but laid out at a fixed origin so offsetWidth/offsetHeight are real (Menu primitive's measure pass). */
-const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
-
-/** GAIA: room above the trigger, in pixels, below which the card may open underneath it. */
-const MIN_MENU_ROOM = 200
-
 /**
  * Render the composer model seat.
  * @param props - owner share (locked) + injected face (shared directory
@@ -99,7 +93,7 @@ const MIN_MENU_ROOM = 200
 export function ModelSelect(
   { locked, available, directory, load, select, resolveText, t, renderSlot }:
   ModelSelectInjected & Pick<PropsRuntime<'conversation.input.model'>, 'locked'> & PropsLocale<'model'>
-    & Omit<PropsRenderSlots<'conversation.input.model.label'>, 'SessionProvider'>,
+    & Omit<PropsRenderSlots<'conversation.input.model.label' | 'conversation.input.model.options'>, 'SessionProvider'>,
 ) {
   const state = useSyncExternalStore(
     fn => directory.subscribe(fn),
@@ -122,13 +116,16 @@ export function ModelSelect(
   const searchRef = useRef<HTMLInputElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const groupsRef = useRef<HTMLDivElement | null>(null)
-  const [menuPos, setMenuPos] = useState<CSSProperties | null>(null)
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const id = useId()
+  const anchorStyle: CSSProperties & Record<'--dsh-model-anchor', string> = {
+    '--dsh-model-anchor': `--dsh-model-${id.replaceAll(':', '')}`,
+  }
   // GAIA: model-list search and collapsible provider groups (see
   // packages/gaia/UPSTREAM-PATCHES.md). Collapsed provider ids persist per
   // browser origin; an active search expands every group it matches.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(readCollapsedGroups)
+
 
   const accountProviderName = t('provider.account')
   const groups = useMemo(() => orderModelProviders(state.groups).map(group => ({
@@ -270,44 +267,6 @@ export function ModelSelect(
     }
   }, [open, pane, activeModelIndex, visibleModels])
 
-  // The portal needs viewport coordinates from the trigger and the menu's
-  // measured size before paint. Slot content can resize without parent renders.
-  useLayoutEffect(() => {
-    if (!available || !open) { setMenuPos(null); return }
-    const place = (): void => {
-      /* v8 ignore next 2 -- the trigger ref is attached whenever the menu is open. */
-      const rect = triggerRef.current?.getBoundingClientRect()
-      if (rect === undefined) return
-      const MARGIN = 12
-      const GAP = 8
-      const lw = menuRef.current?.offsetWidth ?? 0
-      let x = rect.right - lw
-      if (lw > 0) x = Math.min(Math.max(x, MARGIN), window.innerWidth - lw - MARGIN)
-      // GAIA: pin the card's near edge to the trigger and cap its height to
-      // the room on that side (--model-menu-room, read by the stylesheet), so
-      // expanding or collapsing providers grows or shrinks the card away from
-      // the trigger instead of sliding it over the trigger. The card opens
-      // above the trigger unless that side is short and the other is roomier.
-      const above = rect.top - GAP - MARGIN
-      const below = window.innerHeight - rect.bottom - GAP - MARGIN
-      setMenuPos(above >= MIN_MENU_ROOM || above >= below
-        ? { left: x, bottom: window.innerHeight - rect.top + GAP, '--model-menu-room': `${Math.max(above, 0)}px` } as CSSProperties
-        : { left: x, top: Math.max(rect.bottom + GAP, MARGIN), '--model-menu-room': `${below}px` } as CSSProperties)
-    }
-    place()
-    window.addEventListener('scroll', place, true)
-    window.addEventListener('resize', place)
-    const menu = menuRef.current
-    const observer = typeof ResizeObserver !== 'undefined' && menu !== null
-      ? new ResizeObserver(place)
-      : null
-    if (menu !== null) observer?.observe(menu)
-    return () => {
-      observer?.disconnect()
-      window.removeEventListener('scroll', place, true)
-      window.removeEventListener('resize', place)
-    }
-  }, [available, open, pane, state, query])
 
   if (!available) return null
 
@@ -352,7 +311,9 @@ export function ModelSelect(
   }
 
   const moveFocus = (offset: number): void => {
-    const items = itemRefs.current.filter(item => item !== null)
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>(
+      'button[role="menuitem"]:not([disabled]), button[role="menuitemradio"]:not([disabled]), button[role="switch"]:not([disabled])',
+    ) ?? [])
     if (items.length === 0) return
     const active = items.findIndex(item => item === document.activeElement)
     // Focus outside the rows (the trigger, which keeps it while the menu
@@ -406,7 +367,9 @@ export function ModelSelect(
       // control inside the card (a retry button) keeps the browser's traversal,
       // so the keystroke stays unconsumed there.
       const focused = document.activeElement
-      const rows = itemRefs.current.filter((item): item is HTMLButtonElement => item !== null)
+      const rows = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"]:not([disabled]), button[role="menuitemradio"]:not([disabled]), button[role="switch"]:not([disabled])',
+      ) ?? [])
       if (focused instanceof HTMLButtonElement && rows.includes(focused)) {
         event.preventDefault()
         focused.click()
@@ -537,6 +500,7 @@ export function ModelSelect(
         ref={triggerRef}
         type="button"
         className={css.trigger}
+        style={anchorStyle}
         aria-label={triggerAria}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -573,7 +537,7 @@ export function ModelSelect(
           ref={menuRef}
           id={`${id}-menu`}
           className={css.menu}
-          style={menuPos ?? MEASURE_STYLE}
+          style={anchorStyle}
           role={pane === 'model' ? 'group' : 'menu'}
           data-model-menu=""
           aria-label={t('menu.aria')}
@@ -595,6 +559,14 @@ export function ModelSelect(
                   <IconChevronRightOutlineRegular className={css.cellChevron} />
                 </button>
               )}
+              {renderSlot('conversation.input.model.options', {
+                locked: locked || busy,
+                dismiss: () => {
+                  close()
+                  triggerRef.current?.focus()
+                },
+                reportFailure: (message) => { setToast({ seq: ++toastSeq.current, text: message }) },
+              })}
             </>
           )}
 

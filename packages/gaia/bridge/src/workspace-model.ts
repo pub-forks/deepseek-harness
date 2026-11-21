@@ -46,7 +46,7 @@ export function apply(ctx: Context): void {
       return creating.run(true, () => originalCreate.call(this, request))
     }
     agents.create = function (options: CreateAgentOptions) {
-      if (!creating.getStore() || options.parentAgent !== undefined || options.meta?.origin === 'subagent'
+      if (!creating.getStore() || options.meta?.origin === 'subagent'
         || options.meta?.parentSession !== undefined || options.meta?.isSeeded || options.seed !== undefined) {
         return originalAgentCreate.call(this, options)
       }

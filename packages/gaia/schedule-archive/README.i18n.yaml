@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/gaia/schedule-archive/README.md
+/:
+  en: ace81e0bb270e281
+  zh: c45a2022e5beaf65
+/deepseek-ai-dsh-gaia-schedule-archive:
+  en: f574f97016fed745
+  zh: 133dcc9b8e51ff83
+/deepseek-ai-dsh-gaia-schedule-archive/summary:
+  en: 22c959a08839ea13
+  zh: a6f3de9835aa7ada
+/deepseek-ai-dsh-gaia-schedule-archive/table-of-contents:
+  en: ee38cb4506ffe86a
+  zh: 5706eb5d6a7a6af0
+/deepseek-ai-dsh-gaia-schedule-archive/behavior:
+  en: 1b4cc87e3f5a1ca0
+  zh: 7d641e617d8b6ac4
+/deepseek-ai-dsh-gaia-schedule-archive/dev-note:
+  en: 0d5867937fbe6b69
+  zh: e98634d8100b2d33
+/deepseek-ai-dsh-gaia-schedule-archive/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-gaia-schedule-archive/model-experience/scheduled-delivery-archive:
+  en: 8ed0797e91a327c8
+  zh: bd6f98e17890ca34
+/deepseek-ai-dsh-gaia-schedule-archive/model-experience/scheduled-delivery-archive/what-the-model-sees:
+  en: eb913d2e249a882b
+  zh: 49846aebe59f86fb
+/deepseek-ai-dsh-gaia-schedule-archive/model-experience/scheduled-delivery-archive/token-effect:
+  en: 57aeae7253e5418f
+  zh: 5b17dc9b67839b2c
+/deepseek-ai-dsh-gaia-schedule-archive/model-experience/scheduled-delivery-archive/kv-cache-effect:
+  en: 8ad497ee1947660e
+  zh: d416ab3e7ccdb87b
+/deepseek-ai-dsh-gaia-schedule-archive/known-limitations-and-deferred-work:
+  en: d1a2304768d117d5
+  zh: ac15e5a39e821eac

@@ -14,8 +14,8 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "files": ["lib/index.js", "lib/types/**/*.js", "lib/types/**/*.d.ts", "lib/typert.host.js", "lib/typert.host.d.ts", "lib/typert.remote-client.js", "lib/typert.remote-client.d.ts"],
+  "files": ["lib/index.js", "lib/types/**/*.js", "lib/types/**/*.d.ts", "lib/types/**/*.d.ts.map", "lib/**/*.js.map", "lib/typert.host.js", "lib/typert.host.d.ts", "lib/typert.remote-client.js", "lib/typert.remote-client.d.ts", "lib/typert.remote-client.d.ts.map"],
   "peerDependencies": { "@deepseek-ai/cordis": "workspace:~", "@deepseek-ai/dsh-authorization": "workspace:*", "@deepseek-ai/dsh-credentials": "workspace:*", "@deepseek-ai/dsh-llm": "workspace:*", "@deepseek-ai/dsh-settings": "workspace:*", "@deepseek-ai/dsh-typert-protocol": "workspace:*" },
-  "dependencies": { "@deepseek-ai/dsh-brand": "workspace:*", "zod": "^4.4.3" },
+  "dependencies": { "@deepseek-ai/dsh-brand": "workspace:*", "zod": "^4.6.6" },
   "devDependencies": { "@deepseek-ai/cordis": "workspace:~", "@deepseek-ai/dsh-authorization": "workspace:*", "@deepseek-ai/dsh-credentials": "workspace:*", "@deepseek-ai/dsh-llm": "workspace:*", "@deepseek-ai/dsh-settings": "workspace:*", "@deepseek-ai/dsh-typert-protocol": "workspace:*" }
 }

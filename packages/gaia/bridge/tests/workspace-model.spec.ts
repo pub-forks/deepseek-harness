@@ -198,7 +198,7 @@ describe('Gaia bridge workspace model memory through real Loader composition', (
     const fork = await context.sessionController.fork({ sessionId: old, atSeq: source.seq - 1 })
     expect(choice(context, fork.sessionId)).toEqual(remembered)
     const child = await context.agents.create({
-      sessionId: SessionId('subagent-test'), parentAgent: context.agents.get(id)!,
+      sessionId: SessionId('subagent-test'),
       meta: { cwd: directory, origin: 'subagent', parentSession: id },
     })
     expect(child.agent.session.snapshotEvents().some(event => event.type === 'model/selection')).toBe(false)

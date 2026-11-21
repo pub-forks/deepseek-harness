@@ -7,6 +7,7 @@ import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ComponentProps } from 'react'
+import type { OwnerOf } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ModelDirectoryState } from '../src/client/directory.ts'
 import { ModelSelect } from '../src/client/ModelSelect.tsx'
 import { en, zh } from '../src/client/locales.ts'
@@ -98,6 +99,7 @@ describe('ModelSelect label slot', () => {
     })
     await runtime.root.declare({
       'conversation.input.model.label': { kind: 'single', scope: 'session', inline: true },
+      'conversation.input.model.options': { kind: 'list', scope: 'session' },
     }, ({ renderSlot, SessionProvider }) => <SessionProvider session={session}>
       <ModelSelect locked={false} available directory={directory} load={vi.fn()}
         resolveText={resolveText} select={select} t={t} renderSlot={renderSlot} />
@@ -449,41 +451,36 @@ describe('ModelSelect reasoning effort', () => {
       .map(row => row.textContent)).toEqual(['Max'])
   })
 
-  it('portals the placed menu card to body and closes only on truly-outside mousedown', () => {
-    const offsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')!
-    const offsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')!
-    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 200 })
-    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => 300 })
-    try {
-      const { container } = render(<ModelSelect renderSlot={renderLabel}
-        locked={false}
-        available
-        directory={createSnapshotStore(state())}
-        load={vi.fn()} resolveText={resolveText}
-        select={vi.fn().mockResolvedValue({ ok: true, value: undefined })}
-        t={t}
-      />)
-      const trigger = screen.getByRole('button', { name: /选择模型/ })
-      fireEvent.click(trigger)
-      const menu = screen.getByRole('menu')
-      // Outside the composer subtree — column overflow clips cannot crop it.
-      expect(container.contains(menu)).toBe(false)
-      expect(menu.parentElement).toBe(document.body)
-      // jsdom anchor rects are all zero, so the measured 200x300 card clamps
-      // to the 12px viewport margin on both axes.
-      expect(menu.style.left).toBe('12px')
-      expect(menu.style.top).toBe('12px')
-      // Interactions inside the trigger subtree or the portaled card stay open.
-      expect(fireEvent.mouseDown(menu)).toBe(true)
-      expect(fireEvent.mouseDown(trigger)).toBe(false)
-      fireEvent.blur(trigger, { relatedTarget: menu })
-      expect(screen.getByRole('menu')).toBeTruthy()
-      fireEvent.mouseDown(document.body)
-      expect(screen.queryByRole('menu')).toBeNull()
-    } finally {
-      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', offsetWidth)
-      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offsetHeight)
-    }
+  it('anchors the body portal with CSS and closes only on truly-outside mousedown', () => {
+    const measure = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    onTestFinished(() => { measure.mockRestore() })
+    const { container } = render(<ModelSelect renderSlot={renderLabel}
+      locked={false}
+      available
+      directory={createSnapshotStore(state())}
+      load={vi.fn()} resolveText={resolveText}
+      select={vi.fn().mockResolvedValue({ ok: true, value: undefined })}
+      t={t}
+    />)
+    const trigger = screen.getByRole('button', { name: /选择模型/ })
+    fireEvent.click(trigger)
+    const menu = screen.getByRole('menu')
+    // Outside the composer subtree — column overflow clips cannot crop it.
+    expect(container.contains(menu)).toBe(false)
+    expect(menu.parentElement).toBe(document.body)
+    const anchor = trigger.style.getPropertyValue('--dsh-model-anchor')
+    expect(anchor).toMatch(/^--dsh-model-/)
+    expect(menu.style.getPropertyValue('--dsh-model-anchor')).toBe(anchor)
+    expect(menu.style.left).toBe('')
+    expect(menu.style.top).toBe('')
+    expect(measure).not.toHaveBeenCalled()
+    // Interactions inside the trigger subtree or the portaled card stay open.
+    expect(fireEvent.mouseDown(menu)).toBe(true)
+    expect(fireEvent.mouseDown(trigger)).toBe(false)
+    fireEvent.blur(trigger, { relatedTarget: menu })
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('menu')).toBeNull()
   })
 
   it('renders no Agent-bound control for an addressed subagent session', () => {
@@ -1193,58 +1190,6 @@ describe('ModelSelect search and provider groups', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['groups.collapseAll'] }).disabled).toBe(true)
   })
 
-  it('keeps the card pinned above the trigger while collapsing a provider shrinks it', () => {
-    const offsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')!
-    const rect = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')!
-    const original = globalThis.ResizeObserver
-    let height = 300
-    let onResize: (() => void) | undefined
-    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => height })
-    Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({ top: 700, bottom: 728, left: 400, right: 500, width: 100, height: 28, x: 400, y: 700, toJSON: () => ({}) }),
-    })
-    globalThis.ResizeObserver = class {
-      constructor(callback: ResizeObserverCallback) { onResize = () => { callback([], this) } }
-      observe(): void { /* the stub fires only when the test calls onResize */ }
-      unobserve(): void { /* nothing observed individually */ }
-      disconnect(): void { onResize = undefined }
-    }
-    try {
-      open()
-      // jsdom's 768px viewport - 700 (trigger top) + 8 (gap); room is 700 - 8 - 12.
-      const menu = (): HTMLElement => document.querySelector<HTMLElement>('[data-model-menu]')!
-      expect(menu().style.bottom).toBe('76px')
-      expect(menu().style.top).toBe('')
-      expect(menu().style.getPropertyValue('--model-menu-room')).toBe('680px')
-      fireEvent.click(screen.getByRole('button', { name: /Kilo/, expanded: true }))
-      height = 120
-      act(() => { onResize?.() })
-      expect(menu().style.bottom).toBe('76px')
-    } finally {
-      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', offsetHeight)
-      Object.defineProperty(Element.prototype, 'getBoundingClientRect', rect)
-      globalThis.ResizeObserver = original
-    }
-  })
-
-  it('opens the card below the trigger when the room above it is short', () => {
-    const rect = Object.getOwnPropertyDescriptor(Element.prototype, 'getBoundingClientRect')!
-    Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({ top: 100, bottom: 128, left: 400, right: 500, width: 100, height: 28, x: 400, y: 100, toJSON: () => ({}) }),
-    })
-    try {
-      open()
-      // 128 (trigger bottom) + 8 (gap); room is 768 - 128 - 8 - 12.
-      const menu = document.querySelector<HTMLElement>('[data-model-menu]')!
-      expect(menu.style.top).toBe('136px')
-      expect(menu.style.getPropertyValue('--model-menu-room')).toBe('620px')
-    } finally {
-      Object.defineProperty(Element.prototype, 'getBoundingClientRect', rect)
-    }
-  })
-
   it('moves keyboard focus to upstream search and picks the highlighted result on Enter', () => {
     const select = vi.fn().mockResolvedValue({ ok: true, value: undefined })
     open(select)
@@ -1256,5 +1201,21 @@ describe('ModelSelect search and provider groups', () => {
     fireEvent.change(search, { target: { value: 'glm' } })
     fireEvent.keyDown(search, { key: 'Enter' })
     expect(select).toHaveBeenCalledWith({ provider: 'zai', model: 'glm-4.7-flash' })
+  })
+
+  it('dismisses contributed options with focus on the trigger before opening another overlay', () => {
+    const renderSlot = vi.fn((_name: string, _owner: object) => null)
+    render(<ModelSelect locked={false} available directory={createSnapshotStore(state())}
+      load={vi.fn()} resolveText={resolveText} select={vi.fn()} t={t} renderSlot={renderSlot} />)
+    const trigger = screen.getByRole('button', { name: /^选择模型/ })
+    fireEvent.click(trigger)
+    const options = renderSlot.mock.calls.find(call => call[0] === 'conversation.input.model.options')
+    if (options?.[0] !== 'conversation.input.model.options') throw new Error('Missing model options')
+    act(() => {
+      screen.getAllByRole('menuitem')[0]!.focus()
+      ;(options[1] as OwnerOf<'conversation.input.model.options'>).dismiss()
+      expect(document.activeElement).toBe(trigger)
+    })
+    expect(screen.queryByRole('menu')).toBeNull()
   })
 })
