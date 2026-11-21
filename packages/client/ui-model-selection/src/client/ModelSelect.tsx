@@ -84,6 +84,10 @@ function writeCollapsedGroups(groups: ReadonlySet<string>): void {
   }
 }
 
+/** GAIA: the stylesheet's minimum top inset and trigger gap, in pixels. */
+const MENU_MARGIN = 12
+const MENU_GAP = 8
+
 /**
  * Render the composer model seat.
  * @param props - owner share (locked) + injected face (shared directory
@@ -267,6 +271,29 @@ export function ModelSelect(
     }
   }, [open, pane, activeModelIndex, visibleModels])
 
+  // GAIA: cap the anchored card to the room above its trigger through
+  // --model-menu-room (read by the stylesheet and the Gaia embed). Without the
+  // cap, a card taller than that room overflows downward over the trigger and
+  // the composer, because `safe end` alignment falls back to the top inset.
+  useLayoutEffect(() => {
+    if (!available || !open) return
+    const menu = menuRef.current
+    const trigger = triggerRef.current
+    /* v8 ignore next -- both refs are attached whenever the menu is open. */
+    if (menu === null || trigger === null) return
+    const update = (): void => {
+      const topInset = Number.parseFloat(getComputedStyle(menu).top) || MENU_MARGIN
+      const room = trigger.getBoundingClientRect().top - MENU_GAP - topInset
+      menu.style.setProperty('--model-menu-room', `${Math.max(room, 0)}px`)
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [available, open, pane])
 
   if (!available) return null
 

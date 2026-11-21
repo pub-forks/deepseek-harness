@@ -451,8 +451,9 @@ describe('ModelSelect reasoning effort', () => {
       .map(row => row.textContent)).toEqual(['Max'])
   })
 
-  it('anchors the body portal with CSS and closes only on truly-outside mousedown', () => {
+  it('anchors the body portal with CSS, caps it to the room above the trigger, and closes only on truly-outside mousedown', () => {
     const measure = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ top: 500, bottom: 528, left: 0, right: 100, width: 100, height: 28, x: 0, y: 500, toJSON: () => ({}) })
     onTestFinished(() => { measure.mockRestore() })
     const { container } = render(<ModelSelect renderSlot={renderLabel}
       locked={false}
@@ -473,7 +474,11 @@ describe('ModelSelect reasoning effort', () => {
     expect(menu.style.getPropertyValue('--dsh-model-anchor')).toBe(anchor)
     expect(menu.style.left).toBe('')
     expect(menu.style.top).toBe('')
-    expect(measure).not.toHaveBeenCalled()
+    // GAIA: room above the trigger = trigger top − 8px gap − 12px top inset.
+    expect(menu.style.getPropertyValue('--model-menu-room')).toBe('480px')
+    measure.mockReturnValue({ top: 300, bottom: 328, left: 0, right: 100, width: 100, height: 28, x: 0, y: 300, toJSON: () => ({}) })
+    fireEvent(window, new Event('resize'))
+    expect(menu.style.getPropertyValue('--model-menu-room')).toBe('280px')
     // Interactions inside the trigger subtree or the portaled card stay open.
     expect(fireEvent.mouseDown(menu)).toBe(true)
     expect(fireEvent.mouseDown(trigger)).toBe(false)
