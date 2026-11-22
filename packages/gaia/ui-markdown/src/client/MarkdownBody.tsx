@@ -17,6 +17,7 @@ import { parseFrontmatter, type PropEntry, type PropScalar } from '../lib/markdo
 import { dirOf, joinPath, resolveWikiTarget } from '../lib/markdown/wikiLinks.ts'
 import { getPrismLanguage, Prism } from '../lib/markdown/prismSetup.ts'
 import { markdownImageUrl } from './markdownImageUrl.ts'
+import { Mermaid } from './Mermaid.tsx'
 import type { MarkdownKey } from './locales.ts'
 import css from './MarkdownBody.module.css'
 
@@ -26,7 +27,6 @@ interface ReadAloudSnapshot {
   sessionId: string | null
   messageId: string | null
 }
-
 interface ReadAloudStore {
   getSnapshot: () => ReadAloudSnapshot
   subscribe: (listener: () => void) => () => void
@@ -426,7 +426,7 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
     code: ({ className, children }) => {
       const match = /language-([\w+-]+)/u.exec(className ?? '')
       const code = textOf(children).replace(/\n$/u, '')
-      if (match?.[1]?.toLowerCase() === 'mermaid') return <Mermaid code={code} />
+      if (match?.[1]?.toLowerCase() === 'mermaid') return <Mermaid code={code} loadingLabel={t('renderingDiagram')} renderError={error => <pre className={css.mermaid} title={error}>{code}</pre>} />
       if (!match && !code.includes('\n')) return <code>{children}</code>
       const language = match?.[1]
       const prism = language ? getPrismLanguage(language) : undefined
@@ -494,72 +494,4 @@ export function MarkdownBody({ content, resourceAddress, useResource, useTabInfo
       {body}
     </ReactMarkdown>
   </div>
-}
-
-let mermaidSequence = 0
-
-/** Gaia's reply to a `renderMermaid` request, validated before use. */
-function mermaidReply(data: unknown, reqId: string): { svg: string } | { error: string } | undefined {
-  if (typeof data !== 'object' || data === null) return undefined
-  const message = data as Record<string, unknown>
-  if (message.source !== 'gaia-dsh' || message.v !== 1 || message.type !== 'mermaidRendered' || message.reqId !== reqId) return undefined
-  if (typeof message.svg === 'string') return { svg: message.svg }
-  if (typeof message.error === 'string') return { error: message.error }
-  return undefined
-}
-
-/**
- * Ask the Gaia parent frame to render a diagram with its own Mermaid (strict
- * security level). Bundling Mermaid here would split it into async chunks the
- * client module loader cannot serve. Outside a Gaia frame the source is shown.
- * @param code - diagram source.
- * @param dark - whether the harness currently paints dark.
- * @returns the rendered SVG markup.
- */
-function renderInGaia(code: string, dark: boolean): Promise<string> {
-  if (window.parent === window) return Promise.reject(new Error('Diagrams render inside Gaia only.'))
-  const reqId = `m${mermaidSequence++}-${Date.now().toString(36)}`
-  return new Promise((resolve, reject) => {
-    const cleanup = (): void => {
-      window.clearTimeout(timer)
-      window.removeEventListener('message', onMessage)
-    }
-    const onMessage = (event: MessageEvent): void => {
-      if (event.source !== window.parent || event.origin !== window.location.origin) return
-      const reply = mermaidReply(event.data, reqId)
-      if (reply === undefined) return
-      cleanup()
-      if ('svg' in reply) resolve(reply.svg)
-      else reject(new Error(reply.error))
-    }
-    const timer = window.setTimeout(() => {
-      cleanup()
-      reject(new Error('Timed out waiting for Gaia to render the diagram.'))
-    }, 15_000)
-    window.addEventListener('message', onMessage)
-    window.parent.postMessage({ source: 'gaia-dsh', v: 1, type: 'renderMermaid', reqId, code, dark }, window.location.origin)
-  })
-}
-
-function Mermaid({ code }: { code: string }): ReactNode {
-  const [svg, setSvg] = useState<string>()
-  const [error, setError] = useState<string>()
-  const [dark, setDark] = useState(() => document.body.hasAttribute('data-ds-dark-theme'))
-  useEffect(() => {
-    const observer = new MutationObserver(() => { setDark(document.body.hasAttribute('data-ds-dark-theme')) })
-    observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
-    return () => { observer.disconnect() }
-  }, [])
-  useEffect(() => {
-    let active = true
-    renderInGaia(code, dark).then((markup) => {
-      if (active) { setSvg(markup); setError(undefined) }
-    }, (reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : String(reason))
-    })
-    return () => { active = false }
-  }, [code, dark])
-  if (error) return <pre className={css.mermaid} title={error}>{code}</pre>
-  // Same-origin parent output from Mermaid's strict mode, as in Gaia's own viewer.
-  return svg ? <div className={css.mermaid} dangerouslySetInnerHTML={{ __html: svg }} /> : <div className={css.mermaid} aria-busy="true">Rendering diagram…</div>
 }

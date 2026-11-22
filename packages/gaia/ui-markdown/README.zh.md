@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-使用 Gaia 的 Obsidian 风格渲染器预览 Markdown 文件，支持 GFM、Wiki 链接、frontmatter、语法高亮和 Mermaid 图表。在 Gaia 中，有效的绝对路径 `.tasks` 文件会通过同源 iframe 打开 Gaia Cockpit 任务查看器；独立 Harness 和路径无效时仍使用此包的任务渲染器。这些渲染器只在 Gaia 覆盖层替换 DSH 内置 Markdown 预览；Markdown 文件读取通过 DSH Host Remote 处理，独立模式下的任务写入也通过 DSH Host Remote 处理，图片使用文件媒体路由，导航通过 Sidebar 资源操作完成。
+使用 Gaia 的 Obsidian 风格渲染器预览 Markdown，支持 GFM、Wiki 链接、frontmatter、语法高亮和 Mermaid。Harness Chat 中已完成的 `mermaid` 代码围栏通过 Gaia 父页面桥接渲染；流式、独立或渲染失败时保留源码。在 Gaia 中，有效的绝对路径 `.tasks` 文件会通过同源 iframe 打开 Cockpit 任务查看器；独立模式或路径无效时使用此包的渲染器。Markdown 读取和独立任务写入使用 DSH Host Remote；图片通过文件媒体路由加载，导航使用 Sidebar 操作。
 
 ## 目录
 
@@ -25,7 +25,7 @@ kind: "package-reference"
 
 在 `packages/gaia/profile-gaia/gaia.patch.yml` 中挂载 `gaia-ui-markdown`。其 `extension` 优先级高于内置文档渲染器，键控的 `sidebar.right.tab.document` 贡献会在 DSH 显示文档预览的所有位置渲染 Markdown 和 `.tasks` 文件。Markdown 保持只读。在 Gaia iframe 内，`.tasks` 渲染器会检测文档根节点上的 `data-gaia-full` 或 `data-gaia-embed` 属性，并要求路径为不含 `.` 或 `..` 段的绝对路径；符合条件后，它会用 Gaia 的 `/embed/tasks?path=…` 查看器填满预览区域。iframe 使用 Gaia 的根 origin，且不设置 sandbox 属性。若没有 Gaia 标记或路径无效，则使用现有 `.tasks` 渲染器；其编辑通过带版本检查的 `gaiaTasks` Host Remote 完成，并保留预览未显示的字段。`.tasks` 备注以纯文本显示，图片通过经过认证的文件媒体路由加载。
 
-remark 插件、frontmatter 解析器和 Wiki 链接路径助手均从 Gaia web 查看器复制而来。请保持这些副本与源文件同步。原始 HTML 会先解析，再使用 Gaia schema 消毒后渲染。Mermaid 不打包进插件：其异步分块无法通过客户端模块表加载。查看器向 Gaia 父页面发送 `renderMermaid {reqId, code, dark}`，由 Gaia 以 `securityLevel: 'strict'` 使用自身的 Mermaid 渲染，并回复 `mermaidRendered {reqId, svg | error}`；不在 Gaia 框架中、出错或超时（15 秒）时显示图表源码。客户端构建将 vfile 的 `#minpath`/`#minproc`/`#minurl` 映射到浏览器版本，确保包内不引用 Node 内置模块。
+remark 插件、frontmatter 解析器和 Wiki 链接路径助手均从 Gaia web 查看器复制而来。请保持这些副本与源文件同步。原始 HTML 会先解析，再使用 Gaia schema 消毒后渲染。Mermaid 不打包进插件：其异步分块无法通过客户端模块表加载。共享渲染器向 Gaia 父页面发送 `renderMermaid {reqId, code, dark}`，由 Gaia 以 `securityLevel: 'strict'` 使用自身的 Mermaid 渲染，并回复 `mermaidRendered {reqId, svg | error}`。文档查看器在 Gaia 框架外、出错或超时（15 秒）时显示源码。Chat 使用会话级 `conversation.chat.markdown.fence` 插槽的 `mermaid` 键；流式时显示纯代码，完成后显示图表，出错、超时或独立运行时回退到代码。客户端构建将 vfile 的 `#minpath`/`#minproc`/`#minurl` 映射到浏览器版本，确保包内不引用 Node 内置模块。
 
 <a id="dev-note"></a>
 ## 开发备注
@@ -33,6 +33,20 @@ remark 插件、frontmatter 解析器和 Wiki 链接路径助手均从 Gaia web 
 此包没有服务不变量 companion：definition 和键控 body 由插件 Cordis effects 注册并负责释放。
 
 ## Model Experience
+
+### Chat Mermaid 围栏
+
+#### 模型所见
+
+不会改变模型可见内容。Chat 会渲染 Assistant 回复中已完成的 Mermaid 围栏。
+
+#### Token effect
+
+此包不增加请求 token。
+
+#### KV Cache effect
+
+此包不组装模型请求。
 
 ### 文档预览
 

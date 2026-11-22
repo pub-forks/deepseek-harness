@@ -150,3 +150,5 @@
 
 .mermaid { overflow-x: auto; margin: 16px 0; padding: 16px; border-radius: 8px; background: var(--md-muted); text-align: center; }
 .mermaid :global(svg) { max-width: 100%; height: auto; }
+/* Chat fences space their own block box, so the layer root has no margins. */
+.mermaidFence { margin: 0; }

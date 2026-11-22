@@ -12,6 +12,7 @@ import { en, zh, ja, es, fr, de, ru, pt } from './locales.ts'
 import { MARKDOWN_BODY_ID, TASKS_BODY_ID, markdownDefinition, tasksDefinition } from './markdown-definition.ts'
 import { MarkdownBody } from './MarkdownBody.tsx'
 import { TasksBody } from './TasksBody.tsx'
+import { registerMermaidFence } from './register-mermaid-fence.ts'
 
 export const name = 'gaia-ui-markdown'
 export const inject = ['locale', 'slots', 'documentPreviews', 'gaiaReadAloud', 'remote'] as const
@@ -21,6 +22,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(remoteContribution)
   const t = ctx.locale.bind('gaiaMarkdown')
   ctx.effect(() => ctx.locale.register('gaiaMarkdown', { en, zh, ja, es, fr, de, ru, pt }), 'gaia-markdown: dictionaries')
+  registerMermaidFence(ctx)
   ctx.effect(() => {
     const removeMarkdown = ctx.documentPreviews.register(markdownDefinition(() => t('label')))
     const removeTasks = ctx.documentPreviews.register(tasksDefinition(() => t('tasksLabel')))

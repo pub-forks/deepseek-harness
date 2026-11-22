@@ -9,20 +9,32 @@
   en: b2c93b2bab18bf7d
   zh: 8c2d21b0b93552ad
 /deepseek-ai-dsh-gaia-ui-markdown/summary:
-  en: adaa7eb957052bde
-  zh: 7aad077085552886
+  en: 86cb24a516a49f61
+  zh: 0e6db4265786ed51
 /deepseek-ai-dsh-gaia-ui-markdown/table-of-contents:
   en: 134c9b5c374e0e8e
   zh: 5241e0a95877c9de
 /deepseek-ai-dsh-gaia-ui-markdown/use-this-package:
-  en: 33d8ce9d7d7938dc
-  zh: 537051f18fd3ab41
+  en: be821c3c275b6c75
+  zh: 88e354d01e106c6e
 /deepseek-ai-dsh-gaia-ui-markdown/dev-note:
   en: 68b76adbd630b532
   zh: ee3c5a272a7a6589
 /deepseek-ai-dsh-gaia-ui-markdown/model-experience:
   en: 215e7ba838619b7b
   zh: 215e7ba838619b7b
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/chat-mermaid-fences:
+  en: 7daaecbdda4ffb6f
+  zh: 6fe176c602f95ec4
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/chat-mermaid-fences/what-the-model-sees:
+  en: 76c327f44b7c5986
+  zh: 68da4eb38aa34c9a
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/chat-mermaid-fences/token-effect:
+  en: 57aeae7253e5418f
+  zh: 66ff95b8c66121ad
+/deepseek-ai-dsh-gaia-ui-markdown/model-experience/chat-mermaid-fences/kv-cache-effect:
+  en: 8ad497ee1947660e
+  zh: 6c61827846174a9c
 /deepseek-ai-dsh-gaia-ui-markdown/model-experience/document-preview:
   en: c756214ac4a5a629
   zh: eb25d371cf21153c
