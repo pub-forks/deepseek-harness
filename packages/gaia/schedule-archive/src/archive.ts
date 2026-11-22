@@ -43,7 +43,8 @@ export function decision(events: readonly SessionEvent[], messageId: string, kee
         messageSeq = event.seq
         turn = activeTurn
         if (event.data.source.kind !== 'schedule') return 'skip'
-      } else if (messageSeq !== undefined && event.seq > messageSeq && event.data.source.kind !== 'schedule') {
+      } else if (messageSeq !== undefined && event.seq > messageSeq && event.data.source.kind === 'user') {
+        // Only a human message is a takeover; plugins also append system-sourced user/message events.
         takeover = true
       }
     }

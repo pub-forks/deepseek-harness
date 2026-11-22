@@ -14,11 +14,19 @@ import { decision } from '../src/archive.ts'
 import * as plugin from '../src/index.ts'
 
 import type {} from '@deepseek-ai/dsh-schedule'
+import type { ContextFormed } from '@deepseek-ai/dsh-llm'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'schedule-archive-test-reminder': { kind: 'schedule-archive-test-reminder' } & ContextFormed
+  }
+}
 
 async function sessionEvents(options: {
   target?: 'schedule' | 'user'
   reason?: 'completed' | 'error' | 'aborted'
   takeover?: boolean
+  injected?: boolean
   approval?: boolean
   question?: boolean
   ended?: boolean
@@ -32,6 +40,12 @@ async function sessionEvents(options: {
     : { kind: 'schedule' as const }
   const message = createUserMessage({ content: [{ type: 'text', text: 'run' }], source })
   session.append('user/message', message, { surfaceOp: 'append' })
+  if (options.injected === true) {
+    session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'reminder' }],
+      source: { kind: 'schedule-archive-test-reminder' },
+    }), { surfaceOp: 'append' })
+  }
   if (options.approval === true) {
     session.append('approval/asked', { id: ApprovalRequestId('pending-approval'), toolName: 'bash' })
   }
@@ -174,6 +188,8 @@ describe('scheduled Session archival', () => {
     expect(decision(approvalEvents, approvalMessageId, true)).toBe('wait')
     expect(decision(questionEvents, questionMessageId, true)).toBe('wait')
     expect(decision(await sessionEvents({ takeover: true }), id, true)).toBe('skip')
+    const injected = await sessionEvents({ injected: true })
+    expect(decision(injected, String(injected.find(event => event.type === 'user/message')?.data.id), true)).toBe('archive')
     const nonScheduler = await sessionEvents({ target: 'user' })
     expect(decision(nonScheduler, String(nonScheduler.find(event => event.type === 'user/message')?.data.id), true)).toBe('skip')
 
