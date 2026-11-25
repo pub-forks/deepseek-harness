@@ -1,3 +1,17 @@
+.pageScroll {
+  /* The Harness centre column clips overflow, so the page owns its scroll
+     region; the centred column stays inside so the scrollbar sits at the pane edge. */
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  --dsh-scrollbar-width: 9px;
+  --dsh-scrollbar-thumb-border: 2px;
+}
+
 .page {
   box-sizing: border-box;
   width: 100%;

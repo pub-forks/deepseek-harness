@@ -120,58 +120,60 @@ export function ScheduleUsagePanel(props: ScheduleUsagePanelProps) {
   const hasRows = deliveryCount > 0
 
   return (
-    <div className={css.page}>
-      <header className={css.header}>
-        <div>
-          <h1 className={css.title}>{t('title')}</h1>
-          <p className={css.subtitle}>{t('subtitle')}</p>
-        </div>
-        <button className={css.refresh} type="button" title={t('refresh')} aria-label={t('refresh')} onClick={refresh} disabled={loading || bounds === undefined}>
-          <RefreshGlyph />
-        </button>
-      </header>
-
-      <section className={css.filters} aria-label={t('filters')}>
-        <TaskFilter options={data?.taskOptions ?? []} selected={taskIds} onChange={setTaskIds} t={t} />
-        <label className={css.dateField}>
-          <span>{t('startDate')}</span>
-          <input type="date" required value={range.start} max={range.end || undefined}
-            onChange={(event) => { const start = event.currentTarget.value; setRange(value => ({ ...value, start })) }} />
-        </label>
-        <label className={css.dateField}>
-          <span>{t('endDate')}</span>
-          <input type="date" required value={range.end} min={range.start || undefined}
-            onChange={(event) => { const end = event.currentTarget.value; setRange(value => ({ ...value, end })) }} />
-        </label>
-      </section>
-      {bounds === undefined && <p className={css.error} role="alert">{t('invalidRange')}</p>}
-
-      {data !== undefined && <section className={css.metrics} aria-label={t('title')}>
-        <Metric label={t('totalTasks')} value={formatTokens(data.totalTaskCount)} />
-        <Metric label={t('totalRuns')} value={formatTokens(deliveryCount)} />
-        <Metric label={t('totalTokens')} value={formatTokens(tokenTotal(totals))} />
-        <Metric label={t('totalCost')} value={formatCost(totals.costUsd)} />
-      </section>}
-
-      {data !== undefined && !data.pricingAvailable && <p className={css.notice} role="status">{t('pricingUnavailable')}</p>}
-      {data?.pricingUpdatedAt !== null && data?.pricingUpdatedAt !== undefined && <p className={css.freshness}>{t('pricingAt')}: {formatDate(new Date(data.pricingUpdatedAt).toISOString())}</p>}
-      {data?.truncated === true && <p className={css.notice} role="status">{t('truncated')}</p>}
-      {loading && data === undefined && <p className={css.empty}>{t('loading')}</p>}
-      {error && <p className={css.error} role="alert">{t('loadError')}</p>}
-      {!loading && !error && bounds !== undefined && data !== undefined && !hasRows && <p className={css.empty}>{t('empty')}</p>}
-
-      {data !== undefined && <>
-        <section className={css.taskList} aria-label={t('totalTasks')}>
-          {data.tasks.map(task => <TaskRow key={task.id} task={task} t={t} />)}
-        </section>
-        {data.sharedBatches.length > 0 && <section className={css.sharedSection}>
-          <h2 className={css.sectionTitle}>{t('sharedBatches')}</h2>
-          <p className={css.notice}>{t('sharedNote')}</p>
-          <div className={css.taskList}>
-            {data.sharedBatches.map(run => <RunRow key={`${run.targetSessionId}/${run.messageId}`} run={run} t={t} shared />)}
+    <div className={css.pageScroll}>
+      <div className={css.page}>
+        <header className={css.header}>
+          <div>
+            <h1 className={css.title}>{t('title')}</h1>
+            <p className={css.subtitle}>{t('subtitle')}</p>
           </div>
+          <button className={css.refresh} type="button" title={t('refresh')} aria-label={t('refresh')} onClick={refresh} disabled={loading || bounds === undefined}>
+            <RefreshGlyph />
+          </button>
+        </header>
+
+        <section className={css.filters} aria-label={t('filters')}>
+          <TaskFilter options={data?.taskOptions ?? []} selected={taskIds} onChange={setTaskIds} t={t} />
+          <label className={css.dateField}>
+            <span>{t('startDate')}</span>
+            <input type="date" required value={range.start} max={range.end || undefined}
+              onChange={(event) => { const start = event.currentTarget.value; setRange(value => ({ ...value, start })) }} />
+          </label>
+          <label className={css.dateField}>
+            <span>{t('endDate')}</span>
+            <input type="date" required value={range.end} min={range.start || undefined}
+              onChange={(event) => { const end = event.currentTarget.value; setRange(value => ({ ...value, end })) }} />
+          </label>
+        </section>
+        {bounds === undefined && <p className={css.error} role="alert">{t('invalidRange')}</p>}
+
+        {data !== undefined && <section className={css.metrics} aria-label={t('title')}>
+          <Metric label={t('totalTasks')} value={formatTokens(data.totalTaskCount)} />
+          <Metric label={t('totalRuns')} value={formatTokens(deliveryCount)} />
+          <Metric label={t('totalTokens')} value={formatTokens(tokenTotal(totals))} />
+          <Metric label={t('totalCost')} value={formatCost(totals.costUsd)} />
         </section>}
-      </>}
+
+        {data !== undefined && !data.pricingAvailable && <p className={css.notice} role="status">{t('pricingUnavailable')}</p>}
+        {data?.pricingUpdatedAt !== null && data?.pricingUpdatedAt !== undefined && <p className={css.freshness}>{t('pricingAt')}: {formatDate(new Date(data.pricingUpdatedAt).toISOString())}</p>}
+        {data?.truncated === true && <p className={css.notice} role="status">{t('truncated')}</p>}
+        {loading && data === undefined && <p className={css.empty}>{t('loading')}</p>}
+        {error && <p className={css.error} role="alert">{t('loadError')}</p>}
+        {!loading && !error && bounds !== undefined && data !== undefined && !hasRows && <p className={css.empty}>{t('empty')}</p>}
+
+        {data !== undefined && <>
+          <section className={css.taskList} aria-label={t('totalTasks')}>
+            {data.tasks.map(task => <TaskRow key={task.id} task={task} t={t} />)}
+          </section>
+          {data.sharedBatches.length > 0 && <section className={css.sharedSection}>
+            <h2 className={css.sectionTitle}>{t('sharedBatches')}</h2>
+            <p className={css.notice}>{t('sharedNote')}</p>
+            <div className={css.taskList}>
+              {data.sharedBatches.map(run => <RunRow key={`${run.targetSessionId}/${run.messageId}`} run={run} t={t} shared />)}
+            </div>
+          </section>}
+        </>}
+      </div>
     </div>
   )
 }
